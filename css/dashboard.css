@@ -852,6 +852,32 @@
   line-height: 1.5;
 }
 
+/* Sprint 6 coordinator action: explicit, terminal-only, and intentionally quiet. */
+.mission-card__replacement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--app-line);
+}
+
+.mission-card__replacement[hidden] {
+  display: none;
+}
+
+.mission-card__replacement .app-button {
+  min-height: 42px;
+}
+
+.mission-card__replacement span {
+  color: var(--app-subtle);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
 /* Sprint 4 level-up notice: restrained, readable, and non-blocking. */
 .level-up {
   width: min(380px, calc(100vw - 32px));
@@ -1082,6 +1108,15 @@
 
   .mission-card__success b {
     grid-column: 2;
+  }
+
+  .mission-card__replacement {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mission-card__replacement span {
+    text-align: left;
   }
 }
 

@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.4
+Version: 1.5
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -70,6 +70,7 @@ app/
     onboarding.js
     mission-generator.js
     mission-lifecycle.js
+    mission-coordinator.js
     progression.js
     dashboard.js
     missions.js
@@ -78,6 +79,7 @@ app/
   components/
   tests/
     mission-lifecycle.test.js
+    mission-coordinator.test.js
   docs/
 ```
 
@@ -98,6 +100,8 @@ Sprint 3 mission completion state is intentionally page-scoped. Completing the p
 Sprint 4 progression state is also page-scoped. `progression.js` owns XP totals, level thresholds, level-up detection, and derived progress values. Its level configuration is the only place where the prototype curve is balanced. Refreshing the dashboard creates a fresh progression instance; no progression value is written to browser storage.
 
 Sprint 5 mission lifecycle state is page-scoped and owned by `mission-lifecycle.js`. Each generated mission definition receives a separate lifecycle controller when the dashboard loads. Refreshing the page creates a new `ready` state. The lifecycle controller is the only authority that can accept or reject state transitions and issue validated XP-bearing completion events.
+
+Sprint 6 daily mission state is page-scoped and owned by `mission-coordinator.js`. The coordinator requests one definition, creates its lifecycle controller, holds terminal history in memory, and enforces the one-replacement limit. Refreshing the dashboard creates a new coordinator and clears its current mission, history, and replacement count. None of this state is written to `sessionStorage`, `localStorage`, or a backend.
 
 ## Onboarding Philosophy
 
@@ -127,11 +131,55 @@ Every transition returns an immutable result containing `accepted`, `reason`, th
 
 The controller updates its state before returning an accepted completion. Once completed, the mission is terminal and every later completion request is rejected with zero XP. The dashboard never implements duplicate-completion rules.
 
-The runtime flow is: Dashboard Interaction → Mission Lifecycle → Validated Lifecycle Event → Progression Engine → Dashboard Renderer. Progression receives `event.xpAwarded`, never the raw mission reward from a button click.
+The runtime flow is: Dashboard Interaction → Mission Coordinator → Mission Lifecycle → Validated Lifecycle Event → Progression Engine → Dashboard Renderer. Progression receives `event.xpAwarded`, never the raw mission reward from a button click.
 
-## Future Daily Scheduling Boundary
+## Daily Mission Coordinator Boundary
 
-A future scheduler should decide which definition becomes today's one mission and when an unfinished mission should receive an `expire` action. It should not mutate mission state directly. Completed missions should move to history before the next daily definition is selected. Mission definitions may later come from templates, backend rules, recurring schedules, or AI while preserving the same generator contract. Production time, recurrence, history, and cross-device conflict resolution belong to a backend boundary; Sprint 5 does not simulate background time or durable scheduling.
+`mission-coordinator.js` answers **which mission belongs to the current daily page session**. It depends on the mission generator for content and the mission lifecycle engine for transition validation. It does not generate content, calculate XP, render UI, or mutate lifecycle state directly.
+
+When created, the coordinator requests exactly one definition from the injected generator and creates exactly one lifecycle controller. It exposes an immutable snapshot:
+
+```js
+{
+  currentMission: {
+    definition,
+    lifecycle
+  },
+  history,
+  dailyStatus: {
+    state,
+    hasCurrentMission,
+    canRequestReplacement,
+    replacementsUsed,
+    replacementsRemaining
+  }
+}
+```
+
+The coordinator routes `start`, `complete`, `skip`, and controlled `expire` actions into the current lifecycle instance and returns the validated lifecycle event with the next coordinator snapshot. Only one current mission exists. Ready and active missions cannot be replaced. A completed, skipped, or expired mission can be replaced only through the explicit `requestReplacement()` action, and only once per page session. Replacement requests never award XP and always create a new lifecycle controller.
+
+Every accepted terminal event creates one immutable in-memory history record:
+
+```js
+{
+  missionId,
+  title,
+  focus,
+  finalState,
+  xpAwarded,
+  terminalAt
+}
+```
+
+The history contract uses `terminalAt` for completed, skipped, and expired missions so consumers do not need state-specific timestamp fields. History has no page in Sprint 6 and is not persisted.
+
+## Future Persistence, Scheduling, and Recurrence Boundaries
+
+A future repository should restore the current definition, lifecycle state, completion-award status, history, replacement count, and authoritative daily-session identity. It should preserve the coordinator snapshot boundary rather than exposing storage details to the dashboard.
+
+A future backend scheduler should own timezone-aware daily boundaries and send an explicit expiration command to the coordinator or lifecycle service. It should not mutate state directly. Completed missions should enter durable history before a new daily definition is selected. Sprint 6 uses no timers, intervals, background work, or server time.
+
+Recurring missions may later extend definitions with backward-compatible metadata such as `recurrence`, `schedule`, and `frequency`. Those fields should be added only when generation and scheduling rules consume them. Definitions may come from templates, backend rules, recurring schedules, or AI while preserving the existing required mission contract.
 
 ## Progression Boundary
 

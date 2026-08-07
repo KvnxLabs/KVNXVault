@@ -19,13 +19,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     difficulty: "Balanced",
     xpReward: 25,
   };
-  let firstMission = fallbackMission;
+  const missionEngine = window.KVNXMissionEngine;
+  const lifecycleEngine = window.KVNXMissionLifecycle;
+  const coordinatorEngine = window.KVNXMissionCoordinator;
+  let missionCoordinator;
 
   try {
-    firstMission = await window.KVNXMissionEngine?.generateMission(onboardingState) || fallbackMission;
+    missionCoordinator = await coordinatorEngine.createDailyMissionCoordinator(onboardingState, {
+      generateMission: missionEngine.generateMission,
+      createLifecycle: lifecycleEngine.createMissionLifecycle,
+    });
   } catch {
-    // A safe first mission keeps the dashboard useful if a future provider fails.
+    // A safe definition keeps the dashboard useful if a future provider fails.
+    missionCoordinator = await coordinatorEngine.createDailyMissionCoordinator(onboardingState, {
+      generateMission: async () => fallbackMission,
+      createLifecycle: lifecycleEngine.createMissionLifecycle,
+    });
   }
+
+  let coordinatorSnapshot = missionCoordinator.getSnapshot();
+  let firstMission = coordinatorSnapshot.currentMission.definition;
   const getInitials = (name) => name
     .split(/\s+/)
     .filter(Boolean)
@@ -75,21 +88,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Mission generation is separate from rendering so a future engine or AI
-  // provider can supply the same object shape without changing this interface.
-  const missionValues = {
-    "[data-mission-title]": firstMission.title,
-    "[data-mission-description]": firstMission.description,
-    "[data-mission-duration]": firstMission.estimatedDuration,
-    "[data-mission-difficulty]": firstMission.difficulty,
-    "[data-mission-xp]": firstMission.xpReward,
-  };
-
-  Object.entries(missionValues).forEach(([selector, value]) => {
-    const element = document.querySelector(selector);
-    if (element) element.textContent = value;
-  });
-
   const missionCard = document.querySelector("[data-mission-card]");
   const missionActions = document.querySelector("[data-mission-actions]");
   const startMissionButton = document.querySelector("[data-start-mission]");
@@ -101,6 +99,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const missionOutcome = document.querySelector("[data-mission-outcome]");
   const missionOutcomeTitle = document.querySelector("[data-mission-outcome-title]");
   const missionOutcomeDescription = document.querySelector("[data-mission-outcome-description]");
+  const missionReplacement = document.querySelector("[data-mission-replacement]");
+  const requestMissionButton = document.querySelector("[data-request-mission]");
+  const replacementNote = document.querySelector("[data-replacement-note]");
   const xpValue = document.querySelector("[data-xp-value]");
   const xpProgress = document.querySelector("[data-xp-progress]");
   const xpProgressFill = document.querySelector("[data-xp-progress-fill]");
@@ -112,11 +113,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   const levelUpNotice = document.querySelector("[data-level-up]");
   const levelUpValue = document.querySelector("[data-level-up-value]");
   const progressionEngine = window.KVNXProgression;
-  const lifecycleEngine = window.KVNXMissionLifecycle;
-  const missionLifecycle = lifecycleEngine?.createMissionLifecycle(firstMission);
   let progression = progressionEngine?.createProgression(75);
 
-  if (missionSuccessXP) missionSuccessXP.textContent = `+${firstMission.xpReward} XP`;
+  // Mission content is rendered only from the coordinator's public snapshot.
+  const renderMissionDefinition = (definition) => {
+    if (!definition) return;
+    firstMission = definition;
+
+    const missionValues = {
+      "[data-mission-title]": definition.title,
+      "[data-mission-description]": definition.description,
+      "[data-mission-duration]": definition.estimatedDuration,
+      "[data-mission-difficulty]": definition.difficulty,
+      "[data-mission-xp]": definition.xpReward,
+    };
+
+    Object.entries(missionValues).forEach(([selector, value]) => {
+      const element = document.querySelector(selector);
+      if (element) element.textContent = value;
+    });
+
+    if (missionSuccessXP) missionSuccessXP.textContent = `+${definition.xpReward} XP`;
+  };
 
   // The renderer accepts only a progression snapshot and performs no XP math.
   const renderProgression = (snapshot) => {
@@ -156,59 +174,73 @@ document.addEventListener("DOMContentLoaded", async () => {
     expired: "Expired",
   };
 
-  // The renderer receives lifecycle state and never decides transitions.
-  const renderMissionLifecycle = (snapshot) => {
+  // The renderer receives a coordinator snapshot and never decides mission
+  // ownership, lifecycle transitions, history, or replacement eligibility.
+  const renderCoordinator = (snapshot) => {
     if (!snapshot || !missionCard) return;
+    coordinatorSnapshot = snapshot;
+    const definition = snapshot.currentMission.definition;
+    const lifecycle = snapshot.currentMission.lifecycle;
+    renderMissionDefinition(definition);
 
-    missionCard.classList.toggle("is-active", snapshot.state === "active");
-    missionCard.classList.toggle("is-complete", snapshot.state === "completed");
-    missionCard.classList.toggle("is-skipped", snapshot.state === "skipped");
-    missionCard.classList.toggle("is-expired", snapshot.state === "expired");
+    missionCard.classList.toggle("is-active", lifecycle.state === "active");
+    missionCard.classList.toggle("is-complete", lifecycle.state === "completed");
+    missionCard.classList.toggle("is-skipped", lifecycle.state === "skipped");
+    missionCard.classList.toggle("is-expired", lifecycle.state === "expired");
 
     if (missionStatus) {
-      missionStatus.textContent = missionStateLabels[snapshot.state] || snapshot.state;
-      missionStatus.dataset.state = snapshot.state;
+      missionStatus.textContent = missionStateLabels[lifecycle.state] || lifecycle.state;
+      missionStatus.dataset.state = lifecycle.state;
     }
 
-    if (startMissionButton) startMissionButton.hidden = !snapshot.canStart;
-    if (completeMissionButton) completeMissionButton.hidden = !snapshot.canComplete;
-    if (skipMissionButton) skipMissionButton.hidden = !snapshot.canSkip;
-    if (missionActions) missionActions.hidden = snapshot.isTerminal;
+    if (startMissionButton) startMissionButton.hidden = !lifecycle.canStart;
+    if (completeMissionButton) completeMissionButton.hidden = !lifecycle.canComplete;
+    if (skipMissionButton) skipMissionButton.hidden = !lifecycle.canSkip;
+    if (missionActions) missionActions.hidden = lifecycle.isTerminal;
 
-    if (snapshot.state !== "completed" && missionSuccess) {
+    if (lifecycle.state !== "completed" && missionSuccess) {
       missionSuccess.hidden = true;
       missionSuccess.classList.remove("is-visible");
     }
 
-    const hasNeutralOutcome = snapshot.state === "skipped" || snapshot.state === "expired";
+    const hasNeutralOutcome = lifecycle.state === "skipped" || lifecycle.state === "expired";
     if (missionOutcome) missionOutcome.hidden = !hasNeutralOutcome;
     if (hasNeutralOutcome && missionOutcomeTitle && missionOutcomeDescription) {
-      const isSkipped = snapshot.state === "skipped";
+      const isSkipped = lifecycle.state === "skipped";
       missionOutcomeTitle.textContent = isSkipped ? "Skipped for today" : "Mission expired";
       missionOutcomeDescription.textContent = isSkipped
         ? "No XP was awarded. You can return with a clear start tomorrow."
         : "This mission closed without affecting your progress.";
     }
+
+    if (missionReplacement) {
+      missionReplacement.hidden = !snapshot.dailyStatus.canRequestReplacement;
+    }
+    if (replacementNote) {
+      replacementNote.textContent = snapshot.dailyStatus.replacementsRemaining > 0
+        ? "One replacement is available in this preview."
+        : "The replacement has been used for this preview.";
+    }
   };
 
-  renderMissionLifecycle(missionLifecycle?.getSnapshot());
+  renderCoordinator(coordinatorSnapshot);
 
   startMissionButton?.addEventListener("click", () => {
-    const result = missionLifecycle?.start();
-    if (result?.accepted) renderMissionLifecycle(result.snapshot);
+    const result = missionCoordinator.start();
+    if (result.accepted) renderCoordinator(result.snapshot);
   });
 
   skipMissionButton?.addEventListener("click", () => {
-    const result = missionLifecycle?.skip();
-    if (result?.accepted) renderMissionLifecycle(result.snapshot);
+    const result = missionCoordinator.skip();
+    if (result.accepted) renderCoordinator(result.snapshot);
   });
 
   const completeFirstMission = () => {
     if (!missionCard || !completeMissionButton || !missionSuccess) return;
 
     // Lifecycle validation happens before any UI or progression update.
-    const lifecycleResult = missionLifecycle?.complete();
-    if (!lifecycleResult?.accepted) return;
+    const coordinatorResult = missionCoordinator.complete();
+    if (!coordinatorResult.accepted) return;
 
     completeMissionButton.disabled = true;
     if (startMissionButton) startMissionButton.disabled = true;
@@ -219,13 +251,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.setTimeout(() => {
       const progressionResult = progressionEngine?.addXP(
         progression,
-        lifecycleResult.event.xpAwarded,
+        coordinatorResult.event.xpAwarded,
       );
       if (!progressionResult) return;
       progression = progressionResult.progression;
 
       missionCard.classList.remove("is-completing");
-      renderMissionLifecycle(lifecycleResult.snapshot);
+      renderCoordinator(coordinatorResult.snapshot);
       missionSuccess.hidden = false;
 
       renderProgression(progressionResult.snapshot);
@@ -241,6 +273,40 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   completeMissionButton?.addEventListener("click", completeFirstMission);
+
+  requestMissionButton?.addEventListener("click", async () => {
+    requestMissionButton.disabled = true;
+    let result;
+    try {
+      result = await missionCoordinator.requestReplacement();
+    } catch {
+      requestMissionButton.disabled = false;
+      return;
+    }
+    if (!result.accepted) {
+      requestMissionButton.disabled = false;
+      return;
+    }
+
+    if (missionSuccess) {
+      missionSuccess.hidden = true;
+      missionSuccess.classList.remove("is-visible");
+    }
+    if (missionOutcome) missionOutcome.hidden = true;
+    if (levelUpNotice) {
+      levelUpNotice.hidden = true;
+      levelUpNotice.classList.remove("is-visible");
+    }
+    if (startMissionButton) startMissionButton.disabled = false;
+    if (completeMissionButton) completeMissionButton.disabled = false;
+    if (skipMissionButton) skipMissionButton.disabled = false;
+    requestMissionButton.disabled = false;
+    renderCoordinator(result.snapshot);
+
+    const summaryGoal = document.querySelector("[data-summary-goal]");
+    if (summaryGoal) summaryGoal.textContent = result.snapshot.currentMission.definition.title;
+    startMissionButton?.focus();
+  });
 
   // Search is visual-only until a future feature sprint supplies search logic.
   searchForm?.addEventListener("submit", (event) => event.preventDefault());

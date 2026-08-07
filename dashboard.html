@@ -14,6 +14,7 @@
     <script src="js/onboarding-state.js" defer></script>
     <script src="js/mission-generator.js" defer></script>
     <script src="js/mission-lifecycle.js" defer></script>
+    <script src="js/mission-coordinator.js" defer></script>
     <script src="js/progression.js" defer></script>
     <script src="js/dashboard.js" defer></script>
     <title>Dashboard | KVNX Vault</title>
@@ -168,6 +169,10 @@
               <div class="mission-card__outcome" data-mission-outcome hidden role="status" aria-live="polite">
                 <strong data-mission-outcome-title>Skipped for today</strong>
                 <span data-mission-outcome-description>You can return with a clear start tomorrow.</span>
+              </div>
+              <div class="mission-card__replacement" data-mission-replacement hidden>
+                <button class="app-button" type="button" data-request-mission>Prepare Next Mission</button>
+                <span data-replacement-note>One replacement is available in this preview.</span>
               </div>
             </section>
 

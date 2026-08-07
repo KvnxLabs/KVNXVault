@@ -92,16 +92,22 @@ Notes: Lifecycle state remains page-scoped and resets on refresh. Expiration is 
 
 ## Sprint 6
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
-Goal: Daily mission orchestration prototype.
+Goal: Daily Mission Coordinator.
 
-Planned: Add a page-scoped daily mission coordinator, one-mission-per-day selection rules, explicit generation/lifecycle orchestration, in-memory history records, and broader integration tests without persistence or real scheduling.
+Completed: Page-scoped daily mission coordinator, generator and lifecycle orchestration, immutable coordinator snapshots, one-current-mission ownership, explicit terminal-only replacement, one-replacement limit, controlled expiration route, in-memory terminal history, dashboard integration, and framework-free coordinator tests.
+
+Definition of Done: The dashboard receives one current mission from the coordinator and routes all mission actions back through it. Ready and active missions cannot be replaced. Terminal missions create history, may be replaced explicitly once, and progression receives XP only from an accepted lifecycle completion event.
+
+Result: KVNX Vault now has a deterministic coordination layer between onboarding direction, mission generation, lifecycle validation, progression, and presentation. The architecture can later gain durable daily sessions, backend scheduling, recurring missions, and AI-selected definitions without moving those responsibilities into the dashboard.
+
+Notes: Coordinator state and history reset on refresh. Expiration remains a controlled architecture action. No authentication, database, persistence, local storage, server scheduling, history UI, achievements, statistics, notifications, or AI were introduced.
 
 ## Sprint 7
 
 Status: ⏳ Planned
 
-Goal: Authentication.
+Goal: Authentication and durable identity foundation.
 
-Planned: Authentication-provider selection, real account creation, sign-in, session handling, protected routes, logout, recovery, accessible server errors, and migration of temporary state into the user profile.
+Planned: Authentication-provider selection, real account creation, sign-in, session handling, protected routes, logout, recovery, accessible server errors, and a repository contract for migrating temporary onboarding, progression, coordinator, lifecycle, and history state into an authenticated profile without coupling storage to the dashboard.

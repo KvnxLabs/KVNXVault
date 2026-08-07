@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.5
+Version: 1.7
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -32,7 +32,7 @@ Avoid gaming UI, crypto UI, generic AI websites, excessive gradients, and visual
 
 ## Tech Stack
 
-Current frontend: HTML5, CSS3, and vanilla JavaScript.
+Current frontend: HTML5, CSS3, vanilla JavaScript, Supabase Auth, and Supabase PostgreSQL with Row Level Security.
 
 Future possibilities: React, Node.js, PostgreSQL, authentication, and AI integration. Do not introduce frameworks until they solve a real problem.
 
@@ -66,6 +66,12 @@ app/
   js/
     script.js
     auth.js
+    config.js
+    auth-service.js
+    route-guard.js
+    protected-page.js
+    user-repository.js
+    application-service.js
     onboarding-state.js
     onboarding.js
     mission-generator.js
@@ -80,6 +86,12 @@ app/
   tests/
     mission-lifecycle.test.js
     mission-coordinator.test.js
+    auth-service.test.js
+    route-guard.test.js
+    application-service.test.js
+    security-contract.test.js
+  supabase/
+    migrations/
   docs/
 ```
 
@@ -87,7 +99,7 @@ app/
 
 Landing Page → Login → Create Account → Onboarding → Vault Introduction → Dashboard → All Application Features.
 
-The landing page is public. Everything else belongs to the application.
+The landing page, login, and signup are public. Onboarding and dashboard require a restored authenticated session.
 
 ## Application State Boundaries
 
@@ -102,6 +114,63 @@ Sprint 4 progression state is also page-scoped. `progression.js` owns XP totals,
 Sprint 5 mission lifecycle state is page-scoped and owned by `mission-lifecycle.js`. Each generated mission definition receives a separate lifecycle controller when the dashboard loads. Refreshing the page creates a new `ready` state. The lifecycle controller is the only authority that can accept or reject state transitions and issue validated XP-bearing completion events.
 
 Sprint 6 daily mission state is page-scoped and owned by `mission-coordinator.js`. The coordinator requests one definition, creates its lifecycle controller, holds terminal history in memory, and enforces the one-replacement limit. Refreshing the dashboard creates a new coordinator and clears its current mission, history, and replacement count. None of this state is written to `sessionStorage`, `localStorage`, or a backend.
+
+Sprint 7 replaces prototype state ownership with durable authenticated storage. `auth-service.js` owns Supabase Auth. `user-repository.js` owns all storage details. `application-service.js` restores domain engines and persists their public state without placing database logic inside them. `onboarding-state.js` is now an in-memory compatibility cache only; Supabase owns durable onboarding, progression, coordinator, lifecycle, and history state.
+
+Sprint 7.1 corrects the durable mutation boundary before Supabase is connected.
+Profiles and onboarding remain user-owned durable records. Progression and
+mission state can be read for restoration, but the browser cannot directly write
+XP totals, lifecycle results, or history. The dashboard runs mission actions in
+an explicitly labeled session-only prototype mode until Sprint 8 implements the
+trusted intent handler.
+
+## Authentication Boundary
+
+`auth-service.js` is the only application interface to Supabase Auth. It supports email/password sign-up, sign-in, sign-out, current-session retrieval, authenticated current-user verification, and auth-state observation. Only the public project URL and publishable key are supplied to the browser.
+
+`route-guard.js` owns pure routing decisions. `protected-page.js` restores the user before onboarding or dashboard renders. Static route protection is an experience boundary, not a data-security boundary; PostgreSQL RLS remains authoritative.
+
+## Repository and Persistence Boundary
+
+`user-repository.js` is the only module that knows Supabase table, column, query, and RPC details. It resolves ownership through the authenticated user and maps database rows back to the existing KVNX contracts.
+
+`application-service.js` coordinates restoration around the unchanged domain responsibilities:
+
+```text
+Authenticated user
+  → User Repository
+  → Application Service
+  → Mission Coordinator / Lifecycle / Progression
+  → Immutable application snapshot
+  → Dashboard Renderer
+```
+
+The application service restores `totalXP` into `progression.js` so levels and percentages remain derived in one place. It restores the persisted mission definition and lifecycle state through the coordinator's backward-compatible restoration option. Completed missions remain terminal after restoration, preserving duplicate-completion protection.
+
+The preferred durable mutation is `requestMissionAction({ missionId, action })`.
+The repository sends only intent to `request_vault_mission_action`; it exposes no
+generic progression setter. The Sprint 7 RPC that accepted a final XP total is
+revoked and deprecated. Sprint 7.1's trusted function intentionally performs no
+state mutation yet. Sprint 8 will implement validation, reward selection,
+atomic mission/progression/history writes, and the authoritative returned
+snapshot behind this contract.
+
+For the current demo, `application-service.js` supports a clearly labeled
+`prototype` transition mode. Existing lifecycle and progression behavior remains
+interactive in memory, but no mission result or XP total is persisted. A narrow
+legacy adapter exists only so the original Sprint 7 test harness remains
+unchanged; the production repository does not expose that adapter.
+
+## Database Ownership Boundary
+
+Every product table references `auth.users.id` through `user_id`. RLS policies
+restrict row visibility to `(select auth.uid()) = user_id`. Sprint 7.1
+additionally revokes browser writes to progression, mission state, and history.
+RLS prevents cross-user access but cannot establish that a current user's
+client-submitted XP value was earned; trusted mission validation is required for
+that authority.
+
+See `docs/DATABASE.md` and `docs/AUTHENTICATION.md` for schema, policies, setup, static-page limits, and operational guidance.
 
 ## Onboarding Philosophy
 

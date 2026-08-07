@@ -106,8 +106,36 @@ Notes: Coordinator state and history reset on refresh. Expiration remains a cont
 
 ## Sprint 7
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
 Goal: Authentication and durable identity foundation.
 
-Planned: Authentication-provider selection, real account creation, sign-in, session handling, protected routes, logout, recovery, accessible server errors, and a repository contract for migrating temporary onboarding, progression, coordinator, lifecycle, and history state into an authenticated profile without coupling storage to the dashboard.
+Completed: Supabase email/password authentication, signup confirmation handling, sign-in, sign-out, authenticated session restoration, reusable protected-route decisions, durable profile/onboarding/progression/daily-mission/history repositories, transactional mission persistence, Row Level Security policies, browser-daily identity design, accessible failure states, and framework-free authentication/restoration tests.
+
+Definition of Done: Unauthenticated application access returns to login. Authenticated users route according to durable onboarding completion. Existing onboarding, mission, lifecycle, coordinator, and progression contracts restore through service/repository adapters. Mission transitions, XP, and optional history commit atomically under the authenticated user. All pre-existing tests remain unchanged and passing.
+
+Result: KVNX Vault now has secure multi-user identity and durable state boundaries without coupling Supabase to the dashboard or domain engines. RLS prevents users from accessing one another's records, while the application service preserves the existing direction → mission → lifecycle → progression → renderer architecture.
+
+Notes: The browser uses only the public Supabase URL and publishable key. No service-role key, database password, social login, magic link, MFA, password reset, admin role, analytics, AI, or server scheduler was added. Static route guards protect presentation flow; RLS protects data. Mission/XP rules remain client-side prototypes and should become server-authoritative in a later sprint.
+
+## Sprint 7.1
+
+Status: ✅ Complete
+
+Goal: Correct the security and deployment configuration boundaries before connecting Supabase.
+
+Completed: Removed generic client progression/mission write methods from the production repository, introduced an intent-only mission-action contract, revoked the legacy browser-supplied XP RPC and direct mission/progression/history writes, added a database-owned baseline initializer, labeled the interactive mission flow as session-only until Sprint 8, corrected Supabase Auth guidance for the Vault Vercel deployment, and removed the unrelated company-domain CNAME from the Vault package.
+
+Definition of Done: UI code has no preferred API for setting arbitrary XP totals. Durable mission requests contain only mission id and action. The legacy `p_total_xp` function is not executable by authenticated clients. RLS limits cross-user access while documentation explicitly states its same-user integrity limit. Supabase Site URL and redirects point to KVNX Vault, not the KVNX Labs company homepage. All Sprint 7 tests remain unchanged and passing.
+
+Result: Sprint 7's identity and restoration architecture is preserved, while the unsafe implication that client results are authoritative has been removed. Sprint 8 can implement trusted validation behind the new intent contract without changing dashboard actions or domain-engine responsibilities.
+
+Notes: This correction is not Sprint 8. Prototype mission actions and XP feedback remain page-scoped. The new SQL action function intentionally refuses mutation until trusted transition and reward rules are implemented.
+
+## Sprint 8
+
+Status: ⏳ Planned
+
+Goal: Server-authoritative daily boundaries and mission transition validation.
+
+Planned: Move daily-session issuance, lifecycle validation, duplicate completion enforcement, and XP authorization behind trusted server functions while preserving current generator/coordinator/progression contracts and adding timezone settings, conflict handling, audit events, and end-to-end Supabase integration tests.

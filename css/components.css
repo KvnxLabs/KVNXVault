@@ -31,6 +31,10 @@ html {
   background: var(--app-bg);
 }
 
+.auth-pending body {
+  visibility: hidden;
+}
+
 body {
   margin: 0;
   background: var(--app-bg);

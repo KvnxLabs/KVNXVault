@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="auth-pending">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,11 +11,17 @@
     <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/onboarding.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/auth-service.js" defer></script>
+    <script src="js/user-repository.js" defer></script>
+    <script src="js/route-guard.js" defer></script>
     <script src="js/onboarding-state.js" defer></script>
+    <script src="js/protected-page.js" defer></script>
     <script src="js/onboarding.js" defer></script>
     <title>Set Up Your Vault | KVNX Vault</title>
   </head>
-  <body class="onboarding-page">
+  <body class="onboarding-page" data-protected-route="onboarding">
     <a class="app-skip-link" href="#onboarding-main">Skip to onboarding</a>
 
     <header class="onboarding-header">

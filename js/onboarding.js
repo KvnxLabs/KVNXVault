@@ -1,6 +1,10 @@
 "use strict";
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  const protectedContext = await window.KVNXProtectedPage?.ready;
+  if (!protectedContext) return;
+
+  const repository = protectedContext.repository;
   const stateStore = window.KVNXOnboardingState;
   const form = document.querySelector("[data-onboarding-form]");
   const steps = [...document.querySelectorAll("[data-step]")];
@@ -38,6 +42,17 @@ document.addEventListener("DOMContentLoaded", () => {
     errorMessage.hidden = false;
     target?.focus();
   };
+
+  try {
+    const profile = await repository.loadProfile();
+    stateStore.write({ firstName: profile?.firstName || "" });
+  } catch (error) {
+    if (["session-expired", "session-unavailable"].includes(error?.code)) {
+      window.location.replace("login.html");
+      return;
+    }
+    showError("We couldn't load your profile. Refresh the page to try again.");
+  }
 
   const updateCustomFields = () => {
     document.querySelectorAll("[data-custom-field]").forEach((field) => {
@@ -165,9 +180,25 @@ document.addEventListener("DOMContentLoaded", () => {
     window.setTimeout(() => element?.classList.add("is-visible"), delay);
   };
 
-  const startVaultIntro = () => {
+  const startVaultIntro = async () => {
     const answers = collectAnswers();
-    const state = stateStore.write(answers);
+    nextButton.disabled = true;
+    nextButton.setAttribute("aria-busy", "true");
+    let persistedAnswers;
+    try {
+      persistedAnswers = await repository.saveOnboarding(answers);
+    } catch (error) {
+      if (["session-expired", "session-unavailable"].includes(error?.code)) {
+        window.location.replace("login.html");
+        return;
+      }
+      nextButton.disabled = false;
+      nextButton.removeAttribute("aria-busy");
+      showError("We couldn't save your setup. Your answers are still here—please try again.", nextButton);
+      return;
+    }
+
+    const state = stateStore.write(persistedAnswers);
     const firstName = String(state.firstName || "").trim();
     const welcome = document.querySelector("[data-intro-welcome]");
     const mark = document.querySelector(".vault-intro__mark");
@@ -196,12 +227,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   beginButton?.addEventListener("click", () => showStep(0));
   backButton?.addEventListener("click", () => showStep(currentIndex - 1));
-  nextButton?.addEventListener("click", () => {
+  nextButton?.addEventListener("click", async () => {
     clearError();
     if (!validateCurrentStep()) return;
 
     if (currentIndex === questionSteps.length - 1) {
-      startVaultIntro();
+      await startVaultIntro();
       return;
     }
 

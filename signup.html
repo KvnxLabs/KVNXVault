@@ -11,7 +11,11 @@
     <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/auth.css" />
-    <script src="js/onboarding-state.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/auth-service.js" defer></script>
+    <script src="js/user-repository.js" defer></script>
+    <script src="js/route-guard.js" defer></script>
     <script src="js/auth.js" defer></script>
     <title>Create Account | KVNX Vault</title>
   </head>
@@ -25,11 +29,13 @@
         </a>
 
         <div class="auth-panel__content">
-          <p class="app-eyebrow">Begin your journey</p>
-          <h1 class="auth-panel__title" id="signup-title">Build what<br /><em>comes next.</em></h1>
-          <p class="auth-panel__description">
-            Start with a few essentials. Then Vault will shape your first command center around your direction.
-          </p>
+          <div data-auth-intro>
+            <p class="app-eyebrow">Begin your journey</p>
+            <h1 class="auth-panel__title" id="signup-title">Build what<br /><em>comes next.</em></h1>
+            <p class="auth-panel__description">
+              Start with a few essentials. Then Vault will shape your first command center around your direction.
+            </p>
+          </div>
 
           <form class="auth-form" id="signup-form" data-signup-form>
             <div class="auth-form__field">
@@ -45,12 +51,20 @@
               <input class="auth-form__input" id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required />
             </div>
             <div class="auth-form__actions">
-              <button class="app-button app-button--primary" type="submit">Create Account <span aria-hidden="true">→</span></button>
+              <button class="app-button app-button--primary" type="submit"><span data-submit-label>Create Account</span> <span aria-hidden="true">→</span></button>
             </div>
+            <p class="auth-form__message" data-auth-message role="alert" hidden></p>
           </form>
 
+          <div class="auth-confirmation" data-auth-confirmation hidden role="status" aria-live="polite">
+            <p class="app-eyebrow">Check your email</p>
+            <h2>Confirm your account.</h2>
+            <p>We sent a secure confirmation link to your email. After confirming, return here and sign in to continue.</p>
+            <a class="app-button app-button--primary" href="login.html">Return to Sign In <span aria-hidden="true">→</span></a>
+          </div>
+
           <p class="auth-panel__account-link">Already have an account? <a href="login.html">Sign in</a></p>
-          <p class="auth-panel__note">Preview experience — email and password are not submitted or saved.</p>
+          <p class="auth-panel__note">Your password is handled by Supabase Auth and is never stored in KVNX Vault tables.</p>
         </div>
       </section>
 

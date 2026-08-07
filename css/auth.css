@@ -1,4 +1,4 @@
-/* Sprint 1 authentication shell. No authentication logic is included. */
+/* Existing authentication shell with restrained Sprint 7 service states. */
 .auth-page {
   min-height: 100svh;
   display: grid;
@@ -109,6 +109,45 @@
   font-size: 0.72rem;
   line-height: 1.6;
   text-align: center;
+}
+
+.auth-form__message {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 64, 87, 0.25);
+  border-radius: var(--app-radius-sm);
+  background: rgba(221, 32, 56, 0.06);
+  color: #ff9aa6;
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.auth-form__message[hidden],
+.auth-confirmation[hidden] {
+  display: none;
+}
+
+.auth-form[aria-busy="true"] .auth-form__input {
+  opacity: 0.72;
+}
+
+.auth-confirmation {
+  margin-top: 44px;
+}
+
+.auth-confirmation h2 {
+  margin: 22px 0 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 300;
+  letter-spacing: -0.045em;
+}
+
+.auth-confirmation > p:not(.app-eyebrow) {
+  max-width: 390px;
+  margin: 20px 0 28px;
+  color: var(--app-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
 }
 
 .auth-panel__account-link {

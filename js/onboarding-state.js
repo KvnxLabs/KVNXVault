@@ -1,35 +1,20 @@
 "use strict";
 
-// One namespace owns temporary onboarding state so future pages can reuse it.
+// This synchronous cache preserves the onboarding UI contract. Durable state
+// is owned by user-repository.js; no auth or product data is stored in browser
+// sessionStorage or localStorage by this adapter.
 window.KVNXOnboardingState = (() => {
-  const storageKey = "kvnxVault.onboarding";
+  let state = {};
 
-  const read = () => {
-    try {
-      return JSON.parse(window.sessionStorage.getItem(storageKey)) || {};
-    } catch {
-      return {};
-    }
-  };
+  const read = () => ({ ...state });
 
   const write = (nextState) => {
-    const state = { ...read(), ...nextState };
-
-    try {
-      window.sessionStorage.setItem(storageKey, JSON.stringify(state));
-    } catch {
-      // The flow remains usable when browser storage is unavailable.
-    }
-
-    return state;
+    state = { ...state, ...nextState };
+    return read();
   };
 
   const clear = () => {
-    try {
-      window.sessionStorage.removeItem(storageKey);
-    } catch {
-      // No action is needed when browser storage is unavailable.
-    }
+    state = {};
   };
 
   return { clear, read, write };

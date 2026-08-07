@@ -40,11 +40,17 @@
     }
 
     const clock = typeof dependencies.clock === "function" ? dependencies.clock : () => new Date();
-    const history = [];
-    let replacementsUsed = 0;
+    const restoreState = dependencies.restoreState || null;
+    const history = Array.isArray(restoreState?.history)
+      ? restoreState.history.map((record) => Object.freeze({ ...record }))
+      : [];
+    let replacementsUsed = Math.min(
+      MAX_REPLACEMENTS,
+      Math.max(0, Math.floor(Number(restoreState?.replacementsUsed) || 0)),
+    );
     let currentDefinition;
     let currentLifecycle;
-    let currentMissionRecorded = false;
+    let currentMissionRecorded = Boolean(restoreState?.currentMissionRecorded);
 
     const buildMission = async () => {
       const definition = await generateMission(onboardingAnswers);
@@ -61,10 +67,10 @@
       return Object.freeze({ definition: nextDefinition, lifecycle: nextLifecycle });
     };
 
-    const setCurrentMission = (mission) => {
+    const setCurrentMission = (mission, recorded = false) => {
       currentDefinition = mission.definition;
       currentLifecycle = mission.lifecycle;
-      currentMissionRecorded = false;
+      currentMissionRecorded = recorded;
     };
 
     const getSnapshot = () => {
@@ -166,7 +172,22 @@
       });
     };
 
-    setCurrentMission(await buildMission());
+    if (restoreState?.currentMission?.definition) {
+      const restoredDefinition = freezeDefinition(restoreState.currentMission.definition);
+      const restoredLifecycle = createLifecycle(restoredDefinition, {
+        clock,
+        initialState: restoreState.currentMission.lifecycleState || "ready",
+      });
+      if (!restoredLifecycle || typeof restoredLifecycle.getSnapshot !== "function") {
+        throw new TypeError("The mission lifecycle factory returned an invalid restored controller.");
+      }
+      setCurrentMission(
+        Object.freeze({ definition: restoredDefinition, lifecycle: restoredLifecycle }),
+        Boolean(restoreState.currentMissionRecorded),
+      );
+    } else {
+      setCurrentMission(await buildMission());
+    }
 
     return Object.freeze({
       getSnapshot,

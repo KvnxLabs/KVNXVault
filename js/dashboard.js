@@ -1,6 +1,9 @@
 "use strict";
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const protectedContext = await window.KVNXProtectedPage?.ready;
+  if (!protectedContext) return;
+
   const sidebar = document.querySelector("[data-sidebar]");
   const menuButton = document.querySelector("[data-sidebar-open]");
   const closeButton = document.querySelector("[data-sidebar-close]");
@@ -8,36 +11,42 @@ document.addEventListener("DOMContentLoaded", async () => {
   const searchForm = document.querySelector("[data-app-search]");
   const currentDate = document.querySelector("[data-current-date]");
 
-  // Personalization is session-scoped and falls back to the Sprint 1 placeholders.
-  const onboardingState = window.KVNXOnboardingState?.read() || {};
-  const fallbackMission = {
-    id: "first-mission-general",
-    focus: "Personal Growth",
-    title: "Build Focused Momentum",
-    description: "Complete one intentional work session toward the direction you chose.",
-    estimatedDuration: "30 minutes",
-    difficulty: "Balanced",
-    xpReward: 25,
-  };
-  const missionEngine = window.KVNXMissionEngine;
-  const lifecycleEngine = window.KVNXMissionLifecycle;
-  const coordinatorEngine = window.KVNXMissionCoordinator;
-  let missionCoordinator;
+  const persistenceError = document.querySelector("[data-persistence-error]");
+  const vaultApplication = window.KVNXApplicationService.createApplicationService({
+    authService: protectedContext.authService,
+    repository: protectedContext.repository,
+    missionEngine: window.KVNXMissionEngine,
+    lifecycleEngine: window.KVNXMissionLifecycle,
+    coordinatorEngine: window.KVNXMissionCoordinator,
+    progressionEngine: window.KVNXProgression,
+    // Sprint 7.1 preserves the interactive demo without writing XP or mission
+    // results to durable storage. Sprint 8 will switch this to authoritative.
+    transitionMode: "prototype",
+  });
 
+  let applicationSnapshot;
   try {
-    missionCoordinator = await coordinatorEngine.createDailyMissionCoordinator(onboardingState, {
-      generateMission: missionEngine.generateMission,
-      createLifecycle: lifecycleEngine.createMissionLifecycle,
-    });
-  } catch {
-    // A safe definition keeps the dashboard useful if a future provider fails.
-    missionCoordinator = await coordinatorEngine.createDailyMissionCoordinator(onboardingState, {
-      generateMission: async () => fallbackMission,
-      createLifecycle: lifecycleEngine.createMissionLifecycle,
-    });
+    const initialization = await vaultApplication.initialize();
+    if (initialization.requiresOnboarding) {
+      window.location.replace("onboarding.html");
+      return;
+    }
+    applicationSnapshot = initialization.snapshot;
+  } catch (error) {
+    if (["session-expired", "session-unavailable"].includes(error?.code)) {
+      window.location.replace("login.html");
+      return;
+    }
+    if (persistenceError) {
+      persistenceError.hidden = false;
+      persistenceError.textContent = "We couldn't restore your Vault. Check your connection, then refresh the page.";
+    }
+    return;
   }
 
-  let coordinatorSnapshot = missionCoordinator.getSnapshot();
+  const onboardingState = applicationSnapshot.onboarding || {};
+  const profile = applicationSnapshot.profile || {};
+  let coordinatorSnapshot = applicationSnapshot.coordinator;
   let firstMission = coordinatorSnapshot.currentMission.definition;
   const getInitials = (name) => name
     .split(/\s+/)
@@ -48,7 +57,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     .toUpperCase();
 
   if (onboardingState.completed) {
-    const firstName = String(onboardingState.firstName || "").trim();
+    const firstName = String(profile.firstName || "").trim();
     const primaryFocus = onboardingState.primaryFocus || "Your Focus";
     const commitment = onboardingState.commitment || "30 Minutes";
     const challenge = onboardingState.challenge || "Consistency";
@@ -112,8 +121,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   const progressionNextLevel = document.querySelector("[data-progression-next-level]");
   const levelUpNotice = document.querySelector("[data-level-up]");
   const levelUpValue = document.querySelector("[data-level-up-value]");
-  const progressionEngine = window.KVNXProgression;
-  let progression = progressionEngine?.createProgression(75);
+  const logoutButton = document.querySelector("[data-logout]");
+
+  const showPersistenceFailure = (error) => {
+    if (["session-expired", "session-unavailable"].includes(error?.code)) {
+      window.location.replace("login.html");
+      return;
+    }
+    if (persistenceError) {
+      persistenceError.hidden = false;
+      persistenceError.textContent = "Your latest change couldn't be saved. Refresh to restore the last durable state before continuing.";
+      persistenceError.focus();
+    }
+    [startMissionButton, completeMissionButton, skipMissionButton, requestMissionButton]
+      .forEach((button) => { if (button) button.disabled = true; });
+  };
 
   // Mission content is rendered only from the coordinator's public snapshot.
   const renderMissionDefinition = (definition) => {
@@ -164,7 +186,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
-  renderProgression(progressionEngine?.getSnapshot(progression));
+  renderProgression(applicationSnapshot.progression);
 
   const missionStateLabels = {
     ready: "Ready",
@@ -225,22 +247,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderCoordinator(coordinatorSnapshot);
 
-  startMissionButton?.addEventListener("click", () => {
-    const result = missionCoordinator.start();
-    if (result.accepted) renderCoordinator(result.snapshot);
+  startMissionButton?.addEventListener("click", async () => {
+    try {
+      const result = await vaultApplication.start();
+      if (result.accepted) renderCoordinator(result.snapshot.coordinator);
+    } catch (error) {
+      showPersistenceFailure(error);
+    }
   });
 
-  skipMissionButton?.addEventListener("click", () => {
-    const result = missionCoordinator.skip();
-    if (result.accepted) renderCoordinator(result.snapshot);
+  skipMissionButton?.addEventListener("click", async () => {
+    try {
+      const result = await vaultApplication.skip();
+      if (result.accepted) renderCoordinator(result.snapshot.coordinator);
+    } catch (error) {
+      showPersistenceFailure(error);
+    }
   });
 
-  const completeFirstMission = () => {
+  const completeFirstMission = async () => {
     if (!missionCard || !completeMissionButton || !missionSuccess) return;
 
-    // Lifecycle validation happens before any UI or progression update.
-    const coordinatorResult = missionCoordinator.complete();
-    if (!coordinatorResult.accepted) return;
+    let applicationResult;
+    try {
+      applicationResult = await vaultApplication.complete();
+    } catch (error) {
+      showPersistenceFailure(error);
+      return;
+    }
+    if (!applicationResult.accepted) return;
 
     completeMissionButton.disabled = true;
     if (startMissionButton) startMissionButton.disabled = true;
@@ -249,21 +284,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const revealDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
     window.setTimeout(() => {
-      const progressionResult = progressionEngine?.addXP(
-        progression,
-        coordinatorResult.event.xpAwarded,
-      );
-      if (!progressionResult) return;
-      progression = progressionResult.progression;
-
       missionCard.classList.remove("is-completing");
-      renderCoordinator(coordinatorResult.snapshot);
+      renderCoordinator(applicationResult.snapshot.coordinator);
       missionSuccess.hidden = false;
 
-      renderProgression(progressionResult.snapshot);
+      renderProgression(applicationResult.snapshot.progression);
 
-      if (progressionResult.didLevelUp && levelUpNotice) {
-        if (levelUpValue) levelUpValue.textContent = String(progressionResult.snapshot.currentLevel);
+      if (applicationResult.progressionResult?.didLevelUp && levelUpNotice) {
+        if (levelUpValue) levelUpValue.textContent = String(applicationResult.snapshot.progression.currentLevel);
         levelUpNotice.hidden = false;
         window.requestAnimationFrame(() => levelUpNotice.classList.add("is-visible"));
       }
@@ -278,9 +306,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     requestMissionButton.disabled = true;
     let result;
     try {
-      result = await missionCoordinator.requestReplacement();
-    } catch {
-      requestMissionButton.disabled = false;
+      result = await vaultApplication.requestReplacement();
+    } catch (error) {
+      showPersistenceFailure(error);
       return;
     }
     if (!result.accepted) {
@@ -301,11 +329,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (completeMissionButton) completeMissionButton.disabled = false;
     if (skipMissionButton) skipMissionButton.disabled = false;
     requestMissionButton.disabled = false;
-    renderCoordinator(result.snapshot);
+    renderCoordinator(result.snapshot.coordinator);
 
     const summaryGoal = document.querySelector("[data-summary-goal]");
-    if (summaryGoal) summaryGoal.textContent = result.snapshot.currentMission.definition.title;
+    if (summaryGoal) summaryGoal.textContent = result.snapshot.coordinator.currentMission.definition.title;
     startMissionButton?.focus();
+  });
+
+  logoutButton?.addEventListener("click", async () => {
+    logoutButton.disabled = true;
+    try {
+      window.KVNXOnboardingState?.clear();
+      await vaultApplication.signOut();
+      window.location.replace("login.html");
+    } catch {
+      logoutButton.disabled = false;
+      if (persistenceError) {
+        persistenceError.hidden = false;
+        persistenceError.textContent = "We couldn't sign you out. Check your connection and try again.";
+      }
+    }
   });
 
   // Search is visual-only until a future feature sprint supplies search logic.

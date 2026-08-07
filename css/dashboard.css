@@ -100,6 +100,22 @@
   border-top: 1px solid var(--app-line);
 }
 
+.sidebar__logout {
+  margin-top: 14px;
+  padding: 7px 0;
+  background: transparent;
+  color: var(--app-subtle);
+  cursor: pointer;
+  font-size: 0.62rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  transition: color 180ms ease;
+}
+
+.sidebar__logout:hover {
+  color: var(--app-text);
+}
+
 .sidebar__status {
   display: flex;
   align-items: center;
@@ -244,6 +260,21 @@
 .dashboard__inner {
   width: min(100%, 1320px);
   margin: 0 auto;
+}
+
+.dashboard__system-error {
+  margin: 0 0 18px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255, 64, 87, 0.25);
+  border-radius: 10px;
+  background: rgba(221, 32, 56, 0.055);
+  color: #ff9aa6;
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.dashboard__system-error[hidden] {
+  display: none;
 }
 
 .dashboard__heading {

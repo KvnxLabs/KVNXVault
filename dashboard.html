@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="auth-pending">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,15 +11,22 @@
     <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/auth-service.js" defer></script>
+    <script src="js/user-repository.js" defer></script>
+    <script src="js/route-guard.js" defer></script>
     <script src="js/onboarding-state.js" defer></script>
+    <script src="js/protected-page.js" defer></script>
     <script src="js/mission-generator.js" defer></script>
     <script src="js/mission-lifecycle.js" defer></script>
     <script src="js/mission-coordinator.js" defer></script>
     <script src="js/progression.js" defer></script>
+    <script src="js/application-service.js" defer></script>
     <script src="js/dashboard.js" defer></script>
     <title>Dashboard | KVNX Vault</title>
   </head>
-  <body class="app-page">
+  <body class="app-page" data-protected-route="dashboard">
     <a class="app-skip-link" href="#dashboard-content">Skip to dashboard</a>
 
     <div class="shell">
@@ -71,7 +78,8 @@
         </nav>
 
         <div class="sidebar__footer">
-          <span class="sidebar__status"><span class="app-status-dot" aria-hidden="true"></span> Personalized preview</span>
+          <span class="sidebar__status"><span class="app-status-dot" aria-hidden="true"></span> Secure session</span>
+          <button class="sidebar__logout" type="button" data-logout>Sign out</button>
         </div>
       </aside>
 
@@ -93,7 +101,7 @@
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></svg>
         </button>
 
-        <div class="topbar__profile" aria-label="Guest profile">
+        <div class="topbar__profile" aria-label="Authenticated profile">
           <span class="topbar__avatar" aria-hidden="true" data-profile-avatar>KV</span>
           <span class="topbar__profile-copy"><strong data-profile-name>Guest</strong><span data-profile-stage>Explorer</span></span>
         </div>
@@ -101,6 +109,7 @@
 
       <main class="dashboard" id="dashboard-content">
         <div class="dashboard__inner">
+          <p class="dashboard__system-error" data-persistence-error role="alert" tabindex="-1" hidden></p>
           <header class="dashboard__heading">
             <div>
               <p class="app-eyebrow">Command center</p>

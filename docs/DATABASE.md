@@ -1,6 +1,6 @@
 # KVNX Vault Database
 
-Version: Sprint 7.2
+Version: Sprint 8
 
 The authoritative schema and policies live in:
 
@@ -8,11 +8,13 @@ The authoritative schema and policies live in:
 - `supabase/migrations/202608070002_sprint7_1_security_correction.sql`
 - `supabase/migrations/202608070003_sprint7_2_prototype_persistence.sql`
 - `supabase/migrations/202608070004_sprint7_2_replacement_persistence.sql`
+- `supabase/migrations/202608070005_sprint8_server_authority.sql`
 
-Run all four migrations in filename order for a new project. The Sprint 7.1
+Run all five migrations in filename order for a new project. The Sprint 7.1
 correction secures an existing Sprint 7 database, and the Sprint 7.2 migration
 pair adds only narrow transitional completion and replacement persistence
-functions.
+functions. Migration 005 revokes the prototype completion function from the
+authenticated role and installs the production action authority.
 
 ## Tables
 
@@ -20,7 +22,7 @@ functions.
 |---|---|---|
 | `profiles` | First name and account timestamps | `user_id → auth.users.id` |
 | `onboarding_profiles` | Existing onboarding contract | `user_id → auth.users.id` |
-| `progression_state` | Stored total XP; authoritative awarding begins in Sprint 8 | `user_id → auth.users.id` |
+| `progression_state` | Authoritative stored total XP | `user_id → auth.users.id` |
 | `daily_mission_state` | Current definition, lifecycle state, reward status, replacement count, daily identity | `user_id → auth.users.id` |
 | `mission_history` | Terminal mission records | `user_id → auth.users.id` |
 
@@ -69,7 +71,9 @@ set lifecycle state to `ready`, set `completion_awarded` to false, clear
 `persistMissionTransition(...)` remains as a deprecated test-compatibility
 adapter so the unchanged Sprint 7 contract suite still runs. Corrected database
 roles cannot execute its legacy RPC, application code does not select it, and it
-must be removed when Sprint 8 replaces the old tests.
+may be removed when the historical Sprint 7 tests are retired. The Sprint 7.2
+completion adapter is also retained in source for historical tests, but migration
+005 revokes authenticated execution and production code never selects it.
 
 The repository resolves the authenticated user itself. Dashboard and domain engines never supply an arbitrary user id.
 
@@ -109,31 +113,39 @@ requestMissionAction({ missionId, action })
 ```
 
 Its SQL counterpart, `request_vault_mission_action(mission_id, action)`, accepts
-no XP total, reward, lifecycle result, history record, or user id. In Sprint 7.1
-it validates the request shape and returns
-`server-authority-pending-sprint-8` without mutating mission or progression data.
-Sprint 8 will implement trusted transition validation, reward lookup, duplicate
+no XP total, reward, lifecycle result, history record, or user id. Migration 005
+implements trusted transition validation, saved reward lookup, duplicate
 protection, atomic writes, and the returned authoritative snapshot behind this
 contract.
 
 `initialize_vault_session(...)` may create missing baseline rows. The database,
-not the browser, selects the initial XP value of 75. A submitted mission
-definition is stored for restoration but its embedded reward is not trusted for
-awarding XP.
+not the browser, selects the initial XP value of 75 and canonicalizes the stored
+mission reward to the current catalog value of 25. Migration 005 also
+canonicalizes existing saved definitions and replacement definitions.
 
-The intended Sprint 8 result contract is:
+The Sprint 8 result contract is:
 
 ```js
 {
   accepted,
-  missionState,
-  xpAwarded,
-  totalXP,
-  progression
+  reason,
+  event: {
+    missionId,
+    previousState,
+    currentState,
+    eventType,
+    requestedAction,
+    xpAwarded,
+    timestamp
+  },
+  mission: { definition, lifecycle },
+  progression: { totalXP },
+  dailyStatus: { replacementsUsed, replacementsRemaining },
+  historyRecord
 }
 ```
 
-Atomicity and retry idempotency will continue to use the existing history key:
+History idempotency continues to use the existing key:
 
 ```text
 user_id + daily_session_id + mission_id + terminal_at
@@ -151,16 +163,63 @@ It is calculated once when the application service starts. This is durable enoug
 
 A future backend should issue the daily-session id from the user's saved timezone and a server clock, then send explicit rollover/expiration commands through the coordinator boundary. No interval or fake scheduler is included.
 
+## Locking, Atomicity, and Reconciliation
+
+`request_vault_mission_action(...)` locks the authenticated user's
+`daily_mission_state` row and then the matching `progression_state` row with
+`FOR UPDATE`. All callers use this order. PostgreSQL runs the function in the
+caller's transaction, so lifecycle, XP, completion marker, and terminal history
+commit together or roll back together.
+
+After the RPC returns, `application-service.js` discards any stale local
+prediction and rebuilds the coordinator from the returned mission lifecycle and
+daily status. It recreates progression from the returned `totalXP`, after which
+`progression.js` derives display-only level information. Rejected stale requests
+also return server state when a current mission exists, allowing tabs to
+converge.
+
 ## Backup and Recovery Expectations
 
 Supabase project backup settings should be selected before production launch. Migration files remain the reproducible schema source. Application errors block additional state-changing actions after a failed durable transition and instruct the user to reload the last stored state; raw database errors are never displayed.
 
-Until Sprint 8, the dashboard explicitly uses prototype transition mode. A
-validated completion and its progression snapshot are persisted through the
-Sprint 7.2 transitional function, so XP and the completed state restore after a
-refresh or later login. Accepted replacement definitions are persisted through
-the separate zero-XP Sprint 7.2 replacement function, so the replacement can be
-completed and restored without a mission mismatch. These remain prototype
-persistence boundaries, not authoritative mission validation: the client still
-originates the events and mission definitions. Sprint 8 replaces both adapters
-with trusted action validation behind `request_vault_mission_action(...)`.
+The production dashboard now uses authoritative transition mode. Accepted
+replacement definitions still use the separate zero-XP Sprint 7.2 function so
+Mission A → replacement → Mission B remains compatible. Migration 005 hardens
+that function by canonicalizing reward and returning the stored server snapshot.
+It remains transitional; it accepts no XP and cannot write progression.
+
+## Manual Live Supabase Integration Test
+
+Automated tests in this package are framework-free contract and orchestration
+tests. They do not claim a live Supabase connection. After migration 005 is
+reviewed and installed, test the real project exactly as follows.
+
+### Account A
+
+1. Sign in and record the current `progression_state.total_xp`.
+2. Complete Mission A once; verify XP increases by exactly 25.
+3. Verify Mission A is `completed`, `completion_awarded` is true, and exactly
+   one matching `mission_history` row exists with 25 XP.
+4. Refresh; verify XP and completed state remain.
+5. Prepare the replacement; verify Mission B is stored as `ready`, reward 25,
+   and `replacements_used = 1` without an XP change.
+6. Complete Mission B; verify XP increases by exactly 25 and one Mission B
+   history row exists.
+7. Refresh, then log out and back in; verify Mission B remains completed and the
+   authoritative total remains.
+
+### Concurrency
+
+1. Open the same Account A mission in two tabs.
+2. Trigger Complete in both tabs as closely as possible.
+3. Verify only one response is accepted, total XP increases by 25 only once,
+   `completion_awarded` is true, and exactly one history row exists.
+4. Refresh both tabs and verify both converge on the same server state.
+
+### Account B isolation
+
+1. Sign in separately as Account B.
+2. Use only normal application actions and confirm B sees only B's state.
+3. Verify B cannot select or mutate Account A rows through the public client.
+4. Confirm RLS remains enabled and direct grants on progression, daily mission,
+   and history remain revoked.

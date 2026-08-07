@@ -18,6 +18,39 @@
     return error;
   };
 
+  const deepFreeze = (value) => {
+    if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+    Object.values(value).forEach(deepFreeze);
+    return Object.freeze(value);
+  };
+
+  const mapMissionActionResult = (result) => {
+    if (!result || typeof result !== "object" || typeof result.accepted !== "boolean") {
+      throw createRepositoryError("mission-action-response-invalid");
+    }
+
+    const mapped = {
+      accepted: result.accepted,
+      reason: result.reason || null,
+      event: result.event ? { ...result.event } : null,
+      mission: result.mission ? {
+        definition: { ...(result.mission.definition || {}) },
+        lifecycle: { ...(result.mission.lifecycle || {}) },
+      } : null,
+      progression: result.progression ? {
+        totalXP: Number(result.progression.totalXP),
+      } : null,
+      dailyStatus: result.dailyStatus ? { ...result.dailyStatus } : null,
+      historyRecord: result.historyRecord ? { ...result.historyRecord } : null,
+    };
+
+    if (mapped.progression && !Number.isInteger(mapped.progression.totalXP)) {
+      throw createRepositoryError("mission-action-response-invalid");
+    }
+
+    return deepFreeze(mapped);
+  };
+
   const createUserRepository = ({ authService, client } = {}) => {
     if (!authService || typeof authService.getCurrentUser !== "function") {
       throw new TypeError("An authentication service is required.");
@@ -176,29 +209,30 @@
       }), "vault-session-initialize-failed");
     };
 
-    // Preferred durable mutation contract: the browser submits intent only.
-    // Sprint 7.1's SQL boundary rejects mutation until Sprint 8 implements the
-    // trusted transition and reward rules behind this exact interface.
+    // Production mutation contract: the browser submits intent only. Sprint 8
+    // validates and mutates mission, progression, and history state inside one
+    // trusted database transaction, then returns the authoritative snapshot.
     const requestMissionAction = async ({ missionId, action } = {}) => {
       await getAuthenticatedUser();
       const normalizedMissionId = String(missionId || "").trim();
       const normalizedAction = String(action || "").trim().toLowerCase();
       if (!normalizedMissionId) throw new TypeError("A mission id is required.");
-      if (!["start", "complete", "skip", "expire"].includes(normalizedAction)) {
+      if (!["start", "complete", "skip"].includes(normalizedAction)) {
         throw new TypeError("A supported mission action is required.");
       }
       const result = await unwrap(database.rpc("request_vault_mission_action", {
         p_mission_id: normalizedMissionId,
         p_action: normalizedAction,
       }), "mission-action-request-failed");
-      return Object.freeze({ ...(result || {}) });
+      return mapMissionActionResult(result);
     };
 
     // TRANSITIONAL SPRINT 7.2 ADAPTER.
     // This accepts only a completed lifecycle event and the immutable snapshot
     // returned by progression.js. The database recomputes the permitted next
     // total from its current row and saved mission reward before updating it.
-    // Sprint 8 will remove this adapter in favor of requestMissionAction().
+    // Sprint 8 production execution is revoked in migration 005. This remains
+    // only for historical prototype tests and rollback inspection.
     const persistValidatedPrototypeProgression = async ({
       missionId,
       lifecycleEvent,
@@ -258,7 +292,7 @@
         p_replacement_event: replacementEvent,
         p_replacements_used: replacementsUsed,
       }), "prototype-replacement-save-failed");
-      return Object.freeze({ ...(result || {}) });
+      return deepFreeze({ ...(result || {}) });
     };
 
     // DEPRECATED TEST-COMPATIBILITY ADAPTER (Sprint 7 only).

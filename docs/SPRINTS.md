@@ -162,8 +162,14 @@ Notes: This is not Sprint 8. No authentication, RLS, direct-write privilege, XP 
 
 ## Sprint 8
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
-Goal: Server-authoritative daily boundaries and mission transition validation.
+Goal: Server-authoritative mission validation and XP awarding.
 
-Planned: Move daily-session issuance, lifecycle validation, duplicate completion enforcement, and XP authorization behind trusted server functions while preserving current generator/coordinator/progression contracts and adding timezone settings, conflict handling, audit events, and end-to-end Supabase integration tests.
+Completed: Replaced the placeholder intent RPC with trusted PostgreSQL lifecycle validation for start, complete, and skip; canonicalized the saved 25-XP reward; added ordered row locking; applied mission/progression/history mutations atomically; prevented duplicate and concurrent rewards; returned a stable authoritative response; reconciled local coordinator and progression state to the server result; moved the dashboard out of prototype transition mode; revoked authenticated execution of the Sprint 7.2 completion adapter; preserved the hardened one-replacement path; and added framework-free authority and security contract tests plus an exact live integration plan.
+
+Definition of Done: The browser submits only mission id and action. PostgreSQL derives ownership from `auth.uid()`, validates the saved mission and lifecycle, determines reward and final state, awards XP once, records terminal history once, and returns the authoritative state. Two concurrent completions produce one 25-XP award. Refresh and later login restore the same result. Direct authoritative table writes and RLS protections remain unchanged.
+
+Result: KVNX Vault mission completion and XP awarding are no longer trusted client results. The database is the final authority across refreshes, tabs, devices, and repeated calls while the existing generator, lifecycle semantics, coordinator, progression rendering engine, authentication, onboarding, and product design remain intact.
+
+Notes: The browser-derived daily-session id and the separate replacement-definition handoff remain transitional. The replacement function accepts no XP, canonicalizes reward, and preserves the one-replacement rule. No live Supabase test is claimed without project credentials. Server-issued daily identity, timezone rollover, and fully server-selected mission definitions are candidates for Sprint 9.

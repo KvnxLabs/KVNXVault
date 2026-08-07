@@ -70,10 +70,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     lifecycleEngine: window.KVNXMissionLifecycle,
     coordinatorEngine: window.KVNXMissionCoordinator,
     progressionEngine: window.KVNXProgression,
-    // Sprint 7.2 durably saves only progression snapshots produced by an
-    // accepted prototype completion. Sprint 8 will replace this transitional
-    // adapter with authoritative requestMissionAction() results.
-    transitionMode: "prototype",
+    // Sprint 8 sends only mission intent. PostgreSQL returns the authoritative
+    // lifecycle, XP total, history, and daily-status snapshot for rendering.
+    transitionMode: "authoritative",
   });
 
   let applicationSnapshot;
@@ -302,7 +301,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   startMissionButton?.addEventListener("click", async () => {
     try {
       const result = await vaultApplication.start();
-      if (result.accepted) renderCoordinator(result.snapshot.coordinator);
+      if (result.snapshot?.coordinator) renderCoordinator(result.snapshot.coordinator);
     } catch (error) {
       showPersistenceFailure(error);
     }
@@ -311,7 +310,10 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   skipMissionButton?.addEventListener("click", async () => {
     try {
       const result = await vaultApplication.skip();
-      if (result.accepted) renderCoordinator(result.snapshot.coordinator);
+      if (result.snapshot?.coordinator) {
+        renderCoordinator(result.snapshot.coordinator);
+        renderProgression(result.snapshot.progression);
+      }
     } catch (error) {
       showPersistenceFailure(error);
     }
@@ -327,7 +329,11 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       showPersistenceFailure(error);
       return;
     }
-    if (!applicationResult.accepted) return;
+    if (!applicationResult.accepted) {
+      renderCoordinator(applicationResult.snapshot.coordinator);
+      renderProgression(applicationResult.snapshot.progression);
+      return;
+    }
 
     completeMissionButton.disabled = true;
     if (startMissionButton) startMissionButton.disabled = true;

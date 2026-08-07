@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.7.3
+Version: 1.8.0
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -153,6 +153,15 @@ rejects overlapping replacement requests, and the dashboard restores the
 replacement button's disabled and `aria-busy` states in a guaranteed cleanup
 path based on whether the latest coordinator snapshot still permits a retry.
 
+Sprint 8 moves normal mission actions across the final authority boundary.
+The production dashboard sends only mission-instance identity and action intent
+to `request_vault_mission_action(...)`. PostgreSQL derives the user from
+`auth.uid()`, locks the daily-mission and progression rows, validates the saved
+lifecycle state, reads the canonical saved reward, applies mission/progression/
+history changes atomically, and returns the resulting authoritative snapshot.
+The application service rebuilds its local coordinator and progression model
+from that response. If local state disagrees, the server response wins.
+
 ## Authentication Boundary
 
 `auth-service.js` is the only application interface to Supabase Auth. It supports email/password sign-up, sign-in, sign-out, current-session retrieval, authenticated current-user verification, and auth-state observation. Only the public project URL and publishable key are supplied to the browser.
@@ -176,13 +185,13 @@ Authenticated user
 
 The application service restores `totalXP` into `progression.js` so levels and percentages remain derived in one place. It restores the persisted mission definition and lifecycle state through the coordinator's backward-compatible restoration option. Completed missions remain terminal after restoration, preserving duplicate-completion protection.
 
-The preferred durable mutation is `requestMissionAction({ missionId, action })`.
+The production durable mutation is `requestMissionAction({ missionId, action })`.
 The repository sends only intent to `request_vault_mission_action`; it exposes no
-generic progression setter. The Sprint 7 RPC that accepted a final XP total is
-revoked and deprecated. Sprint 7.1's trusted function intentionally performs no
-state mutation yet. Sprint 8 will implement validation, reward selection,
-atomic mission/progression/history writes, and the authoritative returned
-snapshot behind this contract.
+generic progression setter. The Sprint 7 RPC that accepted a final XP total and
+the Sprint 7.2 completion adapter are revoked for authenticated production use.
+Sprint 8 implements transition validation, reward selection, atomic mission/
+progression/history writes, and the authoritative returned snapshot behind the
+intent contract.
 
 For the current demo, `application-service.js` supports a clearly labeled
 `prototype` transition mode. Existing lifecycle and progression behavior runs
@@ -199,12 +208,45 @@ replacement metadata needed for restoration, but no progression value and no
 user id. Rejected replacements never reach persistence, and the coordinator
 continues to own the one-replacement-per-session rule.
 
-This transitional adapter does not make the browser a trusted authority. A user
+The retained prototype adapters do not make the browser a trusted authority. A user
 can modify client code, and the saved mission definition originated in the
 client. The database bounds a write to one stored reward, blocks a second saved
 completion, and computes the written total itself; Sprint 8 must still move the
-actual action validation, daily-session authority, reward selection, and audit
-contract behind `requestMissionAction()`.
+actual action validation, reward selection, and audit contract now live behind
+`requestMissionAction()`. The browser-generated daily-session identity and the
+separate replacement-definition handoff remain transitional boundaries.
+
+## Server-Authoritative Mission Boundary
+
+```text
+Dashboard intent
+  → Application Service
+  → User Repository
+  → request_vault_mission_action(missionId, action)
+  → auth.uid() ownership + row locks
+  → lifecycle validation + saved reward lookup
+  → atomic mission / progression / history mutation
+  → authoritative response
+  → client reconciliation through coordinator + progression engines
+```
+
+Supported browser actions are `start`, `complete`, and `skip`. Expiration is
+not exposed as a client-controlled authoritative action. Ready missions may
+start, complete, or skip; active missions may complete or skip; completed,
+skipped, and expired states are terminal. Rejected actions mutate nothing and
+award zero XP.
+
+The database locks `daily_mission_state` before `progression_state` for every
+action. Concurrent completion requests therefore serialize: the first valid
+request can award 25 XP and record history, while the next observes `completed`
+and returns `already-completed` with zero XP. Refresh, later login, multiple
+tabs, and multiple devices all converge on the same stored result.
+
+The response contract contains `accepted`, `reason`, a server event, the current
+mission definition/lifecycle, authoritative `totalXP`, daily replacement status,
+and the server-created history record when applicable. `progression.js` receives
+the returned total only to derive levels, thresholds, remaining XP, and display
+percentage; it does not authorize or persist an award.
 
 ## Database Ownership Boundary
 

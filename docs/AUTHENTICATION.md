@@ -1,6 +1,6 @@
 # KVNX Vault Authentication
 
-Version: Sprint 7.2
+Version: Sprint 8
 
 ## Provider and Boundary
 
@@ -21,6 +21,7 @@ Never place a service-role key, database password, JWT secret, or other private 
    - `supabase/migrations/202608070002_sprint7_1_security_correction.sql`
    - `supabase/migrations/202608070003_sprint7_2_prototype_persistence.sql`
    - `supabase/migrations/202608070004_sprint7_2_replacement_persistence.sql`
+   - `supabase/migrations/202608070005_sprint8_server_authority.sql`
 3. Open **Authentication → Providers → Email** and enable email/password authentication.
 4. Decide whether email confirmation is required. KVNX Vault supports both modes:
    - Confirmation enabled: sign-up shows a clear “Check your email” state.
@@ -94,9 +95,20 @@ replacement mission without accepting or changing XP. It derives ownership
 from `auth.uid()`, rechecks the saved terminal mission and replacement limit,
 and resets only the daily mission row for the new ready mission.
 
-This restores prototype XP and completion state across refresh and later login,
-but it does not make the browser authoritative or secure. A determined user can
-modify their own client, and the saved mission definition still originated
-there. Sprint 8 must validate mission actions, determine rewards, update state
-atomically, and return the authoritative snapshot from trusted code behind the
-intent-only mission-action contract.
+Sprint 8 removes prototype completion from the production path. Normal mission
+actions call a security-definer PostgreSQL function that derives identity from
+`auth.uid()`, accepts only mission id and action, locks the owned mission and
+progression rows, validates lifecycle state, determines the canonical reward,
+updates state and XP, creates terminal history, and returns one authoritative
+snapshot. Direct writes stay revoked and RLS stays enabled.
+
+The public publishable key can invoke only the specifically granted function;
+it cannot select another user's rows or write authoritative tables directly.
+Raw SQL errors remain behind repository error mapping. The browser never sends
+user id, XP, reward, lifecycle result, level data, or history.
+
+The current daily-session id is still browser-derived, and replacement mission
+content still crosses the narrow Sprint 7.2 replacement function. Migration 005
+canonicalizes the replacement reward to 25 and keeps the one-replacement rule,
+but server-issued daily boundaries and a fully server-selected mission catalog
+remain future hardening work.

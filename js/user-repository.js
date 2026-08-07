@@ -51,6 +51,36 @@
     return deepFreeze(mapped);
   };
 
+  const mapDailyMissionResult = (result) => {
+    if (!result || typeof result !== "object" || typeof result.accepted !== "boolean") {
+      throw createRepositoryError("daily-mission-response-invalid");
+    }
+
+    const mapped = {
+      accepted: result.accepted,
+      reason: result.reason || null,
+      dailyKey: result.dailyKey || null,
+      mission: result.mission ? {
+        definition: { ...(result.mission.definition || {}) },
+        lifecycle: { ...(result.mission.lifecycle || {}) },
+      } : null,
+      dailyStatus: result.dailyStatus ? { ...result.dailyStatus } : null,
+      progression: result.progression ? {
+        totalXP: Number(result.progression.totalXP),
+      } : null,
+    };
+
+    if (mapped.accepted && (!mapped.dailyKey || !mapped.mission?.definition?.id
+      || !mapped.mission?.lifecycle?.state || !mapped.dailyStatus)) {
+      throw createRepositoryError("daily-mission-response-invalid");
+    }
+    if (mapped.progression && !Number.isInteger(mapped.progression.totalXP)) {
+      throw createRepositoryError("daily-mission-response-invalid");
+    }
+
+    return deepFreeze(mapped);
+  };
+
   const createUserRepository = ({ authService, client } = {}) => {
     if (!authService || typeof authService.getCurrentUser !== "function") {
       throw new TypeError("An authentication service is required.");
@@ -227,6 +257,29 @@
       return mapMissionActionResult(result);
     };
 
+    // Sprint 9 daily authority. This intentionally invokes a zero-argument
+    // RPC: identity, timezone, daily key, onboarding inputs, template, reward,
+    // lifecycle state, and mission instance id are all selected by PostgreSQL.
+    const requestDailyMission = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("request_daily_mission"),
+        "daily-mission-request-failed",
+      );
+      return mapDailyMissionResult(result);
+    };
+
+    // Sprint 9 replacement authority is also intent-only. The server locates
+    // today's terminal mission and chooses/persists its one allowed successor.
+    const requestDailyMissionReplacement = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("request_daily_mission_replacement"),
+        "daily-mission-replacement-failed",
+      );
+      return mapDailyMissionResult(result);
+    };
+
     // TRANSITIONAL SPRINT 7.2 ADAPTER.
     // This accepts only a completed lifecycle event and the immutable snapshot
     // returned by progression.js. The database recomputes the permitted next
@@ -323,6 +376,8 @@
       persistMissionTransition,
       persistValidatedPrototypeReplacement,
       persistValidatedPrototypeProgression,
+      requestDailyMission,
+      requestDailyMissionReplacement,
       requestMissionAction,
       saveOnboarding,
       saveProfile,

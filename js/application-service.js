@@ -44,8 +44,16 @@
       throw new TypeError("Authentication, repository, mission, lifecycle, coordinator, and progression dependencies are required.");
     }
 
-    const dailySessionId = dependencies.dailySessionId
-      || createBrowserDailySessionId(dependencies.now, dependencies.timeZone);
+    const transitionMode = dependencies.transitionMode
+      || (typeof repository.requestMissionAction === "function"
+        ? "authoritative"
+        : "legacy-test-adapter");
+    const hasAuthoritativeDailyMission = transitionMode === "authoritative"
+      && typeof repository.requestDailyMission === "function";
+    let dailySessionId = hasAuthoritativeDailyMission
+      ? null
+      : dependencies.dailySessionId
+        || createBrowserDailySessionId(dependencies.now, dependencies.timeZone);
     let profile;
     let onboarding;
     let progression;
@@ -54,10 +62,6 @@
     let persistenceBlocked = false;
     let terminalAt = null;
     let terminalRecorded = false;
-    const transitionMode = dependencies.transitionMode
-      || (typeof repository.requestMissionAction === "function"
-        ? "authoritative"
-        : "legacy-test-adapter");
 
     const getPublicSnapshot = () => Object.freeze({
       profile,
@@ -245,13 +249,56 @@
     };
 
     const initialize = async () => {
-      let [loadedProfile, loadedOnboarding, loadedProgression, loadedDailyMission, loadedHistory] = await Promise.all([
-        repository.loadProfile(),
-        repository.loadOnboarding(),
-        repository.loadProgression(),
-        repository.loadDailyMissionState(dailySessionId),
-        repository.loadMissionHistory(),
-      ]);
+      let loadedProfile;
+      let loadedOnboarding;
+      let loadedProgression;
+      let loadedDailyMission;
+      let loadedHistory;
+
+      if (hasAuthoritativeDailyMission) {
+        [loadedProfile, loadedOnboarding] = await Promise.all([
+          repository.loadProfile(),
+          repository.loadOnboarding(),
+        ]);
+
+        profile = loadedProfile || Object.freeze({ firstName: "" });
+        onboarding = loadedOnboarding;
+        if (!onboarding?.completed) {
+          return Object.freeze({ requiresOnboarding: true });
+        }
+
+        const dailyResult = await repository.requestDailyMission();
+        if (!dailyResult?.accepted || !dailyResult?.mission) {
+          const error = new Error("The server could not provide today's mission.");
+          error.code = dailyResult?.reason || "daily-mission-request-rejected";
+          throw error;
+        }
+
+        const [progressionResult, historyResult] = await Promise.all([
+          repository.loadProgression(),
+          repository.loadMissionHistory(),
+        ]);
+
+        dailySessionId = dailyResult.dailyKey;
+        loadedProgression = progressionResult;
+        loadedHistory = historyResult;
+        loadedDailyMission = {
+          dailySessionId: dailyResult.dailyKey,
+          definition: dailyResult.mission.definition,
+          lifecycle: dailyResult.mission.lifecycle,
+          replacementsUsed: dailyResult.dailyStatus.replacementsUsed,
+          terminalAt: dailyResult.mission.lifecycle.terminalAt || null,
+          terminalRecorded: Boolean(dailyResult.mission.lifecycle.terminalRecorded),
+        };
+      } else {
+        [loadedProfile, loadedOnboarding, loadedProgression, loadedDailyMission, loadedHistory] = await Promise.all([
+          repository.loadProfile(),
+          repository.loadOnboarding(),
+          repository.loadProgression(),
+          repository.loadDailyMissionState(dailySessionId),
+          repository.loadMissionHistory(),
+        ]);
+      }
 
       profile = loadedProfile || Object.freeze({ firstName: "" });
       onboarding = loadedOnboarding;
@@ -259,7 +306,8 @@
         return Object.freeze({ requiresOnboarding: true });
       }
 
-      if ((!loadedProgression || !loadedDailyMission)
+      if (!hasAuthoritativeDailyMission
+        && (!loadedProgression || !loadedDailyMission)
         && typeof repository.initializeVaultSession === "function") {
         const seedCoordinator = await coordinatorEngine.createDailyMissionCoordinator(onboarding, {
           createLifecycle: lifecycleEngine.createMissionLifecycle,
@@ -299,7 +347,7 @@
         restoreState,
       });
 
-      if (!loadedProgression || !loadedDailyMission) {
+      if (!hasAuthoritativeDailyMission && (!loadedProgression || !loadedDailyMission)) {
         // Compatibility for the unchanged Sprint 7 test harness only. The real
         // repository no longer exposes either client-authoritative write API.
         if (!loadedProgression && typeof repository.saveProgression === "function") {
@@ -369,6 +417,21 @@
         return Object.freeze({ accepted: false, reason: "persistence-blocked", snapshot: getPublicSnapshot() });
       }
       if (transitionMode === "authoritative") {
+        if (typeof repository.requestDailyMissionReplacement === "function") {
+          const persisted = await repository.requestDailyMissionReplacement();
+          if (persisted?.mission) {
+            await reconcileAuthoritativeResult({
+              ...persisted,
+              progression: persisted.progression
+                || { totalXP: progressionEngine.getCurrentXP(progression) },
+            });
+          }
+          return Object.freeze({ ...persisted, snapshot: getPublicSnapshot() });
+        }
+
+        // Sprint 8 compatibility only. The production repository exposes the
+        // zero-argument server replacement RPC above, so browser generation is
+        // never reached by the deployed Sprint 9 path.
         const result = await coordinator.requestReplacement();
         if (result.accepted) {
           const persisted = await persistPrototypeReplacement(result);

@@ -1,6 +1,6 @@
 # KVNX Vault Database
 
-Version: Sprint 8
+Version: Sprint 9
 
 The authoritative schema and policies live in:
 
@@ -9,21 +9,24 @@ The authoritative schema and policies live in:
 - `supabase/migrations/202608070003_sprint7_2_prototype_persistence.sql`
 - `supabase/migrations/202608070004_sprint7_2_replacement_persistence.sql`
 - `supabase/migrations/202608070005_sprint8_server_authority.sql`
+- `supabase/migrations/202608070006_sprint9_daily_mission_authority.sql`
 
-Run all five migrations in filename order for a new project. The Sprint 7.1
+Run all six migrations in filename order for a new project. The Sprint 7.1
 correction secures an existing Sprint 7 database, and the Sprint 7.2 migration
 pair adds only narrow transitional completion and replacement persistence
 functions. Migration 005 revokes the prototype completion function from the
-authenticated role and installs the production action authority.
+authenticated role and installs the production action authority. Migration 006
+installs server-authoritative daily identity, generation, rollover, and
+replacement selection without editing migrations 001–005.
 
 ## Tables
 
 | Table | Authoritative state | Ownership |
 |---|---|---|
-| `profiles` | First name and account timestamps | `user_id → auth.users.id` |
+| `profiles` | First name, validated IANA timezone, and account timestamps | `user_id → auth.users.id` |
 | `onboarding_profiles` | Existing onboarding contract | `user_id → auth.users.id` |
 | `progression_state` | Authoritative stored total XP | `user_id → auth.users.id` |
-| `daily_mission_state` | Current definition, lifecycle state, reward status, replacement count, daily identity | `user_id → auth.users.id` |
+| `daily_mission_state` | Per-day definition, lifecycle state, reward status, replacement count, and logical date | `(user_id, daily_key)` with `user_id → auth.users.id` |
 | `mission_history` | Terminal mission records | `user_id → auth.users.id` |
 
 Derived progression values—level, next threshold, remaining XP, and percentage—are not stored. `progression.js` recomputes them from `total_xp`, preserving one progression engine.
@@ -39,6 +42,8 @@ Mission definitions remain JSON because their stable domain contract already exi
 - `loadProgression()`
 - `loadDailyMissionState()`
 - `loadMissionHistory()`
+- `requestDailyMission()`
+- `requestDailyMissionReplacement()`
 - `initializeVaultSession({ dailySessionId, definition })`
 - `requestMissionAction({ missionId, action })`
 - `persistValidatedPrototypeProgression({ missionId, lifecycleEvent, progressionSnapshot })`
@@ -47,6 +52,12 @@ Mission definitions remain JSON because their stable domain contract already exi
 The preferred repository contract has no `saveProgression(totalXP)`, generic
 mission-state setter, or client-result persistence method. Its action request
 contains only mission identity and intent.
+
+The two Sprint 9 daily requests invoke zero-argument RPCs. They never submit a
+user id, date, timezone, focus, mission content, lifecycle state, replacement
+count, reward, or XP. The older initializer and prototype replacement adapter
+remain in source only for unchanged historical tests; migration 006 revokes
+their authenticated execution.
 
 The Sprint 7.2 prototype adapter is deliberately narrower than a generic
 result-persistence method. Only the application service calls it, and only after
@@ -118,10 +129,10 @@ implements trusted transition validation, saved reward lookup, duplicate
 protection, atomic writes, and the returned authoritative snapshot behind this
 contract.
 
-`initialize_vault_session(...)` may create missing baseline rows. The database,
-not the browser, selects the initial XP value of 75 and canonicalizes the stored
-mission reward to the current catalog value of 25. Migration 005 also
-canonicalizes existing saved definitions and replacement definitions.
+`initialize_vault_session(...)` is retained for migration history but migration
+006 revokes authenticated execution because it accepts client mission content.
+`request_daily_mission()` now creates missing baseline progression at the
+database-owned 75 XP value and selects the complete mission definition itself.
 
 The Sprint 8 result contract is:
 
@@ -153,15 +164,31 @@ user_id + daily_session_id + mission_id + terminal_at
 
 ## Durable Daily Identity
 
-Sprint 7 uses a clearly labeled temporary identifier:
+Sprint 7 used a clearly labeled temporary identifier:
 
 ```text
 browser:<IANA-timezone>:<YYYY-MM-DD>
 ```
 
-It is calculated once when the application service starts. This is durable enough for restoration but is not authoritative because the browser controls its clock and timezone.
+Sprint 9 replaces it with a server-derived `daily_key` date. PostgreSQL reads
+the authenticated profile's validated IANA `timezone_name` (default `UTC`) and
+converts `clock_timestamp()` to that logical date. The browser cannot submit a
+date or daily-session id. The database primary key `(user_id, daily_key)` is the
+strong one-mission-per-user/day invariant.
 
-A future backend should issue the daily-session id from the user's saved timezone and a server clock, then send explicit rollover/expiration commands through the coordinator boundary. No interval or fake scheduler is included.
+`request_daily_mission()` takes an advisory transaction lock derived from user
+and daily key, checks the unique row, creates only when absent, and then re-reads
+the stored row. Refreshes, logins, tabs, and devices therefore receive the same
+mission instance. A conflict-safe insert provides a second safeguard.
+
+On rollover, stale `ready` or `active` rows become `expired`, receive zero XP,
+and enter history once before the new day is created. Older terminal rows remain
+unchanged. No browser timer or client expiration action participates.
+
+`request_daily_mission_replacement()` is also zero-argument. It verifies
+today's terminal state and the one-replacement limit, reads saved onboarding,
+generates a server UUID, stores the canonical 25-XP definition as `ready`, and
+leaves XP unchanged. The browser mission generator is compatibility/test-only.
 
 ## Locking, Atomicity, and Reconciliation
 
@@ -182,30 +209,31 @@ converge.
 
 Supabase project backup settings should be selected before production launch. Migration files remain the reproducible schema source. Application errors block additional state-changing actions after a failed durable transition and instruct the user to reload the last stored state; raw database errors are never displayed.
 
-The production dashboard now uses authoritative transition mode. Accepted
-replacement definitions still use the separate zero-XP Sprint 7.2 function so
-Mission A → replacement → Mission B remains compatible. Migration 005 hardens
-that function by canonicalizing reward and returning the stored server snapshot.
-It remains transitional; it accepts no XP and cannot write progression.
+The production dashboard uses authoritative transition mode. Sprint 9 replaces
+the transitional client-definition replacement path with the zero-argument
+server-selected replacement RPC. Mission A → replacement → Mission B remains
+compatible, while migration 006 revokes authenticated execution of the older
+initializer and replacement adapter.
 
 ## Manual Live Supabase Integration Test
 
 Automated tests in this package are framework-free contract and orchestration
-tests. They do not claim a live Supabase connection. After migration 005 is
+tests. They do not claim a live Supabase connection. After migration 006 is
 reviewed and installed, test the real project exactly as follows.
 
 ### Account A
 
-1. Sign in and record the current `progression_state.total_xp`.
-2. Complete Mission A once; verify XP increases by exactly 25.
-3. Verify Mission A is `completed`, `completion_awarded` is true, and exactly
+1. Sign in, load the dashboard, and record the mission id and current XP.
+2. Refresh, log out/in, and open a second tab; verify every view shows the same mission id.
+3. Complete Mission A once; verify XP increases by exactly 25.
+4. Verify Mission A is `completed`, `completion_awarded` is true, and exactly
    one matching `mission_history` row exists with 25 XP.
-4. Refresh; verify XP and completed state remain.
-5. Prepare the replacement; verify Mission B is stored as `ready`, reward 25,
+5. Refresh; verify XP and completed state remain.
+6. Prepare the replacement; verify Mission B is server-selected and stored as `ready`, reward 25,
    and `replacements_used = 1` without an XP change.
-6. Complete Mission B; verify XP increases by exactly 25 and one Mission B
+7. Complete Mission B; verify XP increases by exactly 25 and one Mission B
    history row exists.
-7. Refresh, then log out and back in; verify Mission B remains completed and the
+8. Refresh, then log out and back in; verify Mission B remains completed and the
    authoritative total remains.
 
 ### Concurrency
@@ -223,3 +251,12 @@ reviewed and installed, test the real project exactly as follows.
 3. Verify B cannot select or mutate Account A rows through the public client.
 4. Confirm RLS remains enabled and direct grants on progression, daily mission,
    and history remain revoked.
+
+### Safe rollover simulation
+
+Use a local or disposable staging database only—never production. Inside a
+transaction authenticated as the test account, call the non-browser helper with
+an injected next-day timestamp, inspect the returned/new and expired rows, then
+roll the transaction back. `request_daily_mission_at(timestamptz)` has no grant
+to browser roles; a database owner can use it solely for deterministic testing.
+Do not change server time or edit production mission rows manually.

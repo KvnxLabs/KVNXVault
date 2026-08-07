@@ -1,6 +1,6 @@
 # KVNX Vault Authentication
 
-Version: Sprint 8
+Version: Sprint 9
 
 ## Provider and Boundary
 
@@ -22,6 +22,7 @@ Never place a service-role key, database password, JWT secret, or other private 
    - `supabase/migrations/202608070003_sprint7_2_prototype_persistence.sql`
    - `supabase/migrations/202608070004_sprint7_2_replacement_persistence.sql`
    - `supabase/migrations/202608070005_sprint8_server_authority.sql`
+   - `supabase/migrations/202608070006_sprint9_daily_mission_authority.sql`
 3. Open **Authentication → Providers → Email** and enable email/password authentication.
 4. Decide whether email confirmation is required. KVNX Vault supports both modes:
    - Confirmation enabled: sign-up shows a clear “Check your email” state.
@@ -107,8 +108,16 @@ it cannot select another user's rows or write authoritative tables directly.
 Raw SQL errors remain behind repository error mapping. The browser never sends
 user id, XP, reward, lifecycle result, level data, or history.
 
-The current daily-session id is still browser-derived, and replacement mission
-content still crosses the narrow Sprint 7.2 replacement function. Migration 005
-canonicalizes the replacement reward to 25 and keeps the one-replacement rule,
-but server-issued daily boundaries and a fully server-selected mission catalog
-remain future hardening work.
+Sprint 9 removes the remaining browser-owned daily and replacement inputs.
+`request_daily_mission()` and `request_daily_mission_replacement()` accept zero
+arguments. They derive ownership from `auth.uid()`, use server time plus the
+validated profile timezone, read completed onboarding from the database, select
+the template/reward, generate the mission UUID, and return the stored result.
+Migration 006 revokes authenticated execution of the earlier client-content
+initializer and replacement adapter. RLS and all direct-write revocations remain
+enabled.
+
+Profiles now contain `timezone_name`, validated against PostgreSQL's IANA
+timezone catalog and defaulting to `UTC`. Onboarding is unchanged. A future
+authenticated settings control may update the timezone; it must explain that a
+change can advance or delay the next logical rollover.

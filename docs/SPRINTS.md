@@ -173,3 +173,33 @@ Definition of Done: The browser submits only mission id and action. PostgreSQL d
 Result: KVNX Vault mission completion and XP awarding are no longer trusted client results. The database is the final authority across refreshes, tabs, devices, and repeated calls while the existing generator, lifecycle semantics, coordinator, progression rendering engine, authentication, onboarding, and product design remain intact.
 
 Notes: The browser-derived daily-session id and the separate replacement-definition handoff remain transitional. The replacement function accepts no XP, canonicalizes reward, and preserves the one-replacement rule. No live Supabase test is claimed without project credentials. Server-issued daily identity, timezone rollover, and fully server-selected mission definitions are candidates for Sprint 9.
+
+## Sprint 9
+
+Status: ✅ Complete
+
+Goal: Server-authoritative daily missions.
+
+Completed: Added validated profile timezone storage with a UTC fallback;
+server-derived logical dates; one durable mission row per user/day; zero-argument
+daily retrieval and replacement RPCs; trusted onboarding-based template
+selection; server UUID mission instances; canonical 25-XP rewards; advisory-lock
+and unique-constraint idempotency; authoritative rollover expiration with
+zero-XP history; current-day Sprint 8 action validation; client reconciliation;
+and framework-free daily authority/security tests.
+
+Definition of Done: The browser requests today's mission without sending user
+state. Refreshes, logins, tabs, and devices converge on one mission. A new
+logical day expires unfinished prior work and creates a distinct mission.
+Replacement content is server-selected and remains limited to one. Sprint 8
+completion still awards exactly 25 XP once, RLS remains enabled, and direct
+authoritative writes remain revoked.
+
+Result: Daily mission existence, identity, content, rollover, and replacement
+ownership now live behind PostgreSQL authority. The coordinator and progression
+engine remain local reconciliation/display models, while client generation is
+compatibility/test-only.
+
+Notes: No live Supabase connection is claimed. Migration 006 must be reviewed
+and installed before testing a deployed Sprint 9 client. Onboarding UI remains
+unchanged; a future settings sprint may expose timezone preference safely.

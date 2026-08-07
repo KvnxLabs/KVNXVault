@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.8.0
+Version: 1.9.0
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -162,6 +162,15 @@ history changes atomically, and returns the resulting authoritative snapshot.
 The application service rebuilds its local coordinator and progression model
 from that response. If local state disagrees, the server response wins.
 
+Sprint 9 moves daily identity, creation, rollover, and replacement selection
+behind the same trusted boundary. Production restoration calls the zero-argument
+`request_daily_mission()` RPC. PostgreSQL derives the user from `auth.uid()`,
+resolves the logical date from server time and the saved IANA timezone, selects
+a mission template from saved onboarding, creates a server UUID instance,
+persists at most one row for `(user_id, daily_key)`, and returns the exact saved
+mission. The coordinator remains the local render/lifecycle model but no longer
+decides whether today's mission exists.
+
 ## Authentication Boundary
 
 `auth-service.js` is the only application interface to Supabase Auth. It supports email/password sign-up, sign-in, sign-out, current-session retrieval, authenticated current-user verification, and auth-state observation. Only the public project URL and publishable key are supplied to the browser.
@@ -271,6 +280,12 @@ The dashboard is the command center. It should answer one question immediately: 
 
 `mission-generator.js` is the single mission-generation interface. Its asynchronous `generateMission()` contract accepts onboarding answers and resolves to a stable mission object containing `id`, `focus`, `title`, `description`, `estimatedDuration`, `difficulty`, and `xpReward`.
 
+Beginning in Sprint 9, that browser generator is compatibility/test-only for
+historical domain suites. Production daily and replacement missions come from
+PostgreSQL. The server catalog preserves the same definition contract and the
+Sprint 7.3 template-versus-instance distinction: templates decide content;
+`gen_random_uuid()` supplies each authoritative instance identity.
+
 A mission template and a mission instance are distinct:
 
 - A **mission template** determines what the mission is: focus, title,
@@ -305,7 +320,10 @@ The runtime flow is: Dashboard Interaction → Mission Coordinator → Mission L
 
 ## Daily Mission Coordinator Boundary
 
-`mission-coordinator.js` answers **which mission belongs to the current daily page session**. It depends on the mission generator for content and the mission lifecycle engine for transition validation. It does not generate content, calculate XP, render UI, or mutate lifecycle state directly.
+`mission-coordinator.js` holds the mission returned for the current page and
+reconciles authoritative snapshots. In production it does not own the logical
+day, decide whether a mission should exist, or select replacement content. Its
+local generation path remains only for historical tests and compatibility.
 
 When created, the coordinator requests exactly one definition from the injected generator and creates exactly one lifecycle controller. It exposes an immutable snapshot:
 
@@ -347,7 +365,16 @@ The history contract uses `terminalAt` for completed, skipped, and expired missi
 
 A future repository should restore the current definition, lifecycle state, completion-award status, history, replacement count, and authoritative daily-session identity. It should preserve the coordinator snapshot boundary rather than exposing storage details to the dashboard.
 
-A future backend scheduler should own timezone-aware daily boundaries and send an explicit expiration command to the coordinator or lifecycle service. It should not mutate state directly. Completed missions should enter durable history before a new daily definition is selected. Sprint 6 uses no timers, intervals, background work, or server time.
+Sprint 9 owns timezone-aware daily boundaries without a browser timer or
+scheduler. On the first request after a logical-day change, PostgreSQL expires
+stale `ready`/`active` missions with zero XP, inserts duplicate-safe history,
+and creates the new day atomically. Completed/skipped/expired rows remain
+historical and are never overwritten.
+
+Timezone changes take effect on the next request. Because changing timezone
+can move the logical date backward or forward, the current product should expose
+timezone editing only in a future authenticated settings UI with confirmation;
+the unique `(user_id, daily_key)` constraint prevents duplicates either way.
 
 Recurring missions may later extend definitions with backward-compatible metadata such as `recurrence`, `schedule`, and `frequency`. Those fields should be added only when generation and scheduling rules consume them. Definitions may come from templates, backend rules, recurring schedules, or AI while preserving the existing required mission contract.
 

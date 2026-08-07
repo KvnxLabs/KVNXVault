@@ -5,8 +5,8 @@
 // this one value if the app later moves to https://vault.kvnxlabs.com.
 // Never place a service-role key, database password, or private secret here.
 window.KVNXConfig = Object.freeze({
-  supabaseUrl: "https://YOUR_PROJECT_REF.supabase.co",
-  supabasePublishableKey: "YOUR_SUPABASE_PUBLISHABLE_KEY",
+  supabaseUrl: "https://dfxarwitsatmuzcaxepl.supabase.co/rest/v1/",
+  supabasePublishableKey: "sb_publishable_GALP6Ry639jW5dRWC8Eeew_t7qZGP9Q",
   vaultApplicationUrl: "https://kvnx-vault.vercel.app",
   authRedirectPath: "/login.html",
 });

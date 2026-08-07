@@ -1,6 +1,6 @@
 # KVNX Vault Authentication
 
-Version: Sprint 7.1
+Version: Sprint 7.2
 
 ## Provider and Boundary
 
@@ -16,7 +16,11 @@ Never place a service-role key, database password, JWT secret, or other private 
 ## Manual Supabase Setup
 
 1. Create a Supabase project.
-2. Open **SQL Editor** and run `supabase/migrations/202608070001_sprint7_foundation.sql` once.
+2. Open **SQL Editor** and run these migrations once, in filename order:
+   - `supabase/migrations/202608070001_sprint7_foundation.sql`
+   - `supabase/migrations/202608070002_sprint7_1_security_correction.sql`
+   - `supabase/migrations/202608070003_sprint7_2_prototype_persistence.sql`
+   - `supabase/migrations/202608070004_sprint7_2_replacement_persistence.sql`
 3. Open **Authentication → Providers → Email** and enable email/password authentication.
 4. Decide whether email confirmation is required. KVNX Vault supports both modes:
    - Confirmation enabled: sign-up shows a clear “Check your email” state.
@@ -81,9 +85,18 @@ Authentication screens map provider failures to restrained messages and never sh
 ## Current Security Scope
 
 Sprint 7.1 guarantees user-to-user database isolation through RLS and removes
-browser write access to progression, mission lifecycle state, and mission
-history. The browser still runs the prototype business rules for the visible
-demo, but those results are session-only and are not authoritative durable
-state. A determined user can always modify their own client. Sprint 8 must
-validate mission actions, determine rewards, update progression atomically, and
-return the authoritative snapshot from trusted database/backend code.
+direct browser table writes to progression, mission lifecycle state, and mission
+history. Sprint 7.2 permits one narrow function to persist a locally validated
+prototype completion: PostgreSQL computes the next total from the stored total
+and saved mission reward and requires the progression-engine snapshot to match.
+An additional narrow Sprint 7.2 function persists a coordinator-approved
+replacement mission without accepting or changing XP. It derives ownership
+from `auth.uid()`, rechecks the saved terminal mission and replacement limit,
+and resets only the daily mission row for the new ready mission.
+
+This restores prototype XP and completion state across refresh and later login,
+but it does not make the browser authoritative or secure. A determined user can
+modify their own client, and the saved mission definition still originated
+there. Sprint 8 must validate mission actions, determine rewards, update state
+atomically, and return the authoritative snapshot from trusted code behind the
+intent-only mission-action contract.

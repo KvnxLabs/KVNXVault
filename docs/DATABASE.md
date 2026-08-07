@@ -1,14 +1,18 @@
 # KVNX Vault Database
 
-Version: Sprint 7.1
+Version: Sprint 7.2
 
 The authoritative schema and policies live in:
 
 - `supabase/migrations/202608070001_sprint7_foundation.sql`
 - `supabase/migrations/202608070002_sprint7_1_security_correction.sql`
+- `supabase/migrations/202608070003_sprint7_2_prototype_persistence.sql`
+- `supabase/migrations/202608070004_sprint7_2_replacement_persistence.sql`
 
-Run both migrations in filename order for a new project. The correction migration
-also secures an existing Sprint 7 database.
+Run all four migrations in filename order for a new project. The Sprint 7.1
+correction secures an existing Sprint 7 database, and the Sprint 7.2 migration
+pair adds only narrow transitional completion and replacement persistence
+functions.
 
 ## Tables
 
@@ -35,10 +39,32 @@ Mission definitions remain JSON because their stable domain contract already exi
 - `loadMissionHistory()`
 - `initializeVaultSession({ dailySessionId, definition })`
 - `requestMissionAction({ missionId, action })`
+- `persistValidatedPrototypeProgression({ missionId, lifecycleEvent, progressionSnapshot })`
+- `persistValidatedPrototypeReplacement({ replacementEvent, coordinatorSnapshot })`
 
 The preferred repository contract has no `saveProgression(totalXP)`, generic
 mission-state setter, or client-result persistence method. Its action request
 contains only mission identity and intent.
+
+The Sprint 7.2 prototype adapter is deliberately narrower than a generic
+result-persistence method. Only the application service calls it, and only after
+an accepted completion has passed through lifecycle and progression. Its SQL
+function reads and locks the existing progression and daily-mission rows,
+derives the permitted reward from the saved definition, computes the next total
+inside PostgreSQL, and requires the supplied immutable snapshot to match. It
+also records the terminal lifecycle state so refresh cannot replay the same
+prototype completion.
+
+The replacement adapter is separate from completion persistence and accepts no
+XP total, reward result, or user id. After the coordinator accepts the explicit
+replacement, the application service supplies its immutable replacement event
+and snapshot. PostgreSQL locks the saved daily mission, verifies that it is
+terminal, verifies that its id matches the event's previous mission, and
+enforces the one-replacement limit. Only then does it save the new definition,
+set lifecycle state to `ready`, set `completion_awarded` to false, clear
+`terminal_at`, clear `terminal_recorded`, and preserve the validated
+`replacements_used` count. The function does not read or update
+`progression_state`.
 
 `persistMissionTransition(...)` remains as a deprecated test-compatibility
 adapter so the unchanged Sprint 7 contract suite still runs. Corrected database
@@ -129,7 +155,12 @@ A future backend should issue the daily-session id from the user's saved timezon
 
 Supabase project backup settings should be selected before production launch. Migration files remain the reproducible schema source. Application errors block additional state-changing actions after a failed durable transition and instruct the user to reload the last stored state; raw database errors are never displayed.
 
-Until Sprint 8, the dashboard explicitly uses prototype transition mode. Mission
-completion, duplicate protection, and XP feedback still work through the
-existing lifecycle/progression engines, but those action results are not written
-to Supabase and reset when the page reloads.
+Until Sprint 8, the dashboard explicitly uses prototype transition mode. A
+validated completion and its progression snapshot are persisted through the
+Sprint 7.2 transitional function, so XP and the completed state restore after a
+refresh or later login. Accepted replacement definitions are persisted through
+the separate zero-XP Sprint 7.2 replacement function, so the replacement can be
+completed and restored without a mission mismatch. These remain prototype
+persistence boundaries, not authoritative mission validation: the client still
+originates the events and mission definitions. Sprint 8 replaces both adapters
+with trusted action validation behind `request_vault_mission_action(...)`.

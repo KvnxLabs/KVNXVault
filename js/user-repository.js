@@ -194,6 +194,73 @@
       return Object.freeze({ ...(result || {}) });
     };
 
+    // TRANSITIONAL SPRINT 7.2 ADAPTER.
+    // This accepts only a completed lifecycle event and the immutable snapshot
+    // returned by progression.js. The database recomputes the permitted next
+    // total from its current row and saved mission reward before updating it.
+    // Sprint 8 will remove this adapter in favor of requestMissionAction().
+    const persistValidatedPrototypeProgression = async ({
+      missionId,
+      lifecycleEvent,
+      progressionSnapshot,
+    } = {}) => {
+      await getAuthenticatedUser();
+      const normalizedMissionId = String(missionId || "").trim();
+      if (!normalizedMissionId
+        || lifecycleEvent?.missionId !== normalizedMissionId
+        || lifecycleEvent?.eventType !== "mission.completed"
+        || lifecycleEvent?.currentState !== "completed"
+        || !(Number(lifecycleEvent?.xpAwarded) > 0)
+        || !Number.isInteger(progressionSnapshot?.currentXP)
+        || progressionSnapshot.currentXP < 0) {
+        throw new TypeError("A validated prototype completion snapshot is required.");
+      }
+
+      const result = await unwrap(database.rpc("persist_validated_prototype_progression", {
+        p_lifecycle_event: lifecycleEvent,
+        p_mission_id: normalizedMissionId,
+        p_progression_snapshot: progressionSnapshot,
+      }), "prototype-progression-save-failed");
+      return Object.freeze({ ...(result || {}) });
+    };
+
+    // TRANSITIONAL SPRINT 7.2 REPLACEMENT ADAPTER.
+    // This accepts only a coordinator-approved replacement event and snapshot.
+    // It cannot write XP and is not a generic mission-state setter. The SQL
+    // function revalidates the saved terminal mission and replacement limit.
+    const persistValidatedPrototypeReplacement = async ({
+      replacementEvent,
+      coordinatorSnapshot,
+    } = {}) => {
+      await getAuthenticatedUser();
+      const definition = coordinatorSnapshot?.currentMission?.definition;
+      const lifecycle = coordinatorSnapshot?.currentMission?.lifecycle;
+      const replacementsUsed = coordinatorSnapshot?.dailyStatus?.replacementsUsed;
+      const previousMissionId = String(replacementEvent?.previousMissionId || "").trim();
+      const missionId = String(replacementEvent?.missionId || "").trim();
+
+      if (replacementEvent?.eventType !== "coordinator.mission-replaced"
+        || replacementEvent?.xpAwarded !== 0
+        || !previousMissionId
+        || !missionId
+        || missionId === previousMissionId
+        || definition?.id !== missionId
+        || lifecycle?.state !== "ready"
+        || lifecycle?.completionAwarded !== false
+        || !Number.isInteger(replacementsUsed)
+        || replacementsUsed !== 1) {
+        throw new TypeError("A validated prototype replacement snapshot is required.");
+      }
+
+      const result = await unwrap(database.rpc("persist_validated_prototype_replacement", {
+        p_mission_definition: definition,
+        p_previous_mission_id: previousMissionId,
+        p_replacement_event: replacementEvent,
+        p_replacements_used: replacementsUsed,
+      }), "prototype-replacement-save-failed");
+      return Object.freeze({ ...(result || {}) });
+    };
+
     // DEPRECATED TEST-COMPATIBILITY ADAPTER (Sprint 7 only).
     // The Sprint 7.1 migration revokes authenticated execution of this RPC, so
     // it cannot persist browser-calculated XP in a corrected database. Keep
@@ -220,6 +287,8 @@
       loadProfile,
       loadProgression,
       persistMissionTransition,
+      persistValidatedPrototypeReplacement,
+      persistValidatedPrototypeProgression,
       requestMissionAction,
       saveOnboarding,
       saveProfile,

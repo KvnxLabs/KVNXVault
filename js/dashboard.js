@@ -19,8 +19,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     lifecycleEngine: window.KVNXMissionLifecycle,
     coordinatorEngine: window.KVNXMissionCoordinator,
     progressionEngine: window.KVNXProgression,
-    // Sprint 7.1 preserves the interactive demo without writing XP or mission
-    // results to durable storage. Sprint 8 will switch this to authoritative.
+    // Sprint 7.2 durably saves only progression snapshots produced by an
+    // accepted prototype completion. Sprint 8 will replace this transitional
+    // adapter with authoritative requestMissionAction() results.
     transitionMode: "prototype",
   });
 

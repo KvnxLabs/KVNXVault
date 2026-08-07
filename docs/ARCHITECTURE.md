@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.7
+Version: 1.7.2
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -90,6 +90,8 @@ app/
     route-guard.test.js
     application-service.test.js
     security-contract.test.js
+    prototype-persistence.test.js
+    replacement-persistence.test.js
   supabase/
     migrations/
   docs/
@@ -124,6 +126,24 @@ XP totals, lifecycle results, or history. The dashboard runs mission actions in
 an explicitly labeled session-only prototype mode until Sprint 8 implements the
 trusted intent handler.
 
+Sprint 7.2 corrects the prototype persistence handoff discovered during live
+integration. An accepted local `mission.completed` event still flows through
+the unchanged progression engine. The application service may then pass that
+exact immutable event and progression snapshot to a narrow transitional
+repository adapter. The database locks the saved rows, reads the saved mission
+reward, computes the permitted next total from the stored total, and persists
+the completion only when the engine snapshot matches. Refresh and later login
+therefore restore the earned prototype XP and terminal lifecycle state.
+
+Sprint 7.2 also persists an accepted coordinator replacement through a separate
+`persistValidatedPrototypeReplacement(...)` adapter. Only a validated
+`coordinator.mission-replaced` event and its immutable coordinator snapshot may
+cross this boundary. The database rechecks the saved terminal mission and the
+one-replacement limit, then replaces the definition, restores lifecycle state
+to `ready`, clears completion and terminal markers, and preserves the consumed
+replacement count. This function accepts no XP value and never updates
+progression.
+
 ## Authentication Boundary
 
 `auth-service.js` is the only application interface to Supabase Auth. It supports email/password sign-up, sign-in, sign-out, current-session retrieval, authenticated current-user verification, and auth-state observation. Only the public project URL and publishable key are supplied to the browser.
@@ -156,10 +176,26 @@ atomic mission/progression/history writes, and the authoritative returned
 snapshot behind this contract.
 
 For the current demo, `application-service.js` supports a clearly labeled
-`prototype` transition mode. Existing lifecycle and progression behavior remains
-interactive in memory, but no mission result or XP total is persisted. A narrow
-legacy adapter exists only so the original Sprint 7 test harness remains
-unchanged; the production repository does not expose that adapter.
+`prototype` transition mode. Existing lifecycle and progression behavior runs
+locally. Sprint 7.2 adds `persistValidatedPrototypeProgression(...)`, a narrow
+repository adapter that accepts only the accepted completion event and immutable
+snapshot returned by `progression.js`. It is not exposed by the application
+service or dashboard, and it is not a generic XP setter. A separate legacy
+adapter exists only so the original Sprint 7 test harness remains unchanged.
+
+The companion `persistValidatedPrototypeReplacement(...)` repository adapter
+is equally narrow. The application service calls it only after coordinator
+replacement validation succeeds. It receives the new definition and
+replacement metadata needed for restoration, but no progression value and no
+user id. Rejected replacements never reach persistence, and the coordinator
+continues to own the one-replacement-per-session rule.
+
+This transitional adapter does not make the browser a trusted authority. A user
+can modify client code, and the saved mission definition originated in the
+client. The database bounds a write to one stored reward, blocks a second saved
+completion, and computes the written total itself; Sprint 8 must still move the
+actual action validation, daily-session authority, reward selection, and audit
+contract behind `requestMissionAction()`.
 
 ## Database Ownership Boundary
 

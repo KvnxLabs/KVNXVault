@@ -132,6 +132,20 @@ Result: Sprint 7's identity and restoration architecture is preserved, while the
 
 Notes: This correction is not Sprint 8. Prototype mission actions and XP feedback remain page-scoped. The new SQL action function intentionally refuses mutation until trusted transition and reward rules are implemented.
 
+## Sprint 7.2
+
+Status: ✅ Complete
+
+Goal: Correct prototype progression persistence without starting Sprint 8 or reopening the generic client-authoritative XP boundary.
+
+Completed: Connected accepted prototype completion events to a narrow application-service/repository persistence adapter, added a database-bounded prototype progression function, persisted accepted coordinator replacements through a separate zero-XP adapter, reset the replacement lifecycle to ready while preserving the consumed replacement count, persisted the completed lifecycle state alongside progression, restored earned XP and the replacement mission across refresh and later login, preserved the intent-only mission action contract, and added framework-free refresh/login/replacement persistence coverage.
+
+Definition of Done: A mission completion still passes through lifecycle and progression first. Only the resulting accepted completion event and immutable progression snapshot can reach the transitional completion adapter. Only an accepted coordinator replacement event and snapshot can reach the separate replacement adapter. PostgreSQL locks the current rows, reads the saved mission reward, computes the permitted next total, rejects mismatched snapshots, prevents replay, and persists one replacement without accepting or changing XP. All prior tests remain unchanged and passing.
+
+Result: The real integration bugs that reset progression to 75 XP and left the replacement mission only in memory are fixed while the Sprint 7.1 RLS, direct-write revocations, repository abstraction, and intent-only Sprint 8 boundary remain intact. The validated prototype sequence now restores 75 → 100 → replacement → 125 across refresh and later login.
+
+Notes: This is not Sprint 8. The browser still originates the prototype lifecycle event and mission definition, so the adapter is not an authoritative anti-cheat boundary. Sprint 8 remains responsible for trusted action validation, authoritative daily identity, reward selection, audit history, and conflict handling behind `requestMissionAction()`.
+
 ## Sprint 8
 
 Status: ⏳ Planned

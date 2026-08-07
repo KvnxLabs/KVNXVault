@@ -116,6 +116,80 @@
       }
     };
 
+    const persistPrototypeProgression = async (result, progressionResult) => {
+      const event = result?.event;
+      if (transitionMode !== "prototype"
+        || persistenceBlocked
+        || !result?.accepted
+        || event?.eventType !== "mission.completed"
+        || event?.currentState !== "completed"
+        || event?.xpAwarded <= 0
+        || !progressionResult?.snapshot
+        || typeof repository.persistValidatedPrototypeProgression !== "function") {
+        return;
+      }
+
+      try {
+        const persisted = await repository.persistValidatedPrototypeProgression({
+          missionId: event.missionId,
+          lifecycleEvent: event,
+          progressionSnapshot: progressionResult.snapshot,
+        });
+        if (Number(persisted?.totalXP) !== progressionResult.snapshot.currentXP) {
+          const error = new Error("The saved progression did not match the validated snapshot.");
+          error.code = "prototype-progression-mismatch";
+          throw error;
+        }
+      } catch (error) {
+        persistenceBlocked = true;
+        error.code = error.code || "persistence-failed";
+        throw error;
+      }
+    };
+
+    const persistPrototypeReplacement = async (result) => {
+      const event = result?.event;
+      const snapshot = result?.snapshot;
+      const definition = snapshot?.currentMission?.definition;
+      const lifecycle = snapshot?.currentMission?.lifecycle;
+      const replacementsUsed = snapshot?.dailyStatus?.replacementsUsed;
+
+      if (transitionMode !== "prototype"
+        || persistenceBlocked
+        || !result?.accepted
+        || event?.eventType !== "coordinator.mission-replaced"
+        || event?.xpAwarded !== 0
+        || !String(event?.previousMissionId || "").trim()
+        || definition?.id !== event?.missionId
+        || lifecycle?.state !== "ready"
+        || lifecycle?.completionAwarded !== false
+        || !Number.isInteger(replacementsUsed)
+        || replacementsUsed !== 1
+        || typeof repository.persistValidatedPrototypeReplacement !== "function") {
+        return;
+      }
+
+      try {
+        const persisted = await repository.persistValidatedPrototypeReplacement({
+          replacementEvent: event,
+          coordinatorSnapshot: snapshot,
+        });
+        if (persisted?.accepted !== true
+          || persisted?.missionId !== definition.id
+          || Number(persisted?.replacementsUsed) !== replacementsUsed) {
+          const error = new Error("The saved replacement mission did not match the validated coordinator snapshot.");
+          error.code = "prototype-replacement-mismatch";
+          throw error;
+        }
+        terminalAt = null;
+        terminalRecorded = false;
+      } catch (error) {
+        persistenceBlocked = true;
+        error.code = error.code || "persistence-failed";
+        throw error;
+      }
+    };
+
     const initialize = async () => {
       const [loadedProfile, loadedOnboarding, loadedProgression, loadedDailyMission, history] = await Promise.all([
         repository.loadProfile(),
@@ -204,6 +278,7 @@
         progression = progressionResult.progression;
       }
 
+      await persistPrototypeProgression(result, progressionResult);
       await persistCoordinatorResult(result);
       return Object.freeze({
         accepted: true,
@@ -225,7 +300,10 @@
         });
       }
       const result = await coordinator.requestReplacement();
-      if (result.accepted) await persistCoordinatorResult(result);
+      if (result.accepted) {
+        await persistPrototypeReplacement(result);
+        await persistCoordinatorResult(result);
+      }
       return Object.freeze({ ...result, snapshot: getPublicSnapshot() });
     };
 

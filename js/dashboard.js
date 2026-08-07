@@ -45,7 +45,58 @@ const KVNXReplacementRequestController = (() => {
 })();
 
 const KVNXDailyCompleteExperience = (() => {
-  const createViewModel = ({ coordinator, progression } = {}) => {
+  const FALLBACK_LABEL = "New mission available tomorrow";
+
+  const getResetDisplay = (nextResetAt, now = Date.now()) => {
+    const resetTime = typeof nextResetAt === "string" ? Date.parse(nextResetAt) : NaN;
+    if (!Number.isFinite(resetTime)) {
+      return Object.freeze({ mode: "fallback", label: FALLBACK_LABEL, value: null });
+    }
+
+    const remainingMilliseconds = Math.max(0, resetTime - Number(now));
+    if (remainingMilliseconds === 0) {
+      return Object.freeze({ mode: "ready", label: "New mission ready", value: "00h 00m" });
+    }
+
+    const remainingMinutes = Math.ceil(remainingMilliseconds / 60000);
+    const hours = Math.floor(remainingMinutes / 60);
+    const minutes = remainingMinutes % 60;
+    return Object.freeze({
+      mode: "countdown",
+      label: "Next mission in",
+      value: `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`,
+    });
+  };
+
+  const createCountdown = ({ nextResetAt, onUpdate, now = () => Date.now(), schedule, cancel } = {}) => {
+    if (typeof onUpdate !== "function") throw new TypeError("A countdown update handler is required.");
+    const scheduleTick = schedule || ((handler) => setTimeout(handler, 60000));
+    const cancelTick = cancel || ((timerId) => clearTimeout(timerId));
+    let timerId = null;
+    let stopped = false;
+    let readyAnnounced = false;
+
+    const tick = () => {
+      if (stopped) return;
+      const display = getResetDisplay(nextResetAt, now());
+      const announceReady = display.mode === "ready" && !readyAnnounced;
+      if (announceReady) readyAnnounced = true;
+      onUpdate(Object.freeze({ ...display, announceReady }));
+      timerId = display.mode === "countdown" ? scheduleTick(tick) : null;
+    };
+
+    tick();
+
+    return Object.freeze({
+      stop: () => {
+        stopped = true;
+        if (timerId !== null) cancelTick(timerId);
+        timerId = null;
+      },
+    });
+  };
+
+  const createViewModel = ({ coordinator, progression, nextResetAt } = {}) => {
     const lifecycle = coordinator?.currentMission?.lifecycle;
     const dailyStatus = coordinator?.dailyStatus;
     const currentXP = progression?.currentXP;
@@ -58,11 +109,13 @@ const KVNXDailyCompleteExperience = (() => {
       xpLabel: Number.isFinite(currentXP)
         ? `${currentXP.toLocaleString("en-US")} XP`
         : "XP unavailable",
-      nextMissionLabel: "New mission available tomorrow",
+      nextResetAt: typeof nextResetAt === "string" ? nextResetAt : null,
+      resetDisplay: getResetDisplay(nextResetAt),
+      nextMissionLabel: FALLBACK_LABEL,
     });
   };
 
-  return Object.freeze({ createViewModel });
+  return Object.freeze({ FALLBACK_LABEL, createCountdown, createViewModel, getResetDisplay });
 })();
 
 if (typeof module === "object" && module.exports) {
@@ -189,7 +242,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const replacementNote = document.querySelector("[data-replacement-note]");
   const dailyComplete = document.querySelector("[data-daily-complete]");
   const dailyCompleteXP = document.querySelector("[data-daily-complete-xp]");
-  const dailyCompleteReset = document.querySelector("[data-daily-complete-reset]");
+  const dailyCompleteResetLabel = document.querySelector("[data-daily-complete-reset-label]");
+  const dailyCompleteResetValue = document.querySelector("[data-daily-complete-reset-value]");
+  const dailyCompleteResetAnnouncement = document.querySelector("[data-daily-complete-reset-announcement]");
   const xpValue = document.querySelector("[data-xp-value]");
   const xpProgress = document.querySelector("[data-xp-progress]");
   const xpProgressFill = document.querySelector("[data-xp-progress-fill]");
@@ -202,6 +257,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const levelUpValue = document.querySelector("[data-level-up-value]");
   const logoutButton = document.querySelector("[data-logout]");
   let progressionSnapshot = applicationSnapshot.progression;
+  let nextResetAt = applicationSnapshot.nextResetAt;
+  let countdownResetAt = null;
+  let countdownController = null;
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -279,7 +337,11 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
   const renderDailyComplete = (coordinator, progression) => {
     if (!dailyComplete) return false;
-    const viewModel = KVNXDailyCompleteExperience.createViewModel({ coordinator, progression });
+    const viewModel = KVNXDailyCompleteExperience.createViewModel({
+      coordinator,
+      progression,
+      nextResetAt,
+    });
     const actionHadFocus = [
       startMissionButton,
       completeMissionButton,
@@ -287,10 +349,21 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       requestMissionButton,
     ].includes(document.activeElement);
 
+    const wasHidden = dailyComplete.hidden;
     dailyComplete.hidden = !viewModel.visible;
     missionCard?.classList.toggle("is-daily-complete", viewModel.visible);
     if (dailyCompleteXP) dailyCompleteXP.textContent = viewModel.xpLabel;
-    if (dailyCompleteReset) dailyCompleteReset.textContent = viewModel.nextMissionLabel;
+
+    const renderResetDisplay = ({ label, value, announceReady = false }) => {
+      if (dailyCompleteResetLabel) dailyCompleteResetLabel.textContent = label;
+      if (dailyCompleteResetValue) {
+        dailyCompleteResetValue.hidden = !value;
+        dailyCompleteResetValue.textContent = value || "";
+      }
+      if (announceReady && dailyCompleteResetAnnouncement) {
+        dailyCompleteResetAnnouncement.textContent = "New mission ready";
+      }
+    };
 
     if (viewModel.visible) {
       if (missionActions) missionActions.hidden = true;
@@ -299,7 +372,27 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         missionSuccess.hidden = true;
         missionSuccess.classList.remove("is-visible");
       }
+      if (countdownResetAt !== viewModel.nextResetAt) {
+        countdownController?.stop();
+        countdownResetAt = viewModel.nextResetAt;
+        if (dailyCompleteResetAnnouncement) dailyCompleteResetAnnouncement.textContent = "";
+        countdownController = KVNXDailyCompleteExperience.createCountdown({
+          nextResetAt: viewModel.nextResetAt,
+          onUpdate: renderResetDisplay,
+        });
+      } else if (!countdownController) {
+        renderResetDisplay(viewModel.resetDisplay);
+      }
+      if (wasHidden) {
+        dailyComplete.setAttribute("aria-live", "polite");
+        window.requestAnimationFrame(() => dailyComplete.setAttribute("aria-live", "off"));
+      }
       if (actionHadFocus) dailyComplete.focus({ preventScroll: true });
+    } else {
+      countdownController?.stop();
+      countdownController = null;
+      countdownResetAt = null;
+      dailyComplete.setAttribute("aria-live", "polite");
     }
 
     return viewModel.visible;

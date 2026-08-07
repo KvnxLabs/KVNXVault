@@ -235,3 +235,36 @@ RLS, mission limits, XP rules, server-authoritative generation, action RPCs,
 repository contracts, and migrations 001–006 are unchanged. No database
 migration is required, and no history link is shown because no history route
 exists yet.
+
+## Sprint 9.2 — Daily Reset Countdown
+
+Status: ✅ Complete
+
+Goal: Replace static next-day guidance with a trustworthy, display-only
+countdown while keeping PostgreSQL authoritative over the logical day.
+
+Completed: Added migration 007 with one internal timezone-aware reset helper;
+extended the zero-argument daily and replacement responses with `nextResetAt`;
+carried that value through the repository and application snapshot; rendered a
+restrained hour/minute countdown only inside Daily Complete; retained the safe
+static fallback for missing or invalid timestamps; and added one-time
+“New mission ready” accessibility messaging at zero.
+
+Definition of Done: `nextResetAt` comes from authenticated identity, saved IANA
+timezone, and database time. No browser payload can provide the reset time. The
+timer updates once per minute and cannot create, expire, replace, or reset a
+mission. A new mission still appears only through the existing authoritative
+`requestDailyMission()` reconciliation. The Sprint 9.1 visibility rule remains
+`completed` plus `replacementsRemaining === 0`.
+
+Result: Daily Complete now shows “Next mission in” with a calm `HHh MMm`
+display, reaches `00h 00m`/“New mission ready” without local state mutation, and
+falls back to “New mission available tomorrow” when the server timestamp is not
+usable. Countdown ticks are excluded from live announcements; readiness is
+announced once.
+
+Notes: This is a UX and server-time contract follow-up, not a change to daily
+mission authority. Authentication, RLS, XP, mission limits, replacement rules,
+server mission generation, and action validation remain unchanged. Run
+`202608070007_sprint9_2_daily_reset_countdown.sql` after migration 006 before
+testing the deployed client.

@@ -62,6 +62,7 @@
     let persistenceBlocked = false;
     let terminalAt = null;
     let terminalRecorded = false;
+    let nextResetAt = null;
 
     const getPublicSnapshot = () => Object.freeze({
       profile,
@@ -69,6 +70,7 @@
       progression: progressionEngine.getSnapshot(progression),
       coordinator: coordinator.getSnapshot(),
       dailySessionId,
+      nextResetAt,
       persistenceBlocked,
     });
 
@@ -108,6 +110,7 @@
       }
 
       const previousSnapshot = progressionEngine.getSnapshot(progression);
+      if (typeof result.nextResetAt === "string") nextResetAt = result.nextResetAt;
       progression = progressionEngine.createProgression(result.progression.totalXP);
       const snapshot = progressionEngine.getSnapshot(progression);
       appendAuthoritativeHistory(result.historyRecord);
@@ -280,6 +283,7 @@
         ]);
 
         dailySessionId = dailyResult.dailyKey;
+        nextResetAt = dailyResult.nextResetAt;
         loadedProgression = progressionResult;
         loadedHistory = historyResult;
         loadedDailyMission = {

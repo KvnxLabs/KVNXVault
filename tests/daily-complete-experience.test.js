@@ -78,10 +78,8 @@ test("Daily Complete has an accessible, non-chattering status and focus target",
   assert.match(read("js/dashboard.js"), /dailyComplete\.focus\(\{ preventScroll: true \}\)/);
 });
 
-test("Sprint 9 backend, authentication, repository, and migration contracts are unchanged", () => {
+test("Sprint 9 authentication, authority migrations, and security contracts are unchanged", () => {
   const expected = {
-    "js/application-service.js": "74775f043d084b6787be0dd69bf4be8378d49343f49dad52a2ea14de6f6791e2",
-    "js/user-repository.js": "870f6eb0109bdca0a2d177b5f087720e3f92b72dee24c46792f43f79a38ca8ae",
     "js/auth-service.js": "3b0b2ac7b341528ac946000ea5eb8e72860b1f1ffefc0542f0f3eb48c3db95d5",
     "js/auth.js": "eb48bad77d1eebac721f273f5b8234ee748207a02a9a2008edfe2da55f1d333a",
     "js/protected-page.js": "9c7a92949b84d59aadf9647ef04c6c1d31688623a8f4ad7ed0bd0b68f399f71d",

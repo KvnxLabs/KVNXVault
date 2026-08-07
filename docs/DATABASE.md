@@ -1,6 +1,6 @@
 # KVNX Vault Database
 
-Version: Sprint 9
+Version: Sprint 9.2
 
 The authoritative schema and policies live in:
 
@@ -10,14 +10,17 @@ The authoritative schema and policies live in:
 - `supabase/migrations/202608070004_sprint7_2_replacement_persistence.sql`
 - `supabase/migrations/202608070005_sprint8_server_authority.sql`
 - `supabase/migrations/202608070006_sprint9_daily_mission_authority.sql`
+- `supabase/migrations/202608070007_sprint9_2_daily_reset_countdown.sql`
 
-Run all six migrations in filename order for a new project. The Sprint 7.1
+Run all seven migrations in filename order for a new project. The Sprint 7.1
 correction secures an existing Sprint 7 database, and the Sprint 7.2 migration
 pair adds only narrow transitional completion and replacement persistence
 functions. Migration 005 revokes the prototype completion function from the
 authenticated role and installs the production action authority. Migration 006
 installs server-authoritative daily identity, generation, rollover, and
-replacement selection without editing migrations 001–005.
+replacement selection without editing migrations 001–005. Migration 007 adds
+the server-derived next-reset response contract without editing migrations
+001–006 or changing mission authority.
 
 ## Tables
 
@@ -181,6 +184,34 @@ and daily key, checks the unique row, creates only when absent, and then re-read
 the stored row. Refreshes, logins, tabs, and devices therefore receive the same
 mission instance. A conflict-safe insert provides a second safeguard.
 
+Sprint 9.2 adds `nextResetAt` to the daily response:
+
+```js
+{
+  accepted,
+  reason,
+  dailyKey,
+  nextResetAt,
+  mission,
+  dailyStatus
+}
+```
+
+`next_vault_reset_at(auth.uid(), server_now)` reads the saved validated
+`profiles.timezone_name`, calculates the next midnight in that IANA timezone,
+and converts the boundary to an absolute `timestamptz`. The public daily and
+replacement RPCs remain zero-argument; the browser cannot submit a timezone,
+date, reset timestamp, or clock value. The clock-injectable internal daily
+helper uses one supplied server/test instant for both the logical day and reset
+boundary, and remains revoked from browser roles.
+
+The browser may subtract `Date.now()` from `nextResetAt` to present a countdown,
+but that difference has no database authority. An incorrect browser clock can
+only make the displayed duration inaccurate. PostgreSQL still decides rollover
+from database time and saved timezone. At zero the client does not create a
+mission; only the next authoritative `request_daily_mission()` call may return
+the new day. Missing or invalid timestamps use static next-day guidance.
+
 On rollover, stale `ready` or `active` rows become `expired`, receive zero XP,
 and enter history once before the new day is created. Older terminal rows remain
 unchanged. No browser timer or client expiration action participates.
@@ -218,8 +249,8 @@ initializer and replacement adapter.
 ## Manual Live Supabase Integration Test
 
 Automated tests in this package are framework-free contract and orchestration
-tests. They do not claim a live Supabase connection. After migration 006 is
-reviewed and installed, test the real project exactly as follows.
+tests. They do not claim a live Supabase connection. After migrations 006 and
+007 are reviewed and installed, test the real project exactly as follows.
 
 ### Account A
 

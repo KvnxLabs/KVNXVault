@@ -948,8 +948,7 @@
 
 .mission-card__daily-complete-heading p,
 .mission-card__daily-complete-heading h3,
-.mission-card__daily-complete-copy,
-.mission-card__daily-complete-footer p {
+.mission-card__daily-complete-copy {
   margin: 0;
 }
 
@@ -985,12 +984,15 @@
   border-top: 1px solid rgba(79, 201, 138, 0.16);
 }
 
-.mission-card__daily-complete-footer div span,
-.mission-card__daily-complete-footer div strong {
+.mission-card__daily-complete-footer > div span,
+.mission-card__daily-complete-footer > div strong,
+.mission-card__daily-complete-reset span,
+.mission-card__daily-complete-reset strong {
   display: block;
 }
 
-.mission-card__daily-complete-footer div span {
+.mission-card__daily-complete-footer > div span,
+.mission-card__daily-complete-reset span {
   color: var(--app-subtle);
   font-size: 0.54rem;
   font-weight: 650;
@@ -998,18 +1000,26 @@
   text-transform: uppercase;
 }
 
-.mission-card__daily-complete-footer div strong {
+.mission-card__daily-complete-footer > div strong,
+.mission-card__daily-complete-reset strong {
   margin-top: 5px;
   color: var(--app-text);
   font-size: 0.88rem;
   font-weight: 620;
 }
 
-.mission-card__daily-complete-footer p {
-  color: var(--app-subtle);
-  font-size: 0.62rem;
-  line-height: 1.45;
+.mission-card__daily-complete-reset {
   text-align: right;
+}
+
+.mission-card__daily-complete-reset strong {
+  color: var(--app-success);
+  font-variant-numeric: tabular-nums;
+}
+
+.mission-card__daily-complete-reset span {
+  color: var(--app-subtle);
+  line-height: 1.45;
 }
 
 .mission-card.is-daily-complete {

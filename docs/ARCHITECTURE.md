@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.9.0
+Version: 1.9.2
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -284,19 +284,27 @@ server snapshot says the current mission is `completed` and
 completion from missing or hidden controls. A completed first mission with one
 replacement remaining continues to show the existing replacement action.
 
-The Daily Complete panel replaces the mission action area, displays the current
-XP from the progression snapshot, and gives the static guidance “New mission
-available tomorrow.” That wording is intentional: Sprint 9 exposes the logical
-daily key, but the current client response does not provide a trustworthy exact
-next-reset instant. No timer, browser clock, or presentation state can create,
-replace, expire, or reset a mission; the next zero-argument daily request still
-reconciles the UI to PostgreSQL authority.
+The Daily Complete panel replaces the mission action area and displays the
+current XP from the progression snapshot. Sprint 9.2 adds `nextResetAt` to the
+authoritative daily response. PostgreSQL calculates that absolute timestamp
+from database time and the authenticated profile's saved IANA timezone. The
+browser formats only the remaining display duration and updates it once per
+minute. It never selects the reset boundary.
 
-The status uses a text heading plus a decorative check, a polite atomic live
-region, and a programmatic focus target. Focus moves into the status only when
-an action that just disappeared held focus. There is no per-second announcement
-or new animation, so existing reduced-motion behavior remains unchanged. No
-history action is shown because the product has no usable mission-history route.
+When the display reaches zero, it changes to “New mission ready” and waits for
+the normal zero-argument `requestDailyMission()` reconciliation path. It does
+not create, expire, replace, or reset a mission locally. Missing or invalid
+timestamps retain the safe “New mission available tomorrow” fallback. The
+browser clock can make the presentation early or late, but cannot affect which
+mission PostgreSQL considers current.
+
+The status uses a text heading plus a decorative check, an initially polite
+atomic success region, and a programmatic focus target. Focus moves into the
+status only when an action that just disappeared held focus. The countdown is
+an `aria-live="off"` timer, so minute changes are not announced. A separate
+polite status announces “New mission ready” once. There is no new animation, so
+existing reduced-motion behavior remains unchanged. No history action is shown
+because the product has no usable mission-history route.
 
 ## Mission Generation Boundary
 

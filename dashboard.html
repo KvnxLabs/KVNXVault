@@ -194,8 +194,12 @@
                 <p class="mission-card__daily-complete-copy">You've completed today's mission and your available replacement. Come back tomorrow for a new mission.</p>
                 <div class="mission-card__daily-complete-footer">
                   <div><span>Current XP</span><strong data-daily-complete-xp>— XP</strong></div>
-                  <p data-daily-complete-reset>New mission available tomorrow</p>
+                  <div class="mission-card__daily-complete-reset" role="timer" aria-live="off" aria-atomic="false">
+                    <span data-daily-complete-reset-label>New mission available tomorrow</span>
+                    <strong data-daily-complete-reset-value hidden></strong>
+                  </div>
                 </div>
+                <p class="visually-hidden" data-daily-complete-reset-announcement role="status" aria-live="polite" aria-atomic="true"></p>
               </section>
             </section>
 

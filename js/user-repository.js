@@ -32,6 +32,7 @@
     const mapped = {
       accepted: result.accepted,
       reason: result.reason || null,
+      nextResetAt: typeof result.nextResetAt === "string" ? result.nextResetAt : null,
       event: result.event ? { ...result.event } : null,
       mission: result.mission ? {
         definition: { ...(result.mission.definition || {}) },
@@ -60,6 +61,7 @@
       accepted: result.accepted,
       reason: result.reason || null,
       dailyKey: result.dailyKey || null,
+      nextResetAt: typeof result.nextResetAt === "string" ? result.nextResetAt : null,
       mission: result.mission ? {
         definition: { ...(result.mission.definition || {}) },
         lifecycle: { ...(result.mission.lifecycle || {}) },

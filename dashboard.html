@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="css/dashboard.css" />
     <script src="js/onboarding-state.js" defer></script>
     <script src="js/mission-generator.js" defer></script>
+    <script src="js/mission-lifecycle.js" defer></script>
+    <script src="js/progression.js" defer></script>
     <script src="js/dashboard.js" defer></script>
     <title>Dashboard | KVNX Vault</title>
   </head>
@@ -122,13 +124,17 @@
             <section class="dashboard-card dashboard-card--xp app-card" aria-labelledby="xp-card-title">
               <div class="dashboard-card__header">
                 <h2 class="dashboard-card__title" id="xp-card-title">XP Progress</h2>
-                <span class="dashboard-card__meta">Level 07</span>
+                <span class="dashboard-card__meta" data-progression-level>Level 1</span>
               </div>
-              <div class="xp-card__value"><strong data-xp-value>1,240</strong><span>XP</span></div>
-              <div class="progress-bar" role="progressbar" aria-label="XP progress" aria-valuemin="0" aria-valuemax="2000" aria-valuenow="1240" data-xp-progress>
+              <div class="xp-card__value"><strong data-xp-value>75</strong><span>XP</span></div>
+              <dl class="xp-card__summary">
+                <div><dt>Current level</dt><dd data-progression-current-level>1</dd></div>
+                <div><dt>Next level</dt><dd data-progression-next-level>100 XP</dd></div>
+              </dl>
+              <div class="progress-bar" role="progressbar" aria-label="Progress toward Level 2" aria-valuemin="0" aria-valuemax="100" aria-valuenow="75" data-xp-progress>
                 <span class="progress-bar__fill" data-xp-progress-fill></span>
               </div>
-              <div class="xp-card__footer"><span data-xp-percent>62% complete</span><span data-xp-remaining>760 to next level</span></div>
+              <div class="xp-card__footer"><span data-xp-percent>75% complete</span><span data-xp-remaining>25 XP remaining</span></div>
             </section>
 
             <section class="dashboard-card dashboard-card--missions app-card mission-card" aria-labelledby="missions-card-title" data-mission-card>
@@ -137,7 +143,7 @@
                   <p class="app-card__label">Your first mission</p>
                   <h2 class="dashboard-card__title mission-card__title" id="missions-card-title" data-mission-title>Build focused momentum</h2>
                 </div>
-                <span class="dashboard-card__meta" data-mission-status>Ready</span>
+                <span class="dashboard-card__meta mission-card__status" data-mission-status data-state="ready" aria-live="polite">Ready</span>
               </div>
               <div class="mission-card__content">
                 <p class="mission-card__description" data-mission-description>Complete one intentional work session toward the direction you chose.</p>
@@ -146,14 +152,22 @@
                   <div><dt>Difficulty</dt><dd data-mission-difficulty>Balanced</dd></div>
                   <div><dt>Reward</dt><dd><span data-mission-xp>25</span> XP</dd></div>
                 </dl>
-                <button class="app-button app-button--primary mission-card__complete" type="button" data-complete-mission>
-                  Complete Mission <span aria-hidden="true">✓</span>
-                </button>
+                <div class="mission-card__actions" data-mission-actions>
+                  <button class="app-button mission-card__start" type="button" data-start-mission>Start Mission</button>
+                  <button class="app-button app-button--primary mission-card__complete" type="button" data-complete-mission>
+                    Complete Mission <span aria-hidden="true">✓</span>
+                  </button>
+                  <button class="mission-card__skip" type="button" data-skip-mission>Skip for today</button>
+                </div>
               </div>
               <div class="mission-card__success" data-mission-success hidden role="status" aria-live="polite">
                 <span class="mission-card__success-mark" aria-hidden="true">✓</span>
                 <div><strong>Mission Complete</strong><span>First Mission Complete</span></div>
-                <b>+25 XP</b>
+                <b data-mission-success-xp>+25 XP</b>
+              </div>
+              <div class="mission-card__outcome" data-mission-outcome hidden role="status" aria-live="polite">
+                <strong data-mission-outcome-title>Skipped for today</strong>
+                <span data-mission-outcome-description>You can return with a clear start tomorrow.</span>
               </div>
             </section>
 
@@ -197,5 +211,11 @@
         </div>
       </main>
     </div>
+
+    <aside class="level-up" data-level-up hidden role="status" aria-live="polite" aria-atomic="true">
+      <p>Level up</p>
+      <strong>Welcome to Level <span data-level-up-value>2</span></strong>
+      <span>Keep building.</span>
+    </aside>
   </body>
 </html>

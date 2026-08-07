@@ -64,46 +64,44 @@ Notes: The mission generator and dashboard communicate through a stable mission 
 
 ## Sprint 4
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
-Goal: Evolve the prototype into a complete mission engine.
+Goal: Build the first reusable XP and level system.
 
-Planned: Mission definitions, reusable mission-card rendering, multiple mission states, mission lifecycle rules, scheduling, completion history, validation, and automated mission-engine tests. Persistence and account integration should be introduced only after the storage and authentication strategy is approved.
+Completed: Central progression engine, configurable five-level curve, immutable progression snapshots, mission-reward integration, automatic XP-card rendering, level-up detection, and a restrained level-up notification.
+
+Definition of Done: Completing the first mission sends its XP reward through the progression engine. The dashboard renders the returned level, total XP, next threshold, remaining XP, and progress percentage without calculating progression itself.
+
+Result: KVNX Vault now has a reusable, session-only progression boundary that can grow into skills, achievements, persistence, or AI-assisted guidance without coupling those systems to the dashboard.
+
+Notes: Progression is page-scoped and resets on refresh. No authentication, backend, database, local storage, mission history, statistics, achievements, or AI were added. The founder-directed progression sprint supersedes the previously planned complete mission-engine sprint.
 
 ## Sprint 5
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
-Goal: Authentication.
+Goal: Mission lifecycle foundation.
 
-Planned: Authentication-provider selection, real account creation, sign-in, session handling, protected application routes, logout, recovery, accessible server errors, and migration of onboarding state into the user profile.
+Completed: Separate mission-definition and mission-state boundaries, reusable lifecycle controller, ready/active/completed/skipped/expired states, validated immutable lifecycle events, start and skip interactions, expiration support, duplicate-completion protection, lifecycle-to-progression integration, restrained mission-state presentation, and framework-free automated tests.
+
+Definition of Done: The dashboard requests mission actions but never decides mission state. Progression receives XP only from an accepted lifecycle completion event. Completed, skipped, and expired missions cannot award XP again, and all required transitions pass automated tests.
+
+Result: KVNX Vault now has a reusable mission lifecycle foundation that can later support daily missions, recurring missions, history, achievements, backend validation, and AI-generated definitions without coupling those responsibilities to the dashboard.
+
+Notes: Lifecycle state remains page-scoped and resets on refresh. Expiration is available through a controlled lifecycle action but no real clock or scheduler was added. No authentication, backend, database, persistence, history UI, statistics, notifications, achievements, or AI were introduced.
 
 ## Sprint 6
 
 Status: ⏳ Planned
 
-Goal: XP System.
+Goal: Daily mission orchestration prototype.
 
-Planned: XP calculations, level system, progress bar, and statistics.
+Planned: Add a page-scoped daily mission coordinator, one-mission-per-day selection rules, explicit generation/lifecycle orchestration, in-memory history records, and broader integration tests without persistence or real scheduling.
 
-## Sprint 4
-
-Status: ⏳ Planned
-
-Goal: Build the XP and level progression prototype.
-
-Planned: Reusable progression engine, XP awards, level thresholds, progress calculations, level-up state, dashboard integration, and session-only state.
-
-## Sprint 5
-
-Status: ⏳ Planned
-
-Goal: Evolve the prototype into a complete mission engine.
-
-Planned: Multiple missions, mission states, scheduling, lifecycle rules, history, validation, and generator tests.
-
-## Sprint 6
+## Sprint 7
 
 Status: ⏳ Planned
 
 Goal: Authentication.
+
+Planned: Authentication-provider selection, real account creation, sign-in, session handling, protected routes, logout, recovery, accessible server errors, and migration of temporary state into the user profile.

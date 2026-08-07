@@ -91,39 +91,150 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   const missionCard = document.querySelector("[data-mission-card]");
+  const missionActions = document.querySelector("[data-mission-actions]");
+  const startMissionButton = document.querySelector("[data-start-mission]");
   const completeMissionButton = document.querySelector("[data-complete-mission]");
+  const skipMissionButton = document.querySelector("[data-skip-mission]");
   const missionSuccess = document.querySelector("[data-mission-success]");
   const missionStatus = document.querySelector("[data-mission-status]");
+  const missionSuccessXP = document.querySelector("[data-mission-success-xp]");
+  const missionOutcome = document.querySelector("[data-mission-outcome]");
+  const missionOutcomeTitle = document.querySelector("[data-mission-outcome-title]");
+  const missionOutcomeDescription = document.querySelector("[data-mission-outcome-description]");
   const xpValue = document.querySelector("[data-xp-value]");
   const xpProgress = document.querySelector("[data-xp-progress]");
   const xpProgressFill = document.querySelector("[data-xp-progress-fill]");
   const xpPercent = document.querySelector("[data-xp-percent]");
   const xpRemaining = document.querySelector("[data-xp-remaining]");
-  const initialXp = 1240;
-  const levelTargetXp = 2000;
+  const progressionLevel = document.querySelector("[data-progression-level]");
+  const progressionCurrentLevel = document.querySelector("[data-progression-current-level]");
+  const progressionNextLevel = document.querySelector("[data-progression-next-level]");
+  const levelUpNotice = document.querySelector("[data-level-up]");
+  const levelUpValue = document.querySelector("[data-level-up-value]");
+  const progressionEngine = window.KVNXProgression;
+  const lifecycleEngine = window.KVNXMissionLifecycle;
+  const missionLifecycle = lifecycleEngine?.createMissionLifecycle(firstMission);
+  let progression = progressionEngine?.createProgression(75);
+
+  if (missionSuccessXP) missionSuccessXP.textContent = `+${firstMission.xpReward} XP`;
+
+  // The renderer accepts only a progression snapshot and performs no XP math.
+  const renderProgression = (snapshot) => {
+    if (!snapshot) return;
+
+    if (progressionLevel) progressionLevel.textContent = `Level ${snapshot.currentLevel}`;
+    if (progressionCurrentLevel) progressionCurrentLevel.textContent = String(snapshot.currentLevel);
+    if (progressionNextLevel) {
+      progressionNextLevel.textContent = snapshot.isMaxLevel
+        ? "Current maximum"
+        : `${snapshot.xpForNextLevel.toLocaleString("en-US")} XP`;
+    }
+    if (xpValue) xpValue.textContent = snapshot.currentXP.toLocaleString("en-US");
+    if (xpProgress) {
+      xpProgress.setAttribute("aria-valuenow", String(snapshot.progressPercentage));
+      xpProgress.setAttribute(
+        "aria-label",
+        snapshot.isMaxLevel ? "Maximum prototype level reached" : `Progress toward Level ${snapshot.nextLevel}`,
+      );
+    }
+    if (xpProgressFill) xpProgressFill.style.width = `${snapshot.progressPercentage}%`;
+    if (xpPercent) xpPercent.textContent = `${snapshot.progressPercentage}% complete`;
+    if (xpRemaining) {
+      xpRemaining.textContent = snapshot.isMaxLevel
+        ? "Prototype maximum reached"
+        : `${snapshot.xpRemaining.toLocaleString("en-US")} XP remaining`;
+    }
+  };
+
+  renderProgression(progressionEngine?.getSnapshot(progression));
+
+  const missionStateLabels = {
+    ready: "Ready",
+    active: "In Progress",
+    completed: "Completed",
+    skipped: "Skipped",
+    expired: "Expired",
+  };
+
+  // The renderer receives lifecycle state and never decides transitions.
+  const renderMissionLifecycle = (snapshot) => {
+    if (!snapshot || !missionCard) return;
+
+    missionCard.classList.toggle("is-active", snapshot.state === "active");
+    missionCard.classList.toggle("is-complete", snapshot.state === "completed");
+    missionCard.classList.toggle("is-skipped", snapshot.state === "skipped");
+    missionCard.classList.toggle("is-expired", snapshot.state === "expired");
+
+    if (missionStatus) {
+      missionStatus.textContent = missionStateLabels[snapshot.state] || snapshot.state;
+      missionStatus.dataset.state = snapshot.state;
+    }
+
+    if (startMissionButton) startMissionButton.hidden = !snapshot.canStart;
+    if (completeMissionButton) completeMissionButton.hidden = !snapshot.canComplete;
+    if (skipMissionButton) skipMissionButton.hidden = !snapshot.canSkip;
+    if (missionActions) missionActions.hidden = snapshot.isTerminal;
+
+    if (snapshot.state !== "completed" && missionSuccess) {
+      missionSuccess.hidden = true;
+      missionSuccess.classList.remove("is-visible");
+    }
+
+    const hasNeutralOutcome = snapshot.state === "skipped" || snapshot.state === "expired";
+    if (missionOutcome) missionOutcome.hidden = !hasNeutralOutcome;
+    if (hasNeutralOutcome && missionOutcomeTitle && missionOutcomeDescription) {
+      const isSkipped = snapshot.state === "skipped";
+      missionOutcomeTitle.textContent = isSkipped ? "Skipped for today" : "Mission expired";
+      missionOutcomeDescription.textContent = isSkipped
+        ? "No XP was awarded. You can return with a clear start tomorrow."
+        : "This mission closed without affecting your progress.";
+    }
+  };
+
+  renderMissionLifecycle(missionLifecycle?.getSnapshot());
+
+  startMissionButton?.addEventListener("click", () => {
+    const result = missionLifecycle?.start();
+    if (result?.accepted) renderMissionLifecycle(result.snapshot);
+  });
+
+  skipMissionButton?.addEventListener("click", () => {
+    const result = missionLifecycle?.skip();
+    if (result?.accepted) renderMissionLifecycle(result.snapshot);
+  });
 
   const completeFirstMission = () => {
     if (!missionCard || !completeMissionButton || !missionSuccess) return;
 
+    // Lifecycle validation happens before any UI or progression update.
+    const lifecycleResult = missionLifecycle?.complete();
+    if (!lifecycleResult?.accepted) return;
+
     completeMissionButton.disabled = true;
+    if (startMissionButton) startMissionButton.disabled = true;
+    if (skipMissionButton) skipMissionButton.disabled = true;
     missionCard.classList.add("is-completing");
 
     const revealDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
     window.setTimeout(() => {
-      const updatedXp = initialXp + firstMission.xpReward;
-      const progressPercent = (updatedXp / levelTargetXp) * 100;
+      const progressionResult = progressionEngine?.addXP(
+        progression,
+        lifecycleResult.event.xpAwarded,
+      );
+      if (!progressionResult) return;
+      progression = progressionResult.progression;
 
       missionCard.classList.remove("is-completing");
-      missionCard.classList.add("is-complete");
-      completeMissionButton.hidden = true;
+      renderMissionLifecycle(lifecycleResult.snapshot);
       missionSuccess.hidden = false;
-      if (missionStatus) missionStatus.textContent = "Complete";
 
-      if (xpValue) xpValue.textContent = updatedXp.toLocaleString("en-US");
-      if (xpProgress) xpProgress.setAttribute("aria-valuenow", String(updatedXp));
-      if (xpProgressFill) xpProgressFill.style.width = `${progressPercent}%`;
-      if (xpPercent) xpPercent.textContent = `${Math.round(progressPercent)}% complete`;
-      if (xpRemaining) xpRemaining.textContent = `${levelTargetXp - updatedXp} to next level`;
+      renderProgression(progressionResult.snapshot);
+
+      if (progressionResult.didLevelUp && levelUpNotice) {
+        if (levelUpValue) levelUpValue.textContent = String(progressionResult.snapshot.currentLevel);
+        levelUpNotice.hidden = false;
+        window.requestAnimationFrame(() => levelUpNotice.classList.add("is-visible"));
+      }
 
       window.requestAnimationFrame(() => missionSuccess.classList.add("is-visible"));
     }, revealDelay);

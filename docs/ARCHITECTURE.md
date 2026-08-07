@@ -276,6 +276,28 @@ Onboarding learns direction, not personality. Each screen asks one clear questio
 
 The dashboard is the command center. It should answer one question immediately: “What should I do next?” Everything unnecessary should be removed.
 
+### Sprint 9.1 Daily Complete presentation
+
+The dashboard renders a dedicated Daily Complete state only when the restored
+server snapshot says the current mission is `completed` and
+`dailyStatus.replacementsRemaining` is exactly `0`. The renderer does not infer
+completion from missing or hidden controls. A completed first mission with one
+replacement remaining continues to show the existing replacement action.
+
+The Daily Complete panel replaces the mission action area, displays the current
+XP from the progression snapshot, and gives the static guidance “New mission
+available tomorrow.” That wording is intentional: Sprint 9 exposes the logical
+daily key, but the current client response does not provide a trustworthy exact
+next-reset instant. No timer, browser clock, or presentation state can create,
+replace, expire, or reset a mission; the next zero-argument daily request still
+reconciles the UI to PostgreSQL authority.
+
+The status uses a text heading plus a decorative check, a polite atomic live
+region, and a programmatic focus target. Focus moves into the status only when
+an action that just disappeared held focus. There is no per-second announcement
+or new animation, so existing reduced-motion behavior remains unchanged. No
+history action is shown because the product has no usable mission-history route.
+
 ## Mission Generation Boundary
 
 `mission-generator.js` is the single mission-generation interface. Its asynchronous `generateMission()` contract accepts onboarding answers and resolves to a stable mission object containing `id`, `focus`, `title`, `description`, `estimatedDuration`, `difficulty`, and `xpReward`.

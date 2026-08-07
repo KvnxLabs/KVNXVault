@@ -44,11 +44,36 @@ const KVNXReplacementRequestController = (() => {
   return Object.freeze({ create });
 })();
 
+const KVNXDailyCompleteExperience = (() => {
+  const createViewModel = ({ coordinator, progression } = {}) => {
+    const lifecycle = coordinator?.currentMission?.lifecycle;
+    const dailyStatus = coordinator?.dailyStatus;
+    const currentXP = progression?.currentXP;
+    const visible = lifecycle?.state === "completed"
+      && dailyStatus?.replacementsRemaining === 0;
+
+    return Object.freeze({
+      visible,
+      currentXP: Number.isFinite(currentXP) ? currentXP : null,
+      xpLabel: Number.isFinite(currentXP)
+        ? `${currentXP.toLocaleString("en-US")} XP`
+        : "XP unavailable",
+      nextMissionLabel: "New mission available tomorrow",
+    });
+  };
+
+  return Object.freeze({ createViewModel });
+})();
+
 if (typeof module === "object" && module.exports) {
-  module.exports = KVNXReplacementRequestController;
+  module.exports = Object.freeze({
+    ...KVNXReplacementRequestController,
+    dailyComplete: KVNXDailyCompleteExperience,
+  });
 }
 if (typeof window !== "undefined") {
   window.KVNXReplacementRequestController = KVNXReplacementRequestController;
+  window.KVNXDailyCompleteExperience = KVNXDailyCompleteExperience;
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", async () => {
@@ -162,6 +187,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const missionReplacement = document.querySelector("[data-mission-replacement]");
   const requestMissionButton = document.querySelector("[data-request-mission]");
   const replacementNote = document.querySelector("[data-replacement-note]");
+  const dailyComplete = document.querySelector("[data-daily-complete]");
+  const dailyCompleteXP = document.querySelector("[data-daily-complete-xp]");
+  const dailyCompleteReset = document.querySelector("[data-daily-complete-reset]");
   const xpValue = document.querySelector("[data-xp-value]");
   const xpProgress = document.querySelector("[data-xp-progress]");
   const xpProgressFill = document.querySelector("[data-xp-progress-fill]");
@@ -173,6 +201,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const levelUpNotice = document.querySelector("[data-level-up]");
   const levelUpValue = document.querySelector("[data-level-up-value]");
   const logoutButton = document.querySelector("[data-logout]");
+  let progressionSnapshot = applicationSnapshot.progression;
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -212,6 +241,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   // The renderer accepts only a progression snapshot and performs no XP math.
   const renderProgression = (snapshot) => {
     if (!snapshot) return;
+    progressionSnapshot = snapshot;
 
     if (progressionLevel) progressionLevel.textContent = `Level ${snapshot.currentLevel}`;
     if (progressionCurrentLevel) progressionCurrentLevel.textContent = String(snapshot.currentLevel);
@@ -235,9 +265,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         ? "Prototype maximum reached"
         : `${snapshot.xpRemaining.toLocaleString("en-US")} XP remaining`;
     }
-  };
 
-  renderProgression(applicationSnapshot.progression);
+    renderDailyComplete(coordinatorSnapshot, snapshot);
+  };
 
   const missionStateLabels = {
     ready: "Ready",
@@ -245,6 +275,34 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     completed: "Completed",
     skipped: "Skipped",
     expired: "Expired",
+  };
+
+  const renderDailyComplete = (coordinator, progression) => {
+    if (!dailyComplete) return false;
+    const viewModel = KVNXDailyCompleteExperience.createViewModel({ coordinator, progression });
+    const actionHadFocus = [
+      startMissionButton,
+      completeMissionButton,
+      skipMissionButton,
+      requestMissionButton,
+    ].includes(document.activeElement);
+
+    dailyComplete.hidden = !viewModel.visible;
+    missionCard?.classList.toggle("is-daily-complete", viewModel.visible);
+    if (dailyCompleteXP) dailyCompleteXP.textContent = viewModel.xpLabel;
+    if (dailyCompleteReset) dailyCompleteReset.textContent = viewModel.nextMissionLabel;
+
+    if (viewModel.visible) {
+      if (missionActions) missionActions.hidden = true;
+      if (missionReplacement) missionReplacement.hidden = true;
+      if (missionSuccess) {
+        missionSuccess.hidden = true;
+        missionSuccess.classList.remove("is-visible");
+      }
+      if (actionHadFocus) dailyComplete.focus({ preventScroll: true });
+    }
+
+    return viewModel.visible;
   };
 
   // The renderer receives a coordinator snapshot and never decides mission
@@ -294,9 +352,12 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         ? "One replacement is available in this preview."
         : "The replacement has been used for this preview.";
     }
+
+    renderDailyComplete(snapshot, progressionSnapshot);
   };
 
   renderCoordinator(coordinatorSnapshot);
+  renderProgression(applicationSnapshot.progression);
 
   startMissionButton?.addEventListener("click", async () => {
     try {
@@ -343,10 +404,13 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     const revealDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
     window.setTimeout(() => {
       missionCard.classList.remove("is-completing");
-      renderCoordinator(applicationResult.snapshot.coordinator);
-      missionSuccess.hidden = false;
-
       renderProgression(applicationResult.snapshot.progression);
+      const isDailyComplete = renderDailyComplete(
+        applicationResult.snapshot.coordinator,
+        applicationResult.snapshot.progression,
+      );
+      renderCoordinator(applicationResult.snapshot.coordinator);
+      missionSuccess.hidden = isDailyComplete;
 
       if (applicationResult.progressionResult?.didLevelUp && levelUpNotice) {
         if (levelUpValue) levelUpValue.textContent = String(applicationResult.snapshot.progression.currentLevel);
@@ -354,7 +418,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         window.requestAnimationFrame(() => levelUpNotice.classList.add("is-visible"));
       }
 
-      window.requestAnimationFrame(() => missionSuccess.classList.add("is-visible"));
+      if (!isDailyComplete) {
+        window.requestAnimationFrame(() => missionSuccess.classList.add("is-visible"));
+      }
     }, revealDelay);
   };
 

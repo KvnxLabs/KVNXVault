@@ -203,3 +203,35 @@ compatibility/test-only.
 Notes: No live Supabase connection is claimed. Migration 006 must be reviewed
 and installed before testing a deployed Sprint 9 client. Onboarding UI remains
 unchanged; a future settings sprint may expose timezone preference safely.
+
+## Sprint 9.1 — Daily Complete Experience
+
+Status: ✅ Complete
+
+Goal: Make the exhausted daily-mission state feel clear, rewarding, and
+intentional without changing Sprint 9 authority or dashboard structure.
+
+Completed: Added a restrained Daily Complete panel for a completed mission with
+zero replacements remaining; rendered the authoritative progression total;
+replaced vanished controls with explicit next-day guidance; preserved the
+first-completion replacement action; restored the state after refresh and later
+login; removed it when the server returns a new daily mission; and added
+accessible status, focus-recovery, display-only reset, and security-regression
+coverage.
+
+Definition of Done: Daily Complete appears only for
+`mission.lifecycle.state === "completed"` together with
+`dailyStatus.replacementsRemaining === 0`. It exposes no additional mission
+action, performs no XP math, and cannot create or reset a mission. A new daily
+server snapshot removes the prior state. All Sprint 1–9 tests remain passing.
+
+Result: After both available missions are completed, the mission card now
+communicates a calm end-of-day outcome instead of appearing broken. The panel
+shows server-restored XP and “New mission available tomorrow” without inventing
+an exact reset time.
+
+Notes: This is a UX polish follow-up, not a backend redesign. Authentication,
+RLS, mission limits, XP rules, server-authoritative generation, action RPCs,
+repository contracts, and migrations 001–006 are unchanged. No database
+migration is required, and no history link is shown because no history route
+exists yet.

@@ -909,6 +909,113 @@
   text-align: right;
 }
 
+/* Sprint 9.1: authoritative end-of-day presentation; no client reset logic. */
+.mission-card__daily-complete {
+  margin-top: 18px;
+  padding: 19px;
+  border: 1px solid rgba(79, 201, 138, 0.24);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(79, 201, 138, 0.075), rgba(79, 201, 138, 0.02));
+  outline: none;
+}
+
+.mission-card__daily-complete[hidden] {
+  display: none;
+}
+
+.mission-card__daily-complete:focus-visible {
+  box-shadow: 0 0 0 3px rgba(79, 201, 138, 0.12);
+}
+
+.mission-card__daily-complete-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.mission-card__daily-complete-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(79, 201, 138, 0.38);
+  border-radius: 50%;
+  background: rgba(79, 201, 138, 0.09);
+  color: var(--app-success);
+  font-size: 0.85rem;
+}
+
+.mission-card__daily-complete-heading p,
+.mission-card__daily-complete-heading h3,
+.mission-card__daily-complete-copy,
+.mission-card__daily-complete-footer p {
+  margin: 0;
+}
+
+.mission-card__daily-complete-heading p {
+  color: var(--app-success);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mission-card__daily-complete-heading h3 {
+  margin-top: 4px;
+  font-size: 0.94rem;
+  font-weight: 560;
+}
+
+.mission-card__daily-complete-copy {
+  max-width: 520px;
+  margin-top: 15px;
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.mission-card__daily-complete-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(79, 201, 138, 0.16);
+}
+
+.mission-card__daily-complete-footer div span,
+.mission-card__daily-complete-footer div strong {
+  display: block;
+}
+
+.mission-card__daily-complete-footer div span {
+  color: var(--app-subtle);
+  font-size: 0.54rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mission-card__daily-complete-footer div strong {
+  margin-top: 5px;
+  color: var(--app-text);
+  font-size: 0.88rem;
+  font-weight: 620;
+}
+
+.mission-card__daily-complete-footer p {
+  color: var(--app-subtle);
+  font-size: 0.62rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.mission-card.is-daily-complete {
+  border-color: rgba(79, 201, 138, 0.38);
+}
+
 /* Sprint 4 level-up notice: restrained, readable, and non-blocking. */
 .level-up {
   width: min(380px, calc(100vw - 32px));
@@ -1147,6 +1254,15 @@
   }
 
   .mission-card__replacement span {
+    text-align: left;
+  }
+
+  .mission-card__daily-complete-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mission-card__daily-complete-footer p {
     text-align: left;
   }
 }

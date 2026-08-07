@@ -183,6 +183,20 @@
                 <button class="app-button" type="button" data-request-mission>Prepare Next Mission</button>
                 <span data-replacement-note>One replacement is available in this preview.</span>
               </div>
+              <section class="mission-card__daily-complete" data-daily-complete hidden role="status" aria-live="polite" aria-atomic="true" tabindex="-1" aria-labelledby="daily-complete-title">
+                <div class="mission-card__daily-complete-heading">
+                  <span class="mission-card__daily-complete-mark" aria-hidden="true">✓</span>
+                  <div>
+                    <p>Daily complete</p>
+                    <h3 id="daily-complete-title">Great work today.</h3>
+                  </div>
+                </div>
+                <p class="mission-card__daily-complete-copy">You've completed today's mission and your available replacement. Come back tomorrow for a new mission.</p>
+                <div class="mission-card__daily-complete-footer">
+                  <div><span>Current XP</span><strong data-daily-complete-xp>— XP</strong></div>
+                  <p data-daily-complete-reset>New mission available tomorrow</p>
+                </div>
+              </section>
             </section>
 
             <section class="dashboard-card dashboard-card--skills app-card" aria-labelledby="skills-card-title">

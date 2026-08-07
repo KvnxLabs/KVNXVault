@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Begin your KVNX Vault journey." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#070708" />
+    <link rel="icon" href="assets/icons/kvnx-mark.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+    <script src="js/onboarding-state.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <title>Create Account | KVNX Vault</title>
+  </head>
+  <body>
+    <a class="app-skip-link" href="#signup-form">Skip to create account</a>
+    <main class="auth-page">
+      <section class="auth-panel" aria-labelledby="signup-title">
+        <a class="app-brand auth-panel__home" href="index.html" aria-label="Return to KVNX Vault home">
+          <img class="app-brand__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+          <span class="app-brand__name">KVNX <strong>VAULT</strong></span>
+        </a>
+
+        <div class="auth-panel__content">
+          <p class="app-eyebrow">Begin your journey</p>
+          <h1 class="auth-panel__title" id="signup-title">Build what<br /><em>comes next.</em></h1>
+          <p class="auth-panel__description">
+            Start with a few essentials. Then Vault will shape your first command center around your direction.
+          </p>
+
+          <form class="auth-form" id="signup-form" data-signup-form>
+            <div class="auth-form__field">
+              <label class="auth-form__label" for="first-name">First name</label>
+              <input class="auth-form__input" id="first-name" name="firstName" type="text" autocomplete="given-name" maxlength="40" placeholder="Your first name" required />
+            </div>
+            <div class="auth-form__field">
+              <label class="auth-form__label" for="signup-email">Email</label>
+              <input class="auth-form__input" id="signup-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </div>
+            <div class="auth-form__field">
+              <label class="auth-form__label" for="signup-password">Password</label>
+              <input class="auth-form__input" id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required />
+            </div>
+            <div class="auth-form__actions">
+              <button class="app-button app-button--primary" type="submit">Create Account <span aria-hidden="true">→</span></button>
+            </div>
+          </form>
+
+          <p class="auth-panel__account-link">Already have an account? <a href="login.html">Sign in</a></p>
+          <p class="auth-panel__note">Preview experience — email and password are not submitted or saved.</p>
+        </div>
+      </section>
+
+      <aside class="auth-visual" aria-label="KVNX Vault principle">
+        <div class="auth-visual__content">
+          <img class="auth-visual__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+          <p class="auth-visual__quote">Every journey begins with <em>direction.</em></p>
+          <p class="auth-visual__caption"><span class="app-status-dot" aria-hidden="true"></span> KVNX Vault // Ready when you are</p>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>

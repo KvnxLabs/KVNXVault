@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.0
+Version: 1.1
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -43,6 +43,7 @@ app/
   index.html
   login.html
   signup.html
+  onboarding.html
   dashboard.html
   missions.html
   skills.html
@@ -59,11 +60,14 @@ app/
     style.css
     auth.css
     dashboard.css
+    onboarding.css
     components.css
     animations.css
   js/
     script.js
     auth.js
+    onboarding-state.js
+    onboarding.js
     dashboard.js
     missions.js
     skills.js
@@ -74,9 +78,19 @@ app/
 
 ## Navigation Flow
 
-Landing Page → Login → Dashboard → All Application Features.
+Landing Page → Login → Create Account → Onboarding → Vault Introduction → Dashboard → All Application Features.
 
 The landing page is public. Everything else belongs to the application.
+
+## Application State Boundaries
+
+Sprint 2 onboarding data is temporary and session-scoped. `onboarding-state.js` is the single interface for reading, writing, and clearing that state. It uses `sessionStorage` only so the create-account, onboarding, and dashboard pages can share placeholder personalization during the current browser-tab session.
+
+This temporary state is not an account system and must not store email addresses, passwords, authentication tokens, or durable user records. A future backend should replace this adapter without requiring the onboarding UI to be rewritten.
+
+## Onboarding Philosophy
+
+Onboarding learns direction, not personality. Each screen asks one clear question, required choices are validated in context, and answers are collected only when they directly shape the first dashboard. The final Vault introduction lives within `onboarding.html` to prevent a visual flash between onboarding and the dashboard handoff.
 
 ## Dashboard Philosophy
 

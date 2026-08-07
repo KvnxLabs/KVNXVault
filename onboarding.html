@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Shape your first KVNX Vault dashboard." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#070708" />
+    <link rel="icon" href="assets/icons/kvnx-mark.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/onboarding.css" />
+    <script src="js/onboarding-state.js" defer></script>
+    <script src="js/onboarding.js" defer></script>
+    <title>Set Up Your Vault | KVNX Vault</title>
+  </head>
+  <body class="onboarding-page">
+    <a class="app-skip-link" href="#onboarding-main">Skip to onboarding</a>
+
+    <header class="onboarding-header">
+      <a class="app-brand" href="index.html" aria-label="Return to KVNX Vault home">
+        <img class="app-brand__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+        <span class="app-brand__name">KVNX <strong>VAULT</strong></span>
+      </a>
+      <p class="onboarding-header__label">First-time setup</p>
+    </header>
+
+    <main class="onboarding" id="onboarding-main">
+      <form class="onboarding__form" data-onboarding-form novalidate>
+        <div class="onboarding__progress" data-progress hidden>
+          <div class="onboarding__progress-copy">
+            <span data-progress-label>Step 1 of 6</span>
+            <span data-progress-name>Direction</span>
+          </div>
+          <div class="onboarding__progress-track" role="progressbar" aria-label="Onboarding progress" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1" data-progress-track>
+            <span data-progress-fill></span>
+          </div>
+        </div>
+
+        <section class="onboarding-step is-active onboarding-step--welcome" data-step="welcome" aria-labelledby="welcome-title">
+          <p class="app-eyebrow">A system built around you</p>
+          <h1 class="onboarding-step__title" id="welcome-title">Welcome to<br /><em>KVNX Vault.</em></h1>
+          <p class="onboarding-step__description">Let's build a dashboard that fits your journey.</p>
+          <button class="app-button app-button--primary onboarding-step__begin" type="button" data-begin>Begin <span aria-hidden="true">→</span></button>
+        </section>
+
+        <section class="onboarding-step" data-step="focus" aria-labelledby="focus-title" hidden>
+          <p class="onboarding-step__kicker">Choose up to three</p>
+          <h1 class="onboarding-step__question" id="focus-title">What do you want to improve first?</h1>
+          <p class="onboarding-step__hint" id="focus-hint">Select the areas that deserve your attention now.</p>
+          <fieldset class="onboarding-options onboarding-options--grid" aria-describedby="focus-hint focus-status">
+            <legend class="app-visually-hidden">Primary focus</legend>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Career" /><span>Career</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Business" /><span>Business</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Programming" /><span>Programming</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Fitness" /><span>Fitness</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Health" /><span>Health</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Learning" /><span>Learning</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Creativity" /><span>Creativity</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Finance" /><span>Finance</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Relationships" /><span>Relationships</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Mindset" /><span>Mindset</span></label>
+            <label class="choice-pill"><input type="checkbox" name="focus" value="Custom" data-custom-toggle="focus" /><span>Custom</span></label>
+          </fieldset>
+          <label class="onboarding-custom" data-custom-field="focus" hidden>
+            <span>Write your focus</span>
+            <input class="onboarding-custom__input" name="focusCustom" type="text" maxlength="60" autocomplete="off" />
+          </label>
+          <p class="onboarding-step__status" id="focus-status" aria-live="polite" data-focus-status>0 of 3 selected</p>
+        </section>
+
+        <section class="onboarding-step" data-step="stage" aria-labelledby="stage-title" hidden>
+          <p class="onboarding-step__kicker">Your starting point</p>
+          <h1 class="onboarding-step__question" id="stage-title">Where are you today?</h1>
+          <fieldset class="onboarding-options onboarding-options--stacked">
+            <legend class="app-visually-hidden">Current stage</legend>
+            <label class="choice-row"><input type="radio" name="stage" value="Just Starting" /><span>Just Starting</span></label>
+            <label class="choice-row"><input type="radio" name="stage" value="Building Momentum" /><span>Building Momentum</span></label>
+            <label class="choice-row"><input type="radio" name="stage" value="Consistent" /><span>Consistent</span></label>
+            <label class="choice-row"><input type="radio" name="stage" value="Advanced" /><span>Advanced</span></label>
+            <label class="choice-row"><input type="radio" name="stage" value="Mastering My Craft" /><span>Mastering My Craft</span></label>
+          </fieldset>
+        </section>
+
+        <section class="onboarding-step" data-step="challenge" aria-labelledby="challenge-title" hidden>
+          <p class="onboarding-step__kicker">Remove the friction</p>
+          <h1 class="onboarding-step__question" id="challenge-title">What's slowing you down the most?</h1>
+          <fieldset class="onboarding-options onboarding-options--grid">
+            <legend class="app-visually-hidden">Biggest challenge</legend>
+            <label class="choice-pill"><input type="radio" name="challenge" value="Consistency" /><span>Consistency</span></label>
+            <label class="choice-pill"><input type="radio" name="challenge" value="Focus" /><span>Focus</span></label>
+            <label class="choice-pill"><input type="radio" name="challenge" value="Motivation" /><span>Motivation</span></label>
+            <label class="choice-pill"><input type="radio" name="challenge" value="Time" /><span>Time</span></label>
+            <label class="choice-pill"><input type="radio" name="challenge" value="Direction" /><span>Direction</span></label>
+            <label class="choice-pill"><input type="radio" name="challenge" value="Accountability" /><span>Accountability</span></label>
+            <label class="choice-pill choice-pill--wide"><input type="radio" name="challenge" value="Finishing What I Start" /><span>Finishing What I Start</span></label>
+            <label class="choice-pill"><input type="radio" name="challenge" value="Custom" data-custom-toggle="challenge" /><span>Custom</span></label>
+          </fieldset>
+          <label class="onboarding-custom" data-custom-field="challenge" hidden>
+            <span>Write your challenge</span>
+            <input class="onboarding-custom__input" name="challengeCustom" type="text" maxlength="80" autocomplete="off" />
+          </label>
+        </section>
+
+        <section class="onboarding-step" data-step="commitment" aria-labelledby="commitment-title" hidden>
+          <p class="onboarding-step__kicker">Make it realistic</p>
+          <h1 class="onboarding-step__question" id="commitment-title">How much time can you realistically invest each day?</h1>
+          <fieldset class="onboarding-options onboarding-options--stacked">
+            <legend class="app-visually-hidden">Daily commitment</legend>
+            <label class="choice-row"><input type="radio" name="commitment" value="15 Minutes" /><span>15 Minutes</span></label>
+            <label class="choice-row"><input type="radio" name="commitment" value="30 Minutes" /><span>30 Minutes</span></label>
+            <label class="choice-row"><input type="radio" name="commitment" value="1 Hour" /><span>1 Hour</span></label>
+            <label class="choice-row"><input type="radio" name="commitment" value="2 Hours" /><span>2 Hours</span></label>
+            <label class="choice-row"><input type="radio" name="commitment" value="3+ Hours" /><span>3+ Hours</span></label>
+          </fieldset>
+        </section>
+
+        <section class="onboarding-step" data-step="vision" aria-labelledby="vision-title" hidden>
+          <p class="onboarding-step__kicker">Optional reflection</p>
+          <h1 class="onboarding-step__question" id="vision-title">Describe the person you want to become.</h1>
+          <p class="onboarding-step__hint" id="vision-hint">A sentence is enough. You can refine this later.</p>
+          <label class="app-visually-hidden" for="future-vision">Future vision</label>
+          <textarea class="onboarding-textarea" id="future-vision" name="vision" rows="6" maxlength="500" aria-describedby="vision-hint vision-count" placeholder="I want to become someone who..."></textarea>
+          <p class="onboarding-step__status" id="vision-count" data-vision-count>0 / 500</p>
+        </section>
+
+        <section class="onboarding-step" data-step="intensity" aria-labelledby="intensity-title" hidden>
+          <p class="onboarding-step__kicker">Set the tone</p>
+          <h1 class="onboarding-step__question" id="intensity-title">How should Vault challenge you?</h1>
+          <fieldset class="onboarding-options onboarding-options--intensity">
+            <legend class="app-visually-hidden">Challenge intensity</legend>
+            <label class="intensity-card">
+              <input type="radio" name="intensity" value="Balanced" />
+              <span><strong>Balanced</strong><small>Steady progress with room to adapt.</small></span>
+            </label>
+            <label class="intensity-card">
+              <input type="radio" name="intensity" value="Focused" />
+              <span><strong>Focused</strong><small>Clear priorities and consistent accountability.</small></span>
+            </label>
+            <label class="intensity-card">
+              <input type="radio" name="intensity" value="Relentless" />
+              <span><strong>Relentless</strong><small>High standards and direct daily pressure.</small></span>
+            </label>
+          </fieldset>
+        </section>
+
+        <p class="onboarding__error" role="alert" data-step-error hidden></p>
+
+        <div class="onboarding__controls" data-controls hidden>
+          <button class="app-button onboarding__back" type="button" data-back><span aria-hidden="true">←</span> Back</button>
+          <button class="app-button app-button--primary onboarding__next" type="button" data-next>Continue <span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+    </main>
+
+    <section class="vault-intro" data-vault-intro hidden aria-labelledby="vault-intro-title">
+      <div class="vault-intro__content">
+        <img class="vault-intro__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+        <div class="vault-intro__message" aria-live="polite">
+          <h1 class="vault-intro__title" id="vault-intro-title" data-intro-welcome>Welcome to the Vault.</h1>
+          <p class="vault-intro__line" data-intro-line="journey">Every journey starts somewhere.</p>
+          <p class="vault-intro__line" data-intro-line="today">Today, we build yours.</p>
+          <p class="vault-intro__preparing" data-intro-line="preparing">Preparing your command center...</p>
+        </div>
+        <ul class="vault-intro__tasks" aria-label="Preparing your dashboard">
+          <li data-intro-task><span aria-hidden="true">✓</span> Creating your profile</li>
+          <li data-intro-task><span aria-hidden="true">✓</span> Defining your direction</li>
+          <li data-intro-task><span aria-hidden="true">✓</span> Organizing your first mission</li>
+          <li data-intro-task><span aria-hidden="true">✓</span> Preparing today's objectives</li>
+        </ul>
+      </div>
+    </section>
+  </body>
+</html>

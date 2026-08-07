@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
+    <script src="js/onboarding-state.js" defer></script>
     <script src="js/dashboard.js" defer></script>
     <title>Dashboard | KVNX Vault</title>
   </head>
@@ -66,7 +67,7 @@
         </nav>
 
         <div class="sidebar__footer">
-          <span class="sidebar__status"><span class="app-status-dot" aria-hidden="true"></span> Sprint 1 shell</span>
+          <span class="sidebar__status"><span class="app-status-dot" aria-hidden="true"></span> Personalized preview</span>
         </div>
       </aside>
 
@@ -89,8 +90,8 @@
         </button>
 
         <div class="topbar__profile" aria-label="Guest profile">
-          <span class="topbar__avatar" aria-hidden="true">KV</span>
-          <span class="topbar__profile-copy"><strong>Guest</strong><span>Explorer</span></span>
+          <span class="topbar__avatar" aria-hidden="true" data-profile-avatar>KV</span>
+          <span class="topbar__profile-copy"><strong data-profile-name>Guest</strong><span data-profile-stage>Explorer</span></span>
         </div>
       </header>
 
@@ -99,7 +100,7 @@
           <header class="dashboard__heading">
             <div>
               <p class="app-eyebrow">Command center</p>
-              <h1>Welcome back, <em>Builder.</em></h1>
+              <h1>Welcome back, <em data-dashboard-name>Builder.</em></h1>
             </div>
             <time class="dashboard__date" datetime="2026-08-06" data-current-date>Thursday · August 6</time>
           </header>
@@ -107,8 +108,14 @@
           <div class="dashboard__grid">
             <section class="dashboard-card dashboard-card--welcome app-card" aria-labelledby="welcome-card-title">
               <p class="app-card__label">Your next move</p>
-              <h2 id="welcome-card-title">Turn intention into progress.</h2>
-              <p>Your dashboard will bring missions, skills, and meaningful momentum into one focused view.</p>
+              <h2 id="welcome-card-title" data-welcome-title>Turn intention into progress.</h2>
+              <p data-welcome-description>Your dashboard will bring missions, skills, and meaningful momentum into one focused view.</p>
+              <dl class="journey-summary" data-journey-summary hidden>
+                <div><dt>Primary Focus</dt><dd data-summary-focus>Programming</dd></div>
+                <div><dt>Today's Goal</dt><dd data-summary-goal>Code for 30 Minutes</dd></div>
+                <div><dt>Biggest Challenge</dt><dd data-summary-challenge>Consistency</dd></div>
+                <div><dt>Daily Commitment</dt><dd data-summary-commitment>1 Hour</dd></div>
+              </dl>
             </section>
 
             <section class="dashboard-card dashboard-card--xp app-card" aria-labelledby="xp-card-title">
@@ -129,7 +136,7 @@
                 <span class="dashboard-card__meta">0 of 3</span>
               </div>
               <ul class="mission-list">
-                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Plan the day with intention</strong><span>Focus · 10 minutes</span></span><span class="mission-item__tag">Daily</span></li>
+                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong data-today-goal>Plan the day with intention</strong><span data-today-goal-meta>Focus · 10 minutes</span></span><span class="mission-item__tag">Daily</span></li>
                 <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Complete one focused work block</strong><span>Discipline · 45 minutes</span></span><span class="mission-item__tag">Core</span></li>
                 <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Capture today's key lesson</strong><span>Reflection · 5 minutes</span></span><span class="mission-item__tag">Daily</span></li>
               </ul>

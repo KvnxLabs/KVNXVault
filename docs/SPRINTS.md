@@ -36,13 +36,27 @@ Notes: No authentication, backend, database, XP logic, or feature logic. Layout 
 
 ## Sprint 2
 
+Status: ✅ Complete
+
+Goal: Build the complete first-time onboarding experience.
+
+Completed: Create-account shell, first-name handoff, six-question conversational onboarding, accessible progress and validation, custom responses, cinematic Vault introduction, temporary session-scoped state, and personalized dashboard placeholders.
+
+Definition of Done: A new user can navigate Login → Create Account → Welcome → Onboarding → Vault Introduction → Personalized Dashboard. The landing page remains frozen at v1.0.
+
+Result: KVNX Vault can now understand a new user's direction and prepare a meaningful first dashboard without authentication, a backend, a database, or durable persistence.
+
+Notes: Email and password values are never submitted or stored. Onboarding answers exist only in the current browser-tab session. The founder-directed onboarding sprint replaces the previously planned Sprint 2 authentication slot.
+
+## Sprint 3
+
 Status: ⏳ Planned
 
 Goal: Authentication.
 
-Planned: Login logic, sign up, session handling, and logout.
+Planned: Authentication-provider selection, real account creation, sign-in, session handling, protected application routes, logout, recovery, accessible server errors, and migration of onboarding state into the user profile.
 
-## Sprint 3
+## Sprint 4
 
 Status: ⏳ Planned
 

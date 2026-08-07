@@ -287,7 +287,7 @@
 }
 
 .dashboard-card--welcome {
-  min-height: 280px;
+  min-height: 320px;
   grid-column: span 8;
   display: flex;
   position: relative;
@@ -323,7 +323,7 @@
   line-height: 1.08;
 }
 
-.dashboard-card--welcome p:last-child {
+.dashboard-card--welcome > p:not(.app-card__label) {
   max-width: 560px;
   position: relative;
   z-index: 1;
@@ -331,6 +331,50 @@
   color: var(--app-muted);
   font-size: 0.86rem;
   line-height: 1.7;
+}
+
+.journey-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  position: relative;
+  z-index: 1;
+  margin: 28px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-line);
+}
+
+.journey-summary[hidden] {
+  display: none;
+}
+
+.journey-summary div {
+  min-width: 0;
+  padding: 13px 14px;
+  background: rgba(10, 10, 12, 0.92);
+}
+
+.journey-summary dt,
+.journey-summary dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.journey-summary dt {
+  color: var(--app-subtle);
+  font-size: 0.52rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.journey-summary dd {
+  margin: 7px 0 0;
+  color: var(--app-text);
+  font-size: 0.72rem;
 }
 
 .dashboard-card--xp {
@@ -569,6 +613,12 @@
   }
 }
 
+@media (max-width: 1180px) {
+  .journey-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 860px) {
   .sidebar {
     transform: translateX(-100%);
@@ -670,7 +720,7 @@
   }
 
   .dashboard-card--welcome {
-    min-height: 250px;
+    min-height: 280px;
   }
 
   .dashboard-card--missions,
@@ -680,6 +730,17 @@
 
   .activity-item__time {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .journey-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .journey-summary dt,
+  .journey-summary dd {
+    white-space: normal;
   }
 }
 

@@ -111,6 +111,39 @@
   text-align: center;
 }
 
+.auth-panel__account-link {
+  margin: 24px 0 0;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.auth-panel__account-link a {
+  position: relative;
+  color: var(--app-text);
+  font-weight: 600;
+}
+
+.auth-panel__account-link a::after {
+  height: 1px;
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  background: var(--app-red);
+  scale: 0 1;
+  transform-origin: right;
+  transition: scale 180ms var(--app-ease);
+  content: "";
+}
+
+.auth-panel__account-link a:hover::after,
+.auth-panel__account-link a:focus-visible::after {
+  scale: 1 1;
+  transform-origin: left;
+}
+
 .auth-visual {
   min-height: 100svh;
   display: grid;

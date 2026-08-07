@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Sign in to the KVNX Vault application." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#070708" />
+    <link rel="icon" href="assets/icons/kvnx-mark.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+    <title>Sign In | KVNX Vault</title>
+  </head>
+  <body>
+    <a class="app-skip-link" href="#login-form">Skip to sign in</a>
+    <main class="auth-page">
+      <section class="auth-panel" aria-labelledby="login-title">
+        <a class="app-brand auth-panel__home" href="index.html" aria-label="Return to KVNX Vault home">
+          <img class="app-brand__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+          <span class="app-brand__name">KVNX <strong>VAULT</strong></span>
+        </a>
+
+        <div class="auth-panel__content">
+          <p class="app-eyebrow">Your progression system</p>
+          <h1 class="auth-panel__title" id="login-title">Welcome<br /><em>back.</em></h1>
+          <p class="auth-panel__description">
+            Return to the place built for your goals, skills, and progress.
+          </p>
+
+          <div class="auth-form" id="login-form" tabindex="-1">
+            <div class="auth-form__field">
+              <label class="auth-form__label" for="email">Email</label>
+              <input
+                class="auth-form__input"
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div class="auth-form__field">
+              <label class="auth-form__label" for="password">Password</label>
+              <input
+                class="auth-form__input"
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <div class="auth-form__actions">
+              <a class="app-button app-button--primary" href="dashboard.html">Sign In <span aria-hidden="true">→</span></a>
+              <a class="app-button" href="dashboard.html">Continue as Guest</a>
+            </div>
+          </div>
+
+          <p class="auth-panel__note">Sprint 1 preview — no account or authentication is required.</p>
+        </div>
+      </section>
+
+      <aside class="auth-visual" aria-label="KVNX Vault principle">
+        <div class="auth-visual__content">
+          <img class="auth-visual__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+          <p class="auth-visual__quote">Build the person who can build <em>the life.</em></p>
+          <p class="auth-visual__caption"><span class="app-status-dot" aria-hidden="true"></span> KVNX Vault // System ready</p>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>

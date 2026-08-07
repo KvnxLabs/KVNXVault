@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="KVNX Vault personal progression dashboard." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#070708" />
+    <link rel="icon" href="assets/icons/kvnx-mark.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/kvnx-icon.png" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <script src="js/dashboard.js" defer></script>
+    <title>Dashboard | KVNX Vault</title>
+  </head>
+  <body class="app-page">
+    <a class="app-skip-link" href="#dashboard-content">Skip to dashboard</a>
+
+    <div class="shell">
+      <aside class="sidebar" id="application-sidebar" data-sidebar aria-label="Application navigation">
+        <div class="sidebar__header">
+          <a class="app-brand" href="index.html" aria-label="KVNX Vault home">
+            <img class="app-brand__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+            <span class="app-brand__name">KVNX <strong>VAULT</strong></span>
+          </a>
+          <button class="app-icon-button sidebar__close" type="button" data-sidebar-close aria-label="Close navigation">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+
+        <p class="sidebar__section-label">Workspace</p>
+        <nav class="sidebar__nav">
+          <a class="sidebar__link sidebar__link--active" href="dashboard.html" aria-current="page">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+            Dashboard
+          </a>
+          <span class="sidebar__link" aria-disabled="true">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 4h10M7 8h10M6 4v16h12V4" /><path d="m9 14 2 2 4-4" /></svg>
+            Missions
+          </span>
+          <span class="sidebar__link" aria-disabled="true">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7l-8-4Z" /><path d="m9 12 2 2 4-4" /></svg>
+            Skills
+          </span>
+          <span class="sidebar__link" aria-disabled="true">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="5" /><path d="m8.5 12-1 9 4.5-3 4.5 3-1-9" /></svg>
+            Achievements
+          </span>
+          <span class="sidebar__link" aria-disabled="true">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M8 5V3h8v2M8 10h8M8 14h5" /></svg>
+            Vault
+          </span>
+          <span class="sidebar__link" aria-disabled="true">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>
+            Analytics
+          </span>
+        </nav>
+
+        <p class="sidebar__section-label">System</p>
+        <nav class="sidebar__nav">
+          <span class="sidebar__link" aria-disabled="true">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.4.3.7.8.7 1.3V10h1v4h-.1a1.7 1.7 0 0 0-1.6 1Z" /></svg>
+            Settings
+          </span>
+        </nav>
+
+        <div class="sidebar__footer">
+          <span class="sidebar__status"><span class="app-status-dot" aria-hidden="true"></span> Sprint 1 shell</span>
+        </div>
+      </aside>
+
+      <div class="sidebar-backdrop" data-sidebar-backdrop hidden></div>
+
+      <header class="topbar">
+        <button class="app-icon-button topbar__menu" type="button" data-sidebar-open aria-label="Open navigation" aria-controls="application-sidebar" aria-expanded="false">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+
+        <form class="topbar__search" role="search" action="#" data-app-search>
+          <label class="app-visually-hidden" for="app-search">Search KVNX Vault</label>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+          <input class="topbar__search-input" id="app-search" type="search" placeholder="Search your vault" />
+          <span class="topbar__shortcut" aria-hidden="true">⌘ K</span>
+        </form>
+
+        <button class="app-icon-button topbar__notification" type="button" aria-label="Notifications" disabled>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></svg>
+        </button>
+
+        <div class="topbar__profile" aria-label="Guest profile">
+          <span class="topbar__avatar" aria-hidden="true">KV</span>
+          <span class="topbar__profile-copy"><strong>Guest</strong><span>Explorer</span></span>
+        </div>
+      </header>
+
+      <main class="dashboard" id="dashboard-content">
+        <div class="dashboard__inner">
+          <header class="dashboard__heading">
+            <div>
+              <p class="app-eyebrow">Command center</p>
+              <h1>Welcome back, <em>Builder.</em></h1>
+            </div>
+            <time class="dashboard__date" datetime="2026-08-06" data-current-date>Thursday · August 6</time>
+          </header>
+
+          <div class="dashboard__grid">
+            <section class="dashboard-card dashboard-card--welcome app-card" aria-labelledby="welcome-card-title">
+              <p class="app-card__label">Your next move</p>
+              <h2 id="welcome-card-title">Turn intention into progress.</h2>
+              <p>Your dashboard will bring missions, skills, and meaningful momentum into one focused view.</p>
+            </section>
+
+            <section class="dashboard-card dashboard-card--xp app-card" aria-labelledby="xp-card-title">
+              <div class="dashboard-card__header">
+                <h2 class="dashboard-card__title" id="xp-card-title">XP Progress</h2>
+                <span class="dashboard-card__meta">Level 07</span>
+              </div>
+              <div class="xp-card__value"><strong>1,240</strong><span>XP</span></div>
+              <div class="progress-bar" role="progressbar" aria-label="XP progress" aria-valuemin="0" aria-valuemax="2000" aria-valuenow="1240">
+                <span class="progress-bar__fill"></span>
+              </div>
+              <div class="xp-card__footer"><span>62% complete</span><span>760 to next level</span></div>
+            </section>
+
+            <section class="dashboard-card dashboard-card--missions app-card" aria-labelledby="missions-card-title">
+              <div class="dashboard-card__header">
+                <h2 class="dashboard-card__title" id="missions-card-title">Today's Missions</h2>
+                <span class="dashboard-card__meta">0 of 3</span>
+              </div>
+              <ul class="mission-list">
+                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Plan the day with intention</strong><span>Focus · 10 minutes</span></span><span class="mission-item__tag">Daily</span></li>
+                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Complete one focused work block</strong><span>Discipline · 45 minutes</span></span><span class="mission-item__tag">Core</span></li>
+                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Capture today's key lesson</strong><span>Reflection · 5 minutes</span></span><span class="mission-item__tag">Daily</span></li>
+              </ul>
+            </section>
+
+            <section class="dashboard-card dashboard-card--skills app-card" aria-labelledby="skills-card-title">
+              <div class="dashboard-card__header">
+                <h2 class="dashboard-card__title" id="skills-card-title">Skills Overview</h2>
+                <span class="dashboard-card__meta">3 active</span>
+              </div>
+              <ul class="skill-list">
+                <li class="skill-item"><span class="skill-item__icon" aria-hidden="true">FE</span><span class="skill-item__copy"><strong>Front-End Engineering</strong><span>Consistent progress this week</span></span><span class="skill-item__level">L07</span></li>
+                <li class="skill-item"><span class="skill-item__icon" aria-hidden="true">PD</span><span class="skill-item__copy"><strong>Product Design</strong><span>Next review in 2 days</span></span><span class="skill-item__level">L05</span></li>
+                <li class="skill-item"><span class="skill-item__icon" aria-hidden="true">LS</span><span class="skill-item__copy"><strong>Leadership</strong><span>Foundation stage</span></span><span class="skill-item__level">L03</span></li>
+              </ul>
+            </section>
+
+            <section class="dashboard-card dashboard-card--activity app-card" aria-labelledby="activity-card-title">
+              <div class="dashboard-card__header">
+                <h2 class="dashboard-card__title" id="activity-card-title">Recent Activity</h2>
+                <span class="dashboard-card__meta">This week</span>
+              </div>
+              <ul class="activity-list">
+                <li class="activity-item"><span class="activity-item__icon" aria-hidden="true">✓</span><span class="activity-item__copy"><strong>Mission completed</strong><span>Reviewed weekly priorities</span></span><span class="activity-item__time">2h ago</span></li>
+                <li class="activity-item"><span class="activity-item__icon" aria-hidden="true">↗</span><span class="activity-item__copy"><strong>Skill updated</strong><span>Front-End Engineering</span></span><span class="activity-item__time">Yesterday</span></li>
+                <li class="activity-item"><span class="activity-item__icon" aria-hidden="true">◇</span><span class="activity-item__copy"><strong>Milestone captured</strong><span>Shipped Landing Page v1.0</span></span><span class="activity-item__time">2 days ago</span></li>
+              </ul>
+            </section>
+
+            <section class="dashboard-card dashboard-card--actions app-card" aria-labelledby="actions-card-title">
+              <div class="dashboard-card__header">
+                <h2 class="dashboard-card__title" id="actions-card-title">Quick Actions</h2>
+                <span class="dashboard-card__meta">Coming soon</span>
+              </div>
+              <div class="quick-actions">
+                <button class="quick-actions__button" type="button" disabled><span aria-hidden="true">＋</span><span>New mission</span></button>
+                <button class="quick-actions__button" type="button" disabled><span aria-hidden="true">↗</span><span>Update skill</span></button>
+                <button class="quick-actions__button" type="button" disabled><span aria-hidden="true">◇</span><span>Add achievement</span></button>
+                <button class="quick-actions__button" type="button" disabled><span aria-hidden="true">◎</span><span>Open vault</span></button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

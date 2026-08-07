@@ -1,127 +1,51 @@
 # KVNX Vault Sprint History
 
----
+## Sprint 0
 
-# Sprint 0
 Status: ✅ Complete
 
-Goal
+Goal: Create the first official KVNX Vault landing page.
 
-Create the first official KVNX Vault landing page.
+Completed: Initial landing page, hero section, features section, roadmap section, footer, responsive layout, and initial animations.
 
-Completed
+Result: The project officially launched as a public landing page.
 
-- Initial landing page
-- Hero section
-- Features section
-- Roadmap section
-- Footer
-- Responsive layout
-- Initial animations
+## Sprint 0.5
 
-Result
-
-The project officially launched as a public landing page.
-
----
-
-# Sprint 0.5
 Status: ✅ Complete
 
-Goal
+Goal: Refine the landing page to production quality.
 
-Refine the landing page to production quality.
+Completed: Accessibility improvements, metadata, Open Graph tags, Twitter cards, better animations, responsive improvements, CSS cleanup, JavaScript optimization, and performance improvements.
 
-Completed
+Result: Landing Page v1.0 completed.
 
-- Accessibility improvements
-- Metadata
-- Open Graph tags
-- Twitter cards
-- Better animations
-- Responsive improvements
-- CSS cleanup
-- JavaScript optimization
-- Performance improvements
+## Sprint 1
 
-Result
+Status: ✅ Complete
 
-Landing Page v1.0 completed.
+Goal: Build the application shell.
 
----
+Completed: Login page, dashboard, responsive sidebar, top navigation, reusable application components, dashboard cards, placeholder data, and mobile shell navigation.
 
-# Sprint 1
-Status: 🚧 In Progress
+Definition of Done: The landing page remains unchanged. The user can navigate Landing Page → Login → Dashboard.
 
-Goal
+Result: The application foundation is ready for authentication work while the landing page remains frozen at v1.0.
 
-Build the application shell.
+Notes: No authentication, backend, database, XP logic, or feature logic. Layout only.
 
-Planned
+## Sprint 2
 
-- Login page
-- Dashboard
-- Sidebar
-- Top navigation
-- Dashboard cards
-- Placeholder data
-
-Definition of Done
-
-Landing page remains unchanged.
-
-User can navigate
-
-Landing Page
-
-↓
-
-Login
-
-↓
-
-Dashboard
-
-Notes
-
-No authentication yet.
-
-No backend.
-
-No database.
-
-No XP logic.
-
-Only layout.
-
----
-
-# Sprint 2
 Status: ⏳ Planned
 
-Goal
+Goal: Authentication.
 
-Authentication
+Planned: Login logic, sign up, session handling, and logout.
 
-Planned
+## Sprint 3
 
-- Login logic
-- Sign up
-- Session handling
-- Logout
-
----
-
-# Sprint 3
 Status: ⏳ Planned
 
-Goal
+Goal: XP System.
 
-XP System
-
-Planned
-
-- XP calculations
-- Level system
-- Progress bar
-- Statistics
+Planned: XP calculations, level system, progress bar, and statistics.

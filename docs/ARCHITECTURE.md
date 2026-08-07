@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.7.2
+Version: 1.7.3
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -92,6 +92,7 @@ app/
     security-contract.test.js
     prototype-persistence.test.js
     replacement-persistence.test.js
+    mission-replacement-bugfix.test.js
   supabase/
     migrations/
   docs/
@@ -143,6 +144,14 @@ one-replacement limit, then replaces the definition, restores lifecycle state
 to `ready`, clears completion and terminal markers, and preserves the consumed
 replacement count. This function accepts no XP value and never updates
 progression.
+
+Sprint 7.3 corrects replacement identity and request-state handling without
+changing the Sprint 7.2 persistence boundary. Mission catalog entries are
+templates that describe what to do; each call to `generateMission()` now creates
+a separate mission instance with a browser-native UUID. The coordinator also
+rejects overlapping replacement requests, and the dashboard restores the
+replacement button's disabled and `aria-busy` states in a guaranteed cleanup
+path based on whether the latest coordinator snapshot still permits a retry.
 
 ## Authentication Boundary
 
@@ -219,6 +228,20 @@ The dashboard is the command center. It should answer one question immediately: 
 ## Mission Generation Boundary
 
 `mission-generator.js` is the single mission-generation interface. Its asynchronous `generateMission()` contract accepts onboarding answers and resolves to a stable mission object containing `id`, `focus`, `title`, `description`, `estimatedDuration`, `difficulty`, and `xpReward`.
+
+A mission template and a mission instance are distinct:
+
+- A **mission template** determines what the mission is: focus, title,
+  description, duration, difficulty, and reward.
+- A **mission instance** is one concrete issuance of that template. Its `id` is
+  the template identifier plus a UUID created with `crypto.randomUUID()` when
+  available, or `crypto.getRandomValues()` on older supported browsers.
+
+If neither cryptographic browser API exists, the generator uses a monotonic
+timestamp-and-sequence fallback for uniqueness without presenting weak random
+data as secure. Titles and focus values are never used as unique identity.
+Downstream modules continue to receive the unchanged mission definition
+contract.
 
 The dashboard renders that object but does not know how it was created. Future rule engines, APIs, or AI-generated missions must preserve this object contract so the presentation layer does not need to be rewritten.
 

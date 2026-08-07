@@ -51,6 +51,7 @@
     let currentDefinition;
     let currentLifecycle;
     let currentMissionRecorded = Boolean(restoreState?.currentMissionRecorded);
+    let replacementInProgress = false;
 
     const buildMission = async () => {
       const definition = await generateMission(onboardingAnswers);
@@ -119,6 +120,15 @@
     };
 
     const requestReplacement = async () => {
+      if (replacementInProgress) {
+        return Object.freeze({
+          accepted: false,
+          reason: "replacement-request-in-progress",
+          event: null,
+          snapshot: getSnapshot(),
+        });
+      }
+
       const lifecycle = currentLifecycle.getSnapshot();
 
       if (!TERMINAL_STATES.includes(lifecycle.state)) {
@@ -139,10 +149,29 @@
         });
       }
 
-      const previousMissionId = currentDefinition.id;
-      let replacementMission;
+      replacementInProgress = true;
       try {
-        replacementMission = await buildMission();
+        const previousMissionId = currentDefinition.id;
+        const replacementMission = await buildMission();
+        replacementsUsed += 1;
+        setCurrentMission(replacementMission);
+
+        return Object.freeze({
+          accepted: true,
+          reason: null,
+          event: Object.freeze({
+            eventType: "coordinator.mission-replaced",
+            previousMissionId,
+            missionId: currentDefinition.id,
+            timestamp: (() => {
+              const value = clock();
+              const date = value instanceof Date ? value : new Date(value);
+              return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString();
+            })(),
+            xpAwarded: 0,
+          }),
+          snapshot: getSnapshot(),
+        });
       } catch {
         return Object.freeze({
           accepted: false,
@@ -150,26 +179,9 @@
           event: null,
           snapshot: getSnapshot(),
         });
+      } finally {
+        replacementInProgress = false;
       }
-      replacementsUsed += 1;
-      setCurrentMission(replacementMission);
-
-      return Object.freeze({
-        accepted: true,
-        reason: null,
-        event: Object.freeze({
-          eventType: "coordinator.mission-replaced",
-          previousMissionId,
-          missionId: currentDefinition.id,
-          timestamp: (() => {
-            const value = clock();
-            const date = value instanceof Date ? value : new Date(value);
-            return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString();
-          })(),
-          xpAwarded: 0,
-        }),
-        snapshot: getSnapshot(),
-      });
     };
 
     if (restoreState?.currentMission?.definition) {

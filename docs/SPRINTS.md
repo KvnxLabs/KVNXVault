@@ -146,6 +146,20 @@ Result: The real integration bugs that reset progression to 75 XP and left the r
 
 Notes: This is not Sprint 8. The browser still originates the prototype lifecycle event and mission definition, so the adapter is not an authoritative anti-cheat boundary. Sprint 8 remains responsible for trusted action validation, authoritative daily identity, reward selection, audit history, and conflict handling behind `requestMissionAction()`.
 
+## Sprint 7.3
+
+Status: ✅ Complete
+
+Goal: Correct unique mission-instance identity and replacement request recovery without starting Sprint 8 or weakening the Sprint 7.1/7.2 boundaries.
+
+Completed: Separated mission templates from mission-instance identity, assigned a browser-native UUID to every generated mission instance, added a non-random monotonic fallback for environments without Web Crypto, rejected overlapping coordinator replacement requests, and moved replacement-button disabled and `aria-busy` cleanup into a guaranteed finalization path.
+
+Definition of Done: Repeated generation for the same programming focus produces distinct IDs while preserving the mission definition contract. The validated 75 → 100 → replacement → 125 sequence persists and restores across refresh and later login. Failed retryable requests restore the button, concurrent requests cannot create duplicate replacements, and the one-replacement limit remains enforced. All prior security and regression tests remain passing.
+
+Result: Replacement persistence now receives a genuinely new mission-instance ID, so the existing Sprint 7.2 RPC can validate and save mission B without weakening its mission-mismatch check. UI request state recovers reliably, and both the interface and coordinator prevent overlapping replacements.
+
+Notes: This is not Sprint 8. No authentication, RLS, direct-write privilege, XP authority, repository contract, or database function changed. The existing Sprint 7.2 migrations remain sufficient.
+
 ## Sprint 8
 
 Status: ⏳ Planned

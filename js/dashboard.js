@@ -1,6 +1,57 @@
 "use strict";
 
-document.addEventListener("DOMContentLoaded", async () => {
+const KVNXReplacementRequestController = (() => {
+  const create = ({ button, request, onAccepted, onRejected, onError, canRetry }) => {
+    if (!button || typeof request !== "function" || typeof canRetry !== "function") {
+      throw new TypeError("A replacement button, request, and retry check are required.");
+    }
+
+    let inFlight = false;
+
+    const run = async () => {
+      if (inFlight) {
+        return Object.freeze({ accepted: false, reason: "replacement-request-in-progress" });
+      }
+
+      inFlight = true;
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      let result;
+      let requestError;
+
+      try {
+        result = await request();
+        if (result?.accepted) await onAccepted?.(result);
+        else await onRejected?.(result);
+        return result;
+      } catch (error) {
+        requestError = error;
+        await onError?.(error);
+        return Object.freeze({ accepted: false, reason: "replacement-request-failed" });
+      } finally {
+        inFlight = false;
+        button.setAttribute("aria-busy", "false");
+        button.disabled = !canRetry({ result, error: requestError });
+      }
+    };
+
+    return Object.freeze({
+      isInFlight: () => inFlight,
+      run,
+    });
+  };
+
+  return Object.freeze({ create });
+})();
+
+if (typeof module === "object" && module.exports) {
+  module.exports = KVNXReplacementRequestController;
+}
+if (typeof window !== "undefined") {
+  window.KVNXReplacementRequestController = KVNXReplacementRequestController;
+}
+
+if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", async () => {
   const protectedContext = await window.KVNXProtectedPage?.ready;
   if (!protectedContext) return;
 
@@ -303,39 +354,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   completeMissionButton?.addEventListener("click", completeFirstMission);
 
-  requestMissionButton?.addEventListener("click", async () => {
-    requestMissionButton.disabled = true;
-    let result;
-    try {
-      result = await vaultApplication.requestReplacement();
-    } catch (error) {
-      showPersistenceFailure(error);
-      return;
-    }
-    if (!result.accepted) {
-      requestMissionButton.disabled = false;
-      return;
-    }
+  if (requestMissionButton) {
+    const replacementRequest = KVNXReplacementRequestController.create({
+      button: requestMissionButton,
+      request: () => vaultApplication.requestReplacement(),
+      onAccepted: (result) => {
+        if (missionSuccess) {
+          missionSuccess.hidden = true;
+          missionSuccess.classList.remove("is-visible");
+        }
+        if (missionOutcome) missionOutcome.hidden = true;
+        if (levelUpNotice) {
+          levelUpNotice.hidden = true;
+          levelUpNotice.classList.remove("is-visible");
+        }
+        if (startMissionButton) startMissionButton.disabled = false;
+        if (completeMissionButton) completeMissionButton.disabled = false;
+        if (skipMissionButton) skipMissionButton.disabled = false;
+        renderCoordinator(result.snapshot.coordinator);
 
-    if (missionSuccess) {
-      missionSuccess.hidden = true;
-      missionSuccess.classList.remove("is-visible");
-    }
-    if (missionOutcome) missionOutcome.hidden = true;
-    if (levelUpNotice) {
-      levelUpNotice.hidden = true;
-      levelUpNotice.classList.remove("is-visible");
-    }
-    if (startMissionButton) startMissionButton.disabled = false;
-    if (completeMissionButton) completeMissionButton.disabled = false;
-    if (skipMissionButton) skipMissionButton.disabled = false;
-    requestMissionButton.disabled = false;
-    renderCoordinator(result.snapshot.coordinator);
+        const summaryGoal = document.querySelector("[data-summary-goal]");
+        if (summaryGoal) summaryGoal.textContent = result.snapshot.coordinator.currentMission.definition.title;
+        startMissionButton?.focus();
+      },
+      onError: showPersistenceFailure,
+      canRetry: ({ result }) => {
+        const latest = result?.snapshot || vaultApplication.getSnapshot();
+        return latest?.persistenceBlocked !== true
+          && latest?.coordinator?.dailyStatus?.canRequestReplacement === true;
+      },
+    });
 
-    const summaryGoal = document.querySelector("[data-summary-goal]");
-    if (summaryGoal) summaryGoal.textContent = result.snapshot.coordinator.currentMission.definition.title;
-    startMissionButton?.focus();
-  });
+    requestMissionButton.addEventListener("click", () => replacementRequest.run());
+  }
 
   logoutButton?.addEventListener("click", async () => {
     logoutButton.disabled = true;

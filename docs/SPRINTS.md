@@ -268,3 +268,40 @@ mission authority. Authentication, RLS, XP, mission limits, replacement rules,
 server mission generation, and action validation remain unchanged. Run
 `202608070007_sprint9_2_daily_reset_countdown.sql` after migration 006 before
 testing the deployed client.
+
+## Sprint 10 — Skill Progression System
+
+Status: ✅ Complete
+
+Goal: Make every accepted mission completion contribute permanently to one
+server-authoritative area of mastery while preserving overall account XP.
+
+Completed: Added a fixed twelve-skill server catalog; user-owned
+`skill_progression` rows; RLS and direct-write revocations; server-side
+mission-to-skill mapping; `primarySkill` on authoritative mission definitions;
+canonical 15-XP skill rewards; atomic overall/skill/lifecycle/history updates;
+zero-argument skill restoration with timezone-aware daily gains; shared overall
+and skill level configurations; immutable application snapshots; real Skills
+Overview rendering; restrained dual-award completion feedback; history skill
+attribution; and focused framework-free authority, persistence, concurrency,
+security, restoration, and UI tests.
+
+Definition of Done: The browser still sends only mission id and action. One
+accepted completion awards exactly 25 overall XP and exactly 15 XP to the
+server-selected primary skill. Duplicate and concurrent completion cannot award
+either value twice. Skill totals and today's gain restore after refresh and
+later login, survive replacement and new-day mission creation, and render from
+immutable authoritative snapshots. RLS permits users to read only their own
+skill progression, and direct browser writes remain revoked.
+
+Result: KVNX Vault now distinguishes total account progression from the skills
+the user is mastering. The existing dashboard immediately reflects permanent
+skill growth without trusting browser calculations or redesigning the product.
+
+Notes: Sprint 8 mission-action validation, Sprint 9 daily authority, Sprint 9.1
+Daily Complete behavior, Sprint 9.2 countdown, authentication, one-replacement
+limit, and the 25-XP overall rule remain intact. The product has no separate
+Skills page yet, so Sprint 10 populates the existing dashboard Skills card and
+does not invent a route. No live Supabase connection is claimed. Run
+`202608070008_sprint10_skill_progression.sql` after migration 007 before testing
+the deployed client.

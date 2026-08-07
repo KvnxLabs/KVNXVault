@@ -1,8 +1,9 @@
 "use strict";
 
-// Central progression engine. Level balancing lives only in this configuration.
+// Central progression engine. Overall and skill balancing live only in these
+// configurations; callers provide totals but never duplicate level math.
 window.KVNXProgression = (() => {
-  const LEVEL_THRESHOLDS = Object.freeze([
+  const OVERALL_LEVEL_THRESHOLDS = Object.freeze([
     { level: 1, totalXP: 0 },
     { level: 2, totalXP: 100 },
     { level: 3, totalXP: 250 },
@@ -10,25 +11,43 @@ window.KVNXProgression = (() => {
     { level: 5, totalXP: 700 },
   ]);
 
+  const SKILL_LEVEL_THRESHOLDS = Object.freeze([
+    { level: 1, totalXP: 0 },
+    { level: 2, totalXP: 100 },
+    { level: 3, totalXP: 250 },
+    { level: 4, totalXP: 450 },
+    { level: 5, totalXP: 700 },
+  ]);
+
+  const PROGRESSION_CONFIGS = Object.freeze({
+    overall: OVERALL_LEVEL_THRESHOLDS,
+    skill: SKILL_LEVEL_THRESHOLDS,
+  });
+
   const normalizeXP = (value) => {
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? Math.max(0, Math.floor(numericValue)) : 0;
   };
 
+  const getThresholds = (progression) => PROGRESSION_CONFIGS[progression?.configuration]
+    || PROGRESSION_CONFIGS.overall;
+
   const getCurrentLevel = (progression) => {
     const totalXP = normalizeXP(progression?.totalXP);
-    return LEVEL_THRESHOLDS.reduce(
+    const thresholds = getThresholds(progression);
+    return thresholds.reduce(
       (currentLevel, threshold) => totalXP >= threshold.totalXP ? threshold.level : currentLevel,
-      LEVEL_THRESHOLDS[0].level,
+      thresholds[0].level,
     );
   };
 
   const getCurrentXP = (progression) => normalizeXP(progression?.totalXP);
 
-  const getLevelThreshold = (level) => LEVEL_THRESHOLDS.find((item) => item.level === level) || null;
+  const getLevelThreshold = (progression, level) => getThresholds(progression)
+    .find((item) => item.level === level) || null;
 
   const getXPForNextLevel = (progression) => {
-    const nextThreshold = getLevelThreshold(getCurrentLevel(progression) + 1);
+    const nextThreshold = getLevelThreshold(progression, getCurrentLevel(progression) + 1);
     return nextThreshold ? nextThreshold.totalXP : null;
   };
 
@@ -36,7 +55,7 @@ window.KVNXProgression = (() => {
 
   const getProgressPercentage = (progression) => {
     const currentLevel = getCurrentLevel(progression);
-    const currentThreshold = getLevelThreshold(currentLevel);
+    const currentThreshold = getLevelThreshold(progression, currentLevel);
     const nextLevelXP = getXPForNextLevel(progression);
 
     if (!currentThreshold || nextLevelXP === null) return 100;
@@ -49,12 +68,13 @@ window.KVNXProgression = (() => {
   const getSnapshot = (progression) => {
     const totalXP = getCurrentXP(progression);
     const currentLevel = getCurrentLevel(progression);
-    const currentThreshold = getLevelThreshold(currentLevel);
+    const currentThreshold = getLevelThreshold(progression, currentLevel);
     const nextLevelXP = getXPForNextLevel(progression);
 
     return Object.freeze({
       currentLevel,
       currentXP: totalXP,
+      configuration: progression?.configuration || "overall",
       currentLevelXP: totalXP - currentThreshold.totalXP,
       nextLevel: nextLevelXP === null ? null : currentLevel + 1,
       xpForNextLevel: nextLevelXP,
@@ -64,13 +84,17 @@ window.KVNXProgression = (() => {
     });
   };
 
-  const createProgression = (initialXP = 0) => Object.freeze({
+  const createProgression = (initialXP = 0, configuration = "overall") => Object.freeze({
     totalXP: normalizeXP(initialXP),
+    configuration: Object.hasOwn(PROGRESSION_CONFIGS, configuration) ? configuration : "overall",
   });
 
   const addXP = (progression, amount) => {
     const previousSnapshot = getSnapshot(progression);
-    const nextProgression = createProgression(getCurrentXP(progression) + normalizeXP(amount));
+    const nextProgression = createProgression(
+      getCurrentXP(progression) + normalizeXP(amount),
+      progression?.configuration || "overall",
+    );
     const snapshot = getSnapshot(nextProgression);
 
     return Object.freeze({
@@ -83,6 +107,7 @@ window.KVNXProgression = (() => {
   };
 
   return Object.freeze({
+    PROGRESSION_CONFIGS,
     createProgression,
     addXP,
     getCurrentLevel,

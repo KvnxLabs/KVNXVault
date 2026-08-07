@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.9.2
+Version: 2.0
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -93,6 +93,7 @@ app/
     prototype-persistence.test.js
     replacement-persistence.test.js
     mission-replacement-bugfix.test.js
+    skill-progression.test.js
   supabase/
     migrations/
   docs/
@@ -170,6 +171,14 @@ a mission template from saved onboarding, creates a server UUID instance,
 persists at most one row for `(user_id, daily_key)`, and returns the exact saved
 mission. The coordinator remains the local render/lifecycle model but no longer
 decides whether today's mission exists.
+
+Sprint 10 adds a second, server-authoritative progression axis without changing
+overall XP. Every authoritative mission definition now carries a
+server-selected `primarySkill`. On an accepted completion, PostgreSQL awards
+the existing 25 overall XP plus 15 XP to that one skill in the same transaction.
+The browser submits neither value, skill identity, nor level. Skill totals are
+restored through a zero-argument repository read and converted into immutable
+display snapshots by the shared progression engine.
 
 ## Authentication Boundary
 
@@ -252,10 +261,51 @@ and returns `already-completed` with zero XP. Refresh, later login, multiple
 tabs, and multiple devices all converge on the same stored result.
 
 The response contract contains `accepted`, `reason`, a server event, the current
-mission definition/lifecycle, authoritative `totalXP`, daily replacement status,
-and the server-created history record when applicable. `progression.js` receives
-the returned total only to derive levels, thresholds, remaining XP, and display
-percentage; it does not authorize or persist an award.
+mission definition/lifecycle, authoritative overall progression, the updated
+skill when completion succeeds, daily replacement status, and the server-created
+history record when applicable. `progression.js` receives returned totals only
+to derive levels, thresholds, remaining XP, and display percentage; it does not
+authorize or persist either award.
+
+## Server-Authoritative Skill Progression
+
+```text
+Mission intent
+  → mission/day lock
+  → overall progression lock
+  → primary-skill row lock
+  → validate lifecycle + canonical rewards
+  → +25 overall XP +15 skill XP + terminal history
+  → one atomic commit
+  → immutable overall and skill snapshots
+  → dashboard rendering
+```
+
+`skill_catalog` is the fixed Sprint 10 catalog. `skill_progression` stores one
+row per `(user_id, skill_key)` and creates that row lazily on the first accepted
+mission completion for the skill. Direct browser writes are revoked and RLS
+restricts reads to `auth.uid()`. `mission_history` records `skill_key` and
+`skill_xp_awarded`, allowing today's gain to restore after replacement, refresh,
+or a later login.
+
+The mission-to-skill mapping is server data/rules, not client inference:
+
+| Mission focus | Primary skill |
+|---|---|
+| Programming | Front-End Engineering |
+| Business / Finance | Business |
+| Fitness / Health | Fitness |
+| Reading | Reading |
+| Learning | Learning |
+| Career | Leadership |
+| Creativity | Product Design |
+| Relationships | Communication |
+| Mindset | Discipline |
+| Any future/unmapped focus | Problem Solving |
+
+Back-End Engineering and Writing are included in the catalog for future mission
+templates. Adding a skill requires a catalog row and mapping rule; it does not
+require a new per-user table or dashboard contract.
 
 ## Database Ownership Boundary
 
@@ -275,6 +325,20 @@ Onboarding learns direction, not personality. Each screen asks one clear questio
 ## Dashboard Philosophy
 
 The dashboard is the command center. It should answer one question immediately: “What should I do next?” Everything unnecessary should be removed.
+
+### Sprint 10 Skills presentation
+
+The existing Skills Overview card renders the restored authoritative skill
+list. Each item shows name, level, progress bar, total XP, and server-derived
+today gain. Empty accounts receive a neutral first-mission prompt instead of
+placeholder mastery. The product does not yet contain a `skills.html` route, so
+Sprint 10 does not invent or redesign a separate Skills page.
+
+An accepted completion briefly shows the authoritative overall and skill awards
+in a restrained status notice. The notice performs no arithmetic, does not
+persist state, and respects the existing reduced-motion rule. Refresh and login
+rebuild the card from PostgreSQL, while replacement and new-day mission creation
+leave lifetime skill totals unchanged.
 
 ### Sprint 9.1 Daily Complete presentation
 
@@ -389,7 +453,7 @@ Every accepted terminal event creates one immutable in-memory history record:
 }
 ```
 
-The history contract uses `terminalAt` for completed, skipped, and expired missions so consumers do not need state-specific timestamp fields. History has no page in Sprint 6 and is not persisted.
+The history contract uses `terminalAt` for completed, skipped, and expired missions so consumers do not need state-specific timestamp fields. History is durable and now also records skill attribution, but it still has no user-facing page.
 
 ## Future Persistence, Scheduling, and Recurrence Boundaries
 
@@ -410,9 +474,18 @@ Recurring missions may later extend definitions with backward-compatible metadat
 
 ## Progression Boundary
 
-`progression.js` is the central progression engine. A validated mission-completion event supplies an XP reward, the progression engine applies that reward, and the dashboard renders the returned immutable snapshot. The dashboard must never calculate levels, XP requirements, percentages, or remaining XP.
+`progression.js` is the central derivation engine for both overall and skill
+progression. PostgreSQL applies the authoritative rewards; the engine receives
+stored totals and derives immutable level snapshots for rendering. Historical
+prototype tests still exercise `addXP`, but production code never uses it to
+authorize or persist an award. The dashboard must never calculate levels, XP
+requirements, percentages, or remaining XP.
 
-The progression snapshot contains `currentLevel`, `currentXP`, `currentLevelXP`, `nextLevel`, `xpForNextLevel`, `xpRemaining`, `progressPercentage`, and `isMaxLevel`. Future achievements, skill progression, persistent storage, or AI recommendations should consume progression events or snapshots rather than duplicating this math.
+The progression snapshot contains `configuration`, `currentLevel`, `currentXP`,
+`currentLevelXP`, `nextLevel`, `xpForNextLevel`, `xpRemaining`,
+`progressPercentage`, and `isMaxLevel`. Future achievements or AI
+recommendations should consume authoritative totals and these snapshots rather
+than duplicating this math.
 
 ## Future Reusable Components
 

@@ -118,15 +118,42 @@ const KVNXDailyCompleteExperience = (() => {
   return Object.freeze({ FALLBACK_LABEL, createCountdown, createViewModel, getResetDisplay });
 })();
 
+const KVNXSkillsExperience = (() => {
+  const getInitials = (name) => String(name || "")
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "SK";
+
+  const createViewModel = (skills = []) => Object.freeze(
+    (Array.isArray(skills) ? skills : []).map((skill) => Object.freeze({
+      key: skill.key,
+      name: skill.name,
+      initials: getInitials(skill.name),
+      levelLabel: `L${String(skill.level).padStart(2, "0")}`,
+      levelText: `Level ${skill.level}`,
+      totalXPLabel: `${Number(skill.totalXP).toLocaleString("en-US")} XP`,
+      todayGainLabel: `Today +${Number(skill.todayGain || 0).toLocaleString("en-US")}`,
+      progressPercentage: Math.min(100, Math.max(0, Number(skill.progressPercentage) || 0)),
+    })),
+  );
+
+  return Object.freeze({ createViewModel });
+})();
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     ...KVNXReplacementRequestController,
     dailyComplete: KVNXDailyCompleteExperience,
+    skills: KVNXSkillsExperience,
   });
 }
 if (typeof window !== "undefined") {
   window.KVNXReplacementRequestController = KVNXReplacementRequestController;
   window.KVNXDailyCompleteExperience = KVNXDailyCompleteExperience;
+  window.KVNXSkillsExperience = KVNXSkillsExperience;
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", async () => {
@@ -253,13 +280,20 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const progressionLevel = document.querySelector("[data-progression-level]");
   const progressionCurrentLevel = document.querySelector("[data-progression-current-level]");
   const progressionNextLevel = document.querySelector("[data-progression-next-level]");
+  const skillList = document.querySelector("[data-skill-list]");
+  const skillsCount = document.querySelector("[data-skills-count]");
+  const skillsEmpty = document.querySelector("[data-skills-empty]");
   const levelUpNotice = document.querySelector("[data-level-up]");
   const levelUpValue = document.querySelector("[data-level-up-value]");
+  const progressAward = document.querySelector("[data-progress-award]");
+  const progressAwardOverall = document.querySelector("[data-progress-award-overall]");
+  const progressAwardSkill = document.querySelector("[data-progress-award-skill]");
   const logoutButton = document.querySelector("[data-logout]");
   let progressionSnapshot = applicationSnapshot.progression;
   let nextResetAt = applicationSnapshot.nextResetAt;
   let countdownResetAt = null;
   let countdownController = null;
+  let progressAwardTimer = null;
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -325,6 +359,70 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
 
     renderDailyComplete(coordinatorSnapshot, snapshot);
+  };
+
+  // Skill totals and derived level snapshots arrive through the application
+  // service. This renderer only formats the immutable authoritative data.
+  const renderSkills = (skills) => {
+    if (!skillList) return;
+    const viewModel = KVNXSkillsExperience.createViewModel(skills);
+    skillList.replaceChildren();
+    if (skillsCount) skillsCount.textContent = `${viewModel.length} active`;
+    if (skillsEmpty) skillsEmpty.hidden = viewModel.length > 0;
+
+    viewModel.slice(0, 3).forEach((skill) => {
+      const item = document.createElement("li");
+      item.className = "skill-item";
+
+      const icon = document.createElement("span");
+      icon.className = "skill-item__icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = skill.initials;
+
+      const copy = document.createElement("span");
+      copy.className = "skill-item__copy";
+      const name = document.createElement("strong");
+      name.textContent = skill.name;
+      const details = document.createElement("span");
+      details.textContent = `${skill.totalXPLabel} · ${skill.todayGainLabel}`;
+      const progress = document.createElement("span");
+      progress.className = "skill-item__progress";
+      progress.setAttribute("role", "progressbar");
+      progress.setAttribute("aria-label", `${skill.name}, ${skill.levelText}, ${skill.progressPercentage}% toward the next level`);
+      progress.setAttribute("aria-valuemin", "0");
+      progress.setAttribute("aria-valuemax", "100");
+      progress.setAttribute("aria-valuenow", String(skill.progressPercentage));
+      const fill = document.createElement("i");
+      fill.style.width = `${skill.progressPercentage}%`;
+      progress.append(fill);
+      copy.append(name, details, progress);
+
+      const level = document.createElement("span");
+      level.className = "skill-item__level";
+      level.textContent = skill.levelLabel;
+      level.setAttribute("aria-label", skill.levelText);
+      item.append(icon, copy, level);
+      skillList.append(item);
+    });
+  };
+
+  const showProgressAward = (result) => {
+    const updatedSkill = result?.updatedSkill;
+    const overallAward = Number(result?.event?.xpAwarded);
+    const skillAward = Number(result?.event?.skillXPAwarded);
+    if (!progressAward || !updatedSkill?.name
+      || !(overallAward > 0) || !(skillAward > 0)) return;
+
+    if (progressAwardOverall) progressAwardOverall.textContent = `+${overallAward} XP`;
+    if (progressAwardSkill) progressAwardSkill.textContent = `+${skillAward} ${updatedSkill.name}`;
+    if (progressAwardTimer !== null) window.clearTimeout(progressAwardTimer);
+    progressAward.hidden = false;
+    window.requestAnimationFrame(() => progressAward.classList.add("is-visible"));
+    progressAwardTimer = window.setTimeout(() => {
+      progressAward.classList.remove("is-visible");
+      progressAward.hidden = true;
+      progressAwardTimer = null;
+    }, 3200);
   };
 
   const missionStateLabels = {
@@ -451,6 +549,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
   renderCoordinator(coordinatorSnapshot);
   renderProgression(applicationSnapshot.progression);
+  renderSkills(applicationSnapshot.skills);
 
   startMissionButton?.addEventListener("click", async () => {
     try {
@@ -486,6 +585,8 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     if (!applicationResult.accepted) {
       renderCoordinator(applicationResult.snapshot.coordinator);
       renderProgression(applicationResult.snapshot.progression);
+      renderSkills(applicationResult.snapshot.skills);
+      showProgressAward(applicationResult);
       return;
     }
 

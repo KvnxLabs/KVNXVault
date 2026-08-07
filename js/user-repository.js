@@ -38,14 +38,29 @@
         definition: { ...(result.mission.definition || {}) },
         lifecycle: { ...(result.mission.lifecycle || {}) },
       } : null,
-      progression: result.progression ? {
-        totalXP: Number(result.progression.totalXP),
+      progression: (result.overallProgression || result.progression) ? {
+        totalXP: Number((result.overallProgression || result.progression).totalXP),
+      } : null,
+      overallProgression: (result.overallProgression || result.progression) ? {
+        totalXP: Number((result.overallProgression || result.progression).totalXP),
+      } : null,
+      updatedSkill: result.updatedSkill ? {
+        key: String(result.updatedSkill.key || ""),
+        name: String(result.updatedSkill.name || ""),
+        totalXP: Number(result.updatedSkill.totalXP),
+        todayGain: Number(result.updatedSkill.todayGain || 0),
       } : null,
       dailyStatus: result.dailyStatus ? { ...result.dailyStatus } : null,
       historyRecord: result.historyRecord ? { ...result.historyRecord } : null,
     };
 
     if (mapped.progression && !Number.isInteger(mapped.progression.totalXP)) {
+      throw createRepositoryError("mission-action-response-invalid");
+    }
+    if (mapped.updatedSkill && (!mapped.updatedSkill.key
+      || !mapped.updatedSkill.name
+      || !Number.isInteger(mapped.updatedSkill.totalXP)
+      || !Number.isInteger(mapped.updatedSkill.todayGain))) {
       throw createRepositoryError("mission-action-response-invalid");
     }
 
@@ -143,7 +158,16 @@
       focus: row.focus,
       finalState: row.final_state,
       xpAwarded: row.xp_awarded,
+      skillKey: row.skill_key || null,
+      skillXPAwarded: Number(row.skill_xp_awarded || 0),
       terminalAt: row.terminal_at,
+    });
+
+    const mapSkill = (skill) => Object.freeze({
+      key: String(skill?.key || ""),
+      name: String(skill?.name || ""),
+      totalXP: Number(skill?.totalXP),
+      todayGain: Number(skill?.todayGain || 0),
     });
 
     const loadProfile = async () => {
@@ -207,6 +231,26 @@
       return row ? Object.freeze({ totalXP: row.total_xp }) : null;
     };
 
+    // Sprint 10 restoration is a zero-argument read. PostgreSQL derives the
+    // authenticated owner and today's timezone-aware boundary.
+    const getSkillProgression = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_skill_progression"),
+        "skill-progression-load-failed",
+      );
+      if (!Array.isArray(result)) {
+        throw createRepositoryError("skill-progression-response-invalid");
+      }
+      const skills = result.map(mapSkill);
+      if (skills.some((skill) => !skill.key || !skill.name
+        || !Number.isInteger(skill.totalXP) || skill.totalXP < 0
+        || !Number.isInteger(skill.todayGain) || skill.todayGain < 0)) {
+        throw createRepositoryError("skill-progression-response-invalid");
+      }
+      return Object.freeze(skills);
+    };
+
     const loadDailyMissionState = async (dailySessionId) => {
       const user = await getAuthenticatedUser();
       const row = await unwrap(
@@ -222,7 +266,7 @@
     const loadMissionHistory = async (limit = 100) => {
       const user = await getAuthenticatedUser();
       const rows = await unwrap(
-        database.from("mission_history").select("mission_id, title, focus, final_state, xp_awarded, terminal_at")
+        database.from("mission_history").select("mission_id, title, focus, final_state, xp_awarded, skill_key, skill_xp_awarded, terminal_at")
           .eq("user_id", user.id)
           .order("terminal_at", { ascending: false })
           .limit(Math.min(100, Math.max(1, Number(limit) || 100))),
@@ -369,6 +413,7 @@
     };
 
     return Object.freeze({
+      getSkillProgression,
       initializeVaultSession,
       loadDailyMissionState,
       loadMissionHistory,

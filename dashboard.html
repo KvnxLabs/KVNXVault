@@ -206,13 +206,10 @@
             <section class="dashboard-card dashboard-card--skills app-card" aria-labelledby="skills-card-title">
               <div class="dashboard-card__header">
                 <h2 class="dashboard-card__title" id="skills-card-title">Skills Overview</h2>
-                <span class="dashboard-card__meta">3 active</span>
+                <span class="dashboard-card__meta" data-skills-count>0 active</span>
               </div>
-              <ul class="skill-list">
-                <li class="skill-item"><span class="skill-item__icon" aria-hidden="true">FE</span><span class="skill-item__copy"><strong>Front-End Engineering</strong><span>Consistent progress this week</span></span><span class="skill-item__level">L07</span></li>
-                <li class="skill-item"><span class="skill-item__icon" aria-hidden="true">PD</span><span class="skill-item__copy"><strong>Product Design</strong><span>Next review in 2 days</span></span><span class="skill-item__level">L05</span></li>
-                <li class="skill-item"><span class="skill-item__icon" aria-hidden="true">LS</span><span class="skill-item__copy"><strong>Leadership</strong><span>Foundation stage</span></span><span class="skill-item__level">L03</span></li>
-              </ul>
+              <ul class="skill-list" data-skill-list aria-live="polite"></ul>
+              <p class="skill-list__empty" data-skills-empty>Complete a mission to begin building mastery.</p>
             </section>
 
             <section class="dashboard-card dashboard-card--activity app-card" aria-labelledby="activity-card-title">
@@ -248,6 +245,13 @@
       <p>Level up</p>
       <strong>Welcome to Level <span data-level-up-value>2</span></strong>
       <span>Keep building.</span>
+    </aside>
+
+    <aside class="progress-award" data-progress-award hidden role="status" aria-live="polite" aria-atomic="true">
+      <p>Mission complete</p>
+      <strong data-progress-award-overall>+25 XP</strong>
+      <span class="progress-award__divider" aria-hidden="true">−</span>
+      <strong data-progress-award-skill>+15 Skill XP</strong>
     </aside>
   </body>
 </html>

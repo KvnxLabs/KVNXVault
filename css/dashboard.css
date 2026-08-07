@@ -610,6 +610,40 @@
   font-size: 0.65rem;
 }
 
+/* Sprint 10: real skill snapshots inside the existing Skills card. */
+.skill-list__empty {
+  margin: 16px 0 2px;
+  color: var(--app-subtle);
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+
+.skill-list__empty[hidden] {
+  display: none;
+}
+
+.skill-item {
+  min-height: 76px;
+}
+
+.skill-item__progress {
+  height: 3px;
+  max-width: 240px;
+  margin-top: 8px !important;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #29292c;
+}
+
+.skill-item__progress i {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--app-red);
+  box-shadow: 0 0 8px rgba(221, 32, 56, 0.58);
+  transition: width 700ms var(--app-ease);
+}
+
 .activity-item__time {
   flex: 0 0 auto;
   color: #64615f;
@@ -1060,6 +1094,54 @@
   content: "";
 }
 
+/* Sprint 10 completion feedback: restrained and independent of layout. */
+.progress-award {
+  width: min(360px, calc(100vw - 32px));
+  position: fixed;
+  z-index: 119;
+  left: calc(var(--sidebar-width) + 24px);
+  bottom: 24px;
+  padding: 18px 20px;
+  border: 1px solid rgba(79, 201, 138, 0.26);
+  border-radius: var(--app-radius-md);
+  background: rgba(13, 13, 15, 0.96);
+  box-shadow: var(--app-shadow), 0 0 36px rgba(79, 201, 138, 0.055);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 320ms ease, transform 320ms var(--app-ease);
+}
+
+.progress-award[hidden] {
+  display: none;
+}
+
+.progress-award.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.progress-award p {
+  margin: 0 0 10px;
+  color: var(--app-success);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.progress-award strong {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 580;
+}
+
+.progress-award__divider {
+  display: block;
+  margin: 4px 0;
+  color: var(--app-subtle);
+  font-size: 0.7rem;
+}
+
 .level-up p,
 .level-up strong,
 .level-up > span { display: block; }
@@ -1148,6 +1230,10 @@
     display: block;
   }
 
+  .progress-award {
+    left: 22px;
+  }
+
   .dashboard-card--welcome,
   .dashboard-card--xp,
   .dashboard-card--missions,
@@ -1224,6 +1310,11 @@
 
   .level-up {
     right: 16px;
+    bottom: 16px;
+  }
+
+  .progress-award {
+    left: 16px;
     bottom: 16px;
   }
 }

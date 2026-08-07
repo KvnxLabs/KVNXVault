@@ -57,6 +57,7 @@
     let profile;
     let onboarding;
     let progression;
+    let skillProgression = [];
     let coordinator;
     let missionHistory = [];
     let persistenceBlocked = false;
@@ -68,6 +69,7 @@
       profile,
       onboarding,
       progression: progressionEngine.getSnapshot(progression),
+      skills: Object.freeze([...skillProgression]),
       coordinator: coordinator.getSnapshot(),
       dailySessionId,
       nextResetAt,
@@ -103,6 +105,46 @@
       if (!duplicate) missionHistory = [...missionHistory, Object.freeze({ ...historyRecord })];
     };
 
+    const createSkillSnapshot = (skill) => {
+      const derived = progressionEngine.getSnapshot(
+        progressionEngine.createProgression(skill.totalXP, "skill"),
+      );
+      return Object.freeze({
+        key: skill.key,
+        name: skill.name,
+        totalXP: skill.totalXP,
+        todayGain: skill.todayGain || 0,
+        level: derived.currentLevel,
+        nextLevel: derived.nextLevel,
+        xpForNextLevel: derived.xpForNextLevel,
+        xpRemaining: derived.xpRemaining,
+        progressPercentage: derived.progressPercentage,
+        isMaxLevel: derived.isMaxLevel,
+      });
+    };
+
+    const restoreSkillProgression = (skills = []) => {
+      skillProgression = Object.freeze(
+        skills.map(createSkillSnapshot),
+      );
+      return skillProgression;
+    };
+
+    const reconcileUpdatedSkill = (updatedSkill) => {
+      if (!updatedSkill?.key) return null;
+      const previousSkill = skillProgression.find((skill) => skill.key === updatedSkill.key) || null;
+      const nextSkill = createSkillSnapshot(updatedSkill);
+      skillProgression = Object.freeze([
+        nextSkill,
+        ...skillProgression.filter((skill) => skill.key !== updatedSkill.key),
+      ].sort((left, right) => right.totalXP - left.totalXP || left.name.localeCompare(right.name)));
+      return Object.freeze({
+        snapshot: nextSkill,
+        previousSnapshot: previousSkill,
+        didLevelUp: Boolean(previousSkill && nextSkill.level > previousSkill.level),
+      });
+    };
+
     const reconcileAuthoritativeResult = async (result) => {
       if (!result?.mission?.definition || !result?.mission?.lifecycle
         || !result?.progression || !result?.dailyStatus) {
@@ -114,6 +156,7 @@
       progression = progressionEngine.createProgression(result.progression.totalXP);
       const snapshot = progressionEngine.getSnapshot(progression);
       appendAuthoritativeHistory(result.historyRecord);
+      const skillProgressionResult = reconcileUpdatedSkill(result.updatedSkill);
 
       terminalAt = result.mission.lifecycle.terminalAt || null;
       terminalRecorded = Boolean(result.mission.lifecycle.terminalRecorded);
@@ -137,6 +180,7 @@
         previousSnapshot,
         didLevelUp: snapshot.currentLevel > previousSnapshot.currentLevel,
         levelsGained: snapshot.currentLevel - previousSnapshot.currentLevel,
+        skillProgressionResult,
       });
     };
 
@@ -257,6 +301,7 @@
       let loadedProgression;
       let loadedDailyMission;
       let loadedHistory;
+      let loadedSkills = [];
 
       if (hasAuthoritativeDailyMission) {
         [loadedProfile, loadedOnboarding] = await Promise.all([
@@ -277,15 +322,19 @@
           throw error;
         }
 
-        const [progressionResult, historyResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult] = await Promise.all([
           repository.loadProgression(),
           repository.loadMissionHistory(),
+          typeof repository.getSkillProgression === "function"
+            ? repository.getSkillProgression()
+            : Promise.resolve([]),
         ]);
 
         dailySessionId = dailyResult.dailyKey;
         nextResetAt = dailyResult.nextResetAt;
         loadedProgression = progressionResult;
         loadedHistory = historyResult;
+        loadedSkills = skillResult;
         loadedDailyMission = {
           dailySessionId: dailyResult.dailyKey,
           definition: dailyResult.mission.definition,
@@ -329,6 +378,7 @@
       }
 
       missionHistory = Array.isArray(loadedHistory) ? [...loadedHistory] : [];
+      restoreSkillProgression(Array.isArray(loadedSkills) ? loadedSkills : []);
       progression = progressionEngine.createProgression(
         loadedProgression?.totalXP ?? DEFAULT_INITIAL_XP,
       );
@@ -391,6 +441,7 @@
         return Object.freeze({
           ...authoritativeResult,
           progressionResult,
+          skillProgressionResult: progressionResult?.skillProgressionResult || null,
           snapshot: getPublicSnapshot(),
         });
       }

@@ -1,6 +1,6 @@
 # KVNX Vault Database
 
-Version: Sprint 9.2
+Version: Sprint 10
 
 The authoritative schema and policies live in:
 
@@ -11,8 +11,9 @@ The authoritative schema and policies live in:
 - `supabase/migrations/202608070005_sprint8_server_authority.sql`
 - `supabase/migrations/202608070006_sprint9_daily_mission_authority.sql`
 - `supabase/migrations/202608070007_sprint9_2_daily_reset_countdown.sql`
+- `supabase/migrations/202608070008_sprint10_skill_progression.sql`
 
-Run all seven migrations in filename order for a new project. The Sprint 7.1
+Run all eight migrations in filename order for a new project. The Sprint 7.1
 correction secures an existing Sprint 7 database, and the Sprint 7.2 migration
 pair adds only narrow transitional completion and replacement persistence
 functions. Migration 005 revokes the prototype completion function from the
@@ -20,7 +21,9 @@ authenticated role and installs the production action authority. Migration 006
 installs server-authoritative daily identity, generation, rollover, and
 replacement selection without editing migrations 001–005. Migration 007 adds
 the server-derived next-reset response contract without editing migrations
-001–006 or changing mission authority.
+001–006 or changing mission authority. Migration 008 adds the fixed skill
+catalog, user-owned skill totals, history attribution, and atomic dual-award
+contract without editing migrations 001–007.
 
 ## Tables
 
@@ -31,6 +34,8 @@ the server-derived next-reset response contract without editing migrations
 | `progression_state` | Authoritative stored total XP | `user_id → auth.users.id` |
 | `daily_mission_state` | Per-day definition, lifecycle state, reward status, replacement count, and logical date | `(user_id, daily_key)` with `user_id → auth.users.id` |
 | `mission_history` | Terminal mission records | `user_id → auth.users.id` |
+| `skill_catalog` | Fixed skill keys, names, ordering, and activation | Server managed; authenticated read |
+| `skill_progression` | Lifetime XP per user and skill | `(user_id, skill_key)` with `user_id → auth.users.id` |
 
 Derived progression values—level, next threshold, remaining XP, and percentage—are not stored. `progression.js` recomputes them from `total_xp`, preserving one progression engine.
 
@@ -43,6 +48,7 @@ Mission definitions remain JSON because their stable domain contract already exi
 - `loadProfile()` / `saveProfile()`
 - `loadOnboarding()` / `saveOnboarding()`
 - `loadProgression()`
+- `getSkillProgression()`
 - `loadDailyMissionState()`
 - `loadMissionHistory()`
 - `requestDailyMission()`
@@ -61,6 +67,12 @@ user id, date, timezone, focus, mission content, lifecycle state, replacement
 count, reward, or XP. The older initializer and prototype replacement adapter
 remain in source only for unchanged historical tests; migration 006 revokes
 their authenticated execution.
+
+`getSkillProgression()` invokes the zero-argument
+`get_skill_progression()` RPC. PostgreSQL derives `auth.uid()`, reads the saved
+timezone for today's boundary, and returns only the caller's skill totals plus
+server-derived daily gains. The repository exposes no skill setter or write
+method.
 
 The Sprint 7.2 prototype adapter is deliberately narrower than a generic
 result-persistence method. Only the application service calls it, and only after
@@ -93,7 +105,9 @@ The repository resolves the authenticated user itself. Dashboard and domain engi
 
 ## Row Level Security
 
-RLS is enabled on all five tables. Policies are restricted to the `authenticated` Postgres role and compare each row with:
+RLS is enabled on every user-owned product table, including
+`skill_progression`. Ownership policies are restricted to the `authenticated`
+Postgres role and compare each row with:
 
 ```sql
 (select auth.uid()) = user_id
@@ -164,6 +178,56 @@ History idempotency continues to use the existing key:
 ```text
 user_id + daily_session_id + mission_id + terminal_at
 ```
+
+## Skill Progression Authority
+
+Migration 008 creates the fixed `skill_catalog` and the user-owned
+`skill_progression` table. A skill row is created only when an accepted
+completion first awards that skill. Its key is selected from the mission's
+server-built `primarySkill`; the browser never sends a skill name, key, XP,
+reward, level, percentage, or owner.
+
+The completion function preserves the established lock order and extends it:
+
+1. Current `daily_mission_state` row.
+2. User `progression_state` row.
+3. Matching `skill_progression` row.
+
+After validating the mission and canonical 25-XP overall reward, PostgreSQL
+validates `primarySkill` against the active catalog and applies the canonical
+15-XP skill reward. Overall XP, skill XP, lifecycle state, completion marker,
+and history commit or roll back together. A duplicate or concurrent completion
+observes the terminal mission and cannot reach either XP update.
+
+The action response preserves `progression` for compatibility and adds the
+clean Sprint 10 fields:
+
+```js
+{
+  overallProgression: { totalXP },
+  updatedSkill: {
+    key,
+    name,
+    totalXP,
+    todayGain
+  }
+}
+```
+
+Skill levels and progress percentages are derived presentation values. The
+shared `progression.js` engine owns separate `overall` and `skill`
+configurations, currently using the same 0 / 100 / 250 / 450 / 700 thresholds.
+Only stored totals are authoritative; the client cannot persist derived levels.
+
+`mission_history.skill_key` and `skill_xp_awarded` preserve attribution across
+replacement and future daily missions. `get_skill_progression()` uses these
+rows plus the saved timezone to return today's gain after refresh or login.
+
+Sprint 10's fixed mapping is: Programming → Front-End Engineering; Business or
+Finance → Business; Fitness or Health → Fitness; Reading → Reading; Learning →
+Learning; Career → Leadership; Creativity → Product Design; Relationships →
+Communication; Mindset → Discipline; all other focuses → Problem Solving.
+Back-End Engineering and Writing are cataloged for future templates.
 
 ## Durable Daily Identity
 
@@ -249,21 +313,23 @@ initializer and replacement adapter.
 ## Manual Live Supabase Integration Test
 
 Automated tests in this package are framework-free contract and orchestration
-tests. They do not claim a live Supabase connection. After migrations 006 and
-007 are reviewed and installed, test the real project exactly as follows.
+tests. They do not claim a live Supabase connection. After migrations 006, 007,
+and 008 are reviewed and installed, test the real project exactly as follows.
 
 ### Account A
 
 1. Sign in, load the dashboard, and record the mission id and current XP.
 2. Refresh, log out/in, and open a second tab; verify every view shows the same mission id.
-3. Complete Mission A once; verify XP increases by exactly 25.
+3. Complete Mission A once; verify overall XP increases by exactly 25 and the
+   mapped skill increases by exactly 15.
 4. Verify Mission A is `completed`, `completion_awarded` is true, and exactly
-   one matching `mission_history` row exists with 25 XP.
+   one matching `mission_history` row exists with 25 overall XP, the expected
+   skill key, and 15 skill XP.
 5. Refresh; verify XP and completed state remain.
 6. Prepare the replacement; verify Mission B is server-selected and stored as `ready`, reward 25,
    and `replacements_used = 1` without an XP change.
-7. Complete Mission B; verify XP increases by exactly 25 and one Mission B
-   history row exists.
+7. Complete Mission B; verify overall XP increases by exactly 25, the mapped
+   skill increases by exactly 15, and one Mission B history row exists.
 8. Refresh, then log out and back in; verify Mission B remains completed and the
    authoritative total remains.
 
@@ -271,8 +337,9 @@ tests. They do not claim a live Supabase connection. After migrations 006 and
 
 1. Open the same Account A mission in two tabs.
 2. Trigger Complete in both tabs as closely as possible.
-3. Verify only one response is accepted, total XP increases by 25 only once,
-   `completion_awarded` is true, and exactly one history row exists.
+3. Verify only one response is accepted, overall XP increases by 25 once, skill
+   XP increases by 15 once, `completion_awarded` is true, and exactly one
+   history row exists.
 4. Refresh both tabs and verify both converge on the same server state.
 
 ### Account B isolation

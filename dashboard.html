@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
     <script src="js/onboarding-state.js" defer></script>
+    <script src="js/mission-generator.js" defer></script>
     <script src="js/dashboard.js" defer></script>
     <title>Dashboard | KVNX Vault</title>
   </head>
@@ -123,23 +124,37 @@
                 <h2 class="dashboard-card__title" id="xp-card-title">XP Progress</h2>
                 <span class="dashboard-card__meta">Level 07</span>
               </div>
-              <div class="xp-card__value"><strong>1,240</strong><span>XP</span></div>
-              <div class="progress-bar" role="progressbar" aria-label="XP progress" aria-valuemin="0" aria-valuemax="2000" aria-valuenow="1240">
-                <span class="progress-bar__fill"></span>
+              <div class="xp-card__value"><strong data-xp-value>1,240</strong><span>XP</span></div>
+              <div class="progress-bar" role="progressbar" aria-label="XP progress" aria-valuemin="0" aria-valuemax="2000" aria-valuenow="1240" data-xp-progress>
+                <span class="progress-bar__fill" data-xp-progress-fill></span>
               </div>
-              <div class="xp-card__footer"><span>62% complete</span><span>760 to next level</span></div>
+              <div class="xp-card__footer"><span data-xp-percent>62% complete</span><span data-xp-remaining>760 to next level</span></div>
             </section>
 
-            <section class="dashboard-card dashboard-card--missions app-card" aria-labelledby="missions-card-title">
+            <section class="dashboard-card dashboard-card--missions app-card mission-card" aria-labelledby="missions-card-title" data-mission-card>
               <div class="dashboard-card__header">
-                <h2 class="dashboard-card__title" id="missions-card-title">Today's Missions</h2>
-                <span class="dashboard-card__meta">0 of 3</span>
+                <div>
+                  <p class="app-card__label">Your first mission</p>
+                  <h2 class="dashboard-card__title mission-card__title" id="missions-card-title" data-mission-title>Build focused momentum</h2>
+                </div>
+                <span class="dashboard-card__meta" data-mission-status>Ready</span>
               </div>
-              <ul class="mission-list">
-                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong data-today-goal>Plan the day with intention</strong><span data-today-goal-meta>Focus · 10 minutes</span></span><span class="mission-item__tag">Daily</span></li>
-                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Complete one focused work block</strong><span>Discipline · 45 minutes</span></span><span class="mission-item__tag">Core</span></li>
-                <li class="mission-item"><span class="mission-item__check" aria-hidden="true"></span><span class="mission-item__copy"><strong>Capture today's key lesson</strong><span>Reflection · 5 minutes</span></span><span class="mission-item__tag">Daily</span></li>
-              </ul>
+              <div class="mission-card__content">
+                <p class="mission-card__description" data-mission-description>Complete one intentional work session toward the direction you chose.</p>
+                <dl class="mission-card__details">
+                  <div><dt>Estimated time</dt><dd data-mission-duration>30 minutes</dd></div>
+                  <div><dt>Difficulty</dt><dd data-mission-difficulty>Balanced</dd></div>
+                  <div><dt>Reward</dt><dd><span data-mission-xp>25</span> XP</dd></div>
+                </dl>
+                <button class="app-button app-button--primary mission-card__complete" type="button" data-complete-mission>
+                  Complete Mission <span aria-hidden="true">✓</span>
+                </button>
+              </div>
+              <div class="mission-card__success" data-mission-success hidden role="status" aria-live="polite">
+                <span class="mission-card__success-mark" aria-hidden="true">✓</span>
+                <div><strong>Mission Complete</strong><span>First Mission Complete</span></div>
+                <b>+25 XP</b>
+              </div>
             </section>
 
             <section class="dashboard-card dashboard-card--skills app-card" aria-labelledby="skills-card-title">

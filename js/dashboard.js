@@ -1,6 +1,6 @@
 "use strict";
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const sidebar = document.querySelector("[data-sidebar]");
   const menuButton = document.querySelector("[data-sidebar-open]");
   const closeButton = document.querySelector("[data-sidebar-close]");
@@ -10,6 +10,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Personalization is session-scoped and falls back to the Sprint 1 placeholders.
   const onboardingState = window.KVNXOnboardingState?.read() || {};
+  const fallbackMission = {
+    id: "first-mission-general",
+    focus: "Personal Growth",
+    title: "Build Focused Momentum",
+    description: "Complete one intentional work session toward the direction you chose.",
+    estimatedDuration: "30 minutes",
+    difficulty: "Balanced",
+    xpReward: 25,
+  };
+  let firstMission = fallbackMission;
+
+  try {
+    firstMission = await window.KVNXMissionEngine?.generateMission(onboardingState) || fallbackMission;
+  } catch {
+    // A safe first mission keeps the dashboard useful if a future provider fails.
+  }
   const getInitials = (name) => name
     .split(/\s+/)
     .filter(Boolean)
@@ -18,30 +34,11 @@ document.addEventListener("DOMContentLoaded", () => {
     .join("")
     .toUpperCase();
 
-  const createTodayGoal = (focus, commitment) => {
-    const actionByFocus = {
-      Career: "Advance your career",
-      Business: "Build your business",
-      Programming: "Code",
-      Fitness: "Train",
-      Health: "Invest in your health",
-      Learning: "Learn",
-      Creativity: "Create",
-      Finance: "Review your finances",
-      Relationships: "Strengthen a relationship",
-      Mindset: "Practice reflection",
-    };
-    const action = actionByFocus[focus] || `Work on ${focus}`;
-    return `${action} for ${commitment}`;
-  };
-
   if (onboardingState.completed) {
     const firstName = String(onboardingState.firstName || "").trim();
     const primaryFocus = onboardingState.primaryFocus || "Your Focus";
     const commitment = onboardingState.commitment || "30 Minutes";
     const challenge = onboardingState.challenge || "Consistency";
-    const todayGoal = createTodayGoal(primaryFocus, commitment);
-
     const dashboardName = document.querySelector("[data-dashboard-name]");
     if (dashboardName) dashboardName.textContent = firstName ? `${firstName}.` : "Builder.";
 
@@ -67,11 +64,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const personalizedValues = {
       "[data-summary-focus]": primaryFocus,
-      "[data-summary-goal]": todayGoal,
+      "[data-summary-goal]": firstMission.title,
       "[data-summary-challenge]": challenge,
       "[data-summary-commitment]": commitment,
-      "[data-today-goal]": todayGoal,
-      "[data-today-goal-meta]": `${primaryFocus} · ${commitment}`,
     };
 
     Object.entries(personalizedValues).forEach(([selector, value]) => {
@@ -79,6 +74,62 @@ document.addEventListener("DOMContentLoaded", () => {
       if (element) element.textContent = value;
     });
   }
+
+  // Mission generation is separate from rendering so a future engine or AI
+  // provider can supply the same object shape without changing this interface.
+  const missionValues = {
+    "[data-mission-title]": firstMission.title,
+    "[data-mission-description]": firstMission.description,
+    "[data-mission-duration]": firstMission.estimatedDuration,
+    "[data-mission-difficulty]": firstMission.difficulty,
+    "[data-mission-xp]": firstMission.xpReward,
+  };
+
+  Object.entries(missionValues).forEach(([selector, value]) => {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = value;
+  });
+
+  const missionCard = document.querySelector("[data-mission-card]");
+  const completeMissionButton = document.querySelector("[data-complete-mission]");
+  const missionSuccess = document.querySelector("[data-mission-success]");
+  const missionStatus = document.querySelector("[data-mission-status]");
+  const xpValue = document.querySelector("[data-xp-value]");
+  const xpProgress = document.querySelector("[data-xp-progress]");
+  const xpProgressFill = document.querySelector("[data-xp-progress-fill]");
+  const xpPercent = document.querySelector("[data-xp-percent]");
+  const xpRemaining = document.querySelector("[data-xp-remaining]");
+  const initialXp = 1240;
+  const levelTargetXp = 2000;
+
+  const completeFirstMission = () => {
+    if (!missionCard || !completeMissionButton || !missionSuccess) return;
+
+    completeMissionButton.disabled = true;
+    missionCard.classList.add("is-completing");
+
+    const revealDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
+    window.setTimeout(() => {
+      const updatedXp = initialXp + firstMission.xpReward;
+      const progressPercent = (updatedXp / levelTargetXp) * 100;
+
+      missionCard.classList.remove("is-completing");
+      missionCard.classList.add("is-complete");
+      completeMissionButton.hidden = true;
+      missionSuccess.hidden = false;
+      if (missionStatus) missionStatus.textContent = "Complete";
+
+      if (xpValue) xpValue.textContent = updatedXp.toLocaleString("en-US");
+      if (xpProgress) xpProgress.setAttribute("aria-valuenow", String(updatedXp));
+      if (xpProgressFill) xpProgressFill.style.width = `${progressPercent}%`;
+      if (xpPercent) xpPercent.textContent = `${Math.round(progressPercent)}% complete`;
+      if (xpRemaining) xpRemaining.textContent = `${levelTargetXp - updatedXp} to next level`;
+
+      window.requestAnimationFrame(() => missionSuccess.classList.add("is-visible"));
+    }, revealDelay);
+  };
+
+  completeMissionButton?.addEventListener("click", completeFirstMission);
 
   // Search is visual-only until a future feature sprint supplies search logic.
   searchForm?.addEventListener("submit", (event) => event.preventDefault());

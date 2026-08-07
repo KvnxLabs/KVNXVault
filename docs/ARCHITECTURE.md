@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 1.1
+Version: 1.2
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -68,6 +68,7 @@ app/
     auth.js
     onboarding-state.js
     onboarding.js
+    mission-generator.js
     dashboard.js
     missions.js
     skills.js
@@ -88,6 +89,8 @@ Sprint 2 onboarding data is temporary and session-scoped. `onboarding-state.js` 
 
 This temporary state is not an account system and must not store email addresses, passwords, authentication tokens, or durable user records. A future backend should replace this adapter without requiring the onboarding UI to be rewritten.
 
+Sprint 3 mission completion state is intentionally page-scoped. Completing the prototype mission updates only the current dashboard document and resets on refresh. The onboarding answers remain session-scoped so the dashboard can regenerate the same personalized first mission during the current browser-tab session.
+
 ## Onboarding Philosophy
 
 Onboarding learns direction, not personality. Each screen asks one clear question, required choices are validated in context, and answers are collected only when they directly shape the first dashboard. The final Vault introduction lives within `onboarding.html` to prevent a visual flash between onboarding and the dashboard handoff.
@@ -95,6 +98,12 @@ Onboarding learns direction, not personality. Each screen asks one clear questio
 ## Dashboard Philosophy
 
 The dashboard is the command center. It should answer one question immediately: “What should I do next?” Everything unnecessary should be removed.
+
+## Mission Generation Boundary
+
+`mission-generator.js` is the single mission-generation interface. Its asynchronous `generateMission()` contract accepts onboarding answers and resolves to a stable mission object containing `id`, `focus`, `title`, `description`, `estimatedDuration`, `difficulty`, and `xpReward`.
+
+The dashboard renders that object but does not know how it was created. Future rule engines, APIs, or AI-generated missions must preserve this object contract so the presentation layer does not need to be rewritten.
 
 ## Future Reusable Components
 

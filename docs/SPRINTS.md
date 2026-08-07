@@ -50,16 +50,60 @@ Notes: Email and password values are never submitted or stored. Onboarding answe
 
 ## Sprint 3
 
+Status: ✅ Complete
+
+Goal: Build the personalized first-mission prototype.
+
+Completed: Reusable rule-based mission generator, onboarding-to-mission mapping, personalized first-mission card, accessible completion feedback, a +25 XP placeholder update, and responsive mission presentation.
+
+Definition of Done: After onboarding, the dashboard generates one mission from the user's primary focus. Completing it produces a calm success state and updates placeholder XP without durable persistence.
+
+Result: KVNX Vault can now turn a user's stated direction into one immediate action without AI, a backend, a database, or a full XP system.
+
+Notes: The mission generator and dashboard communicate through a stable mission object. Completion state is page-scoped and resets on refresh. The founder-directed mission sprint replaces the previously planned Sprint 3 authentication slot.
+
+## Sprint 4
+
+Status: ⏳ Planned
+
+Goal: Evolve the prototype into a complete mission engine.
+
+Planned: Mission definitions, reusable mission-card rendering, multiple mission states, mission lifecycle rules, scheduling, completion history, validation, and automated mission-engine tests. Persistence and account integration should be introduced only after the storage and authentication strategy is approved.
+
+## Sprint 5
+
 Status: ⏳ Planned
 
 Goal: Authentication.
 
 Planned: Authentication-provider selection, real account creation, sign-in, session handling, protected application routes, logout, recovery, accessible server errors, and migration of onboarding state into the user profile.
 
-## Sprint 4
+## Sprint 6
 
 Status: ⏳ Planned
 
 Goal: XP System.
 
 Planned: XP calculations, level system, progress bar, and statistics.
+
+## Sprint 4
+
+Status: ⏳ Planned
+
+Goal: Build the XP and level progression prototype.
+
+Planned: Reusable progression engine, XP awards, level thresholds, progress calculations, level-up state, dashboard integration, and session-only state.
+
+## Sprint 5
+
+Status: ⏳ Planned
+
+Goal: Evolve the prototype into a complete mission engine.
+
+Planned: Multiple missions, mission states, scheduling, lifecycle rules, history, validation, and generator tests.
+
+## Sprint 6
+
+Status: ⏳ Planned
+
+Goal: Authentication.

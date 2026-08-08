@@ -58,6 +58,7 @@
     let onboarding;
     let progression;
     let skillProgression = [];
+    let achievements = [];
     let coordinator;
     let missionHistory = [];
     let persistenceBlocked = false;
@@ -70,6 +71,7 @@
       onboarding,
       progression: progressionEngine.getSnapshot(progression),
       skills: Object.freeze([...skillProgression]),
+      achievements: Object.freeze([...achievements]),
       coordinator: coordinator.getSnapshot(),
       dailySessionId,
       nextResetAt,
@@ -145,6 +147,29 @@
       });
     };
 
+    const restoreAchievements = (catalog = [], unlocked = []) => {
+      const unlockedByKey = new Map(unlocked.map((achievement) => [achievement.key, achievement]));
+      achievements = Object.freeze(catalog.map((definition) => {
+        const earned = unlockedByKey.get(definition.key);
+        return Object.freeze({
+          ...definition,
+          unlocked: Boolean(earned),
+          unlockedAt: earned?.unlockedAt || null,
+        });
+      }).sort((left, right) => left.displayOrder - right.displayOrder));
+      return achievements;
+    };
+
+    const reconcileNewAchievements = (newAchievements = []) => {
+      if (!Array.isArray(newAchievements) || newAchievements.length === 0) return Object.freeze([]);
+      const byKey = new Map(newAchievements.map((achievement) => [achievement.key, achievement]));
+      achievements = Object.freeze(achievements.map((achievement) => {
+        const earned = byKey.get(achievement.key);
+        return earned ? Object.freeze({ ...achievement, ...earned, unlocked: true }) : achievement;
+      }));
+      return Object.freeze(newAchievements.map((achievement) => Object.freeze({ ...achievement })));
+    };
+
     const reconcileAuthoritativeResult = async (result) => {
       if (!result?.mission?.definition || !result?.mission?.lifecycle
         || !result?.progression || !result?.dailyStatus) {
@@ -157,6 +182,7 @@
       const snapshot = progressionEngine.getSnapshot(progression);
       appendAuthoritativeHistory(result.historyRecord);
       const skillProgressionResult = reconcileUpdatedSkill(result.updatedSkill);
+      const newAchievements = reconcileNewAchievements(result.newAchievements);
 
       terminalAt = result.mission.lifecycle.terminalAt || null;
       terminalRecorded = Boolean(result.mission.lifecycle.terminalRecorded);
@@ -181,6 +207,7 @@
         didLevelUp: snapshot.currentLevel > previousSnapshot.currentLevel,
         levelsGained: snapshot.currentLevel - previousSnapshot.currentLevel,
         skillProgressionResult,
+        newAchievements,
       });
     };
 
@@ -302,6 +329,8 @@
       let loadedDailyMission;
       let loadedHistory;
       let loadedSkills = [];
+      let loadedAchievementCatalog = [];
+      let loadedAchievements = [];
 
       if (hasAuthoritativeDailyMission) {
         [loadedProfile, loadedOnboarding] = await Promise.all([
@@ -322,11 +351,17 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, achievementCatalogResult, achievementResult] = await Promise.all([
           repository.loadProgression(),
           repository.loadMissionHistory(),
           typeof repository.getSkillProgression === "function"
             ? repository.getSkillProgression()
+            : Promise.resolve([]),
+          typeof repository.getAchievementCatalog === "function"
+            ? repository.getAchievementCatalog()
+            : Promise.resolve([]),
+          typeof repository.getUserAchievements === "function"
+            ? repository.getUserAchievements()
             : Promise.resolve([]),
         ]);
 
@@ -335,6 +370,8 @@
         loadedProgression = progressionResult;
         loadedHistory = historyResult;
         loadedSkills = skillResult;
+        loadedAchievementCatalog = achievementCatalogResult;
+        loadedAchievements = achievementResult;
         loadedDailyMission = {
           dailySessionId: dailyResult.dailyKey,
           definition: dailyResult.mission.definition,
@@ -379,6 +416,10 @@
 
       missionHistory = Array.isArray(loadedHistory) ? [...loadedHistory] : [];
       restoreSkillProgression(Array.isArray(loadedSkills) ? loadedSkills : []);
+      restoreAchievements(
+        Array.isArray(loadedAchievementCatalog) ? loadedAchievementCatalog : [],
+        Array.isArray(loadedAchievements) ? loadedAchievements : [],
+      );
       progression = progressionEngine.createProgression(
         loadedProgression?.totalXP ?? DEFAULT_INITIAL_XP,
       );

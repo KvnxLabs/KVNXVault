@@ -50,6 +50,18 @@
         totalXP: Number(result.updatedSkill.totalXP),
         todayGain: Number(result.updatedSkill.todayGain || 0),
       } : null,
+      newAchievements: Array.isArray(result.newAchievements)
+        ? result.newAchievements.map((achievement) => ({
+          key: String(achievement?.key || ""),
+          name: String(achievement?.name || ""),
+          description: String(achievement?.description || ""),
+          icon: String(achievement?.icon || ""),
+          category: String(achievement?.category || ""),
+          hidden: Boolean(achievement?.hidden),
+          displayOrder: Number(achievement?.displayOrder),
+          unlockedAt: String(achievement?.unlockedAt || ""),
+        }))
+        : [],
       dailyStatus: result.dailyStatus ? { ...result.dailyStatus } : null,
       historyRecord: result.historyRecord ? { ...result.historyRecord } : null,
     };
@@ -61,6 +73,12 @@
       || !mapped.updatedSkill.name
       || !Number.isInteger(mapped.updatedSkill.totalXP)
       || !Number.isInteger(mapped.updatedSkill.todayGain))) {
+      throw createRepositoryError("mission-action-response-invalid");
+    }
+    if (mapped.newAchievements.some((achievement) => !achievement.key
+      || !achievement.name || !achievement.description || !achievement.icon
+      || !achievement.category || !Number.isInteger(achievement.displayOrder)
+      || !Number.isFinite(Date.parse(achievement.unlockedAt)))) {
       throw createRepositoryError("mission-action-response-invalid");
     }
 
@@ -170,6 +188,18 @@
       todayGain: Number(skill?.todayGain || 0),
     });
 
+    const mapAchievement = (achievement, unlocked = false) => Object.freeze({
+      key: String(achievement?.key || ""),
+      name: String(achievement?.name || ""),
+      description: String(achievement?.description || ""),
+      icon: String(achievement?.icon || ""),
+      category: String(achievement?.category || ""),
+      hidden: Boolean(achievement?.hidden),
+      displayOrder: Number(achievement?.displayOrder),
+      unlockedAt: unlocked ? String(achievement?.unlockedAt || "") : null,
+      unlocked,
+    });
+
     const loadProfile = async () => {
       const user = await getAuthenticatedUser();
       const row = await unwrap(
@@ -249,6 +279,45 @@
         throw createRepositoryError("skill-progression-response-invalid");
       }
       return Object.freeze(skills);
+    };
+
+    // Sprint 11 restoration remains read-only. Both RPCs derive identity and
+    // ownership inside PostgreSQL and accept no browser-supplied arguments.
+    const getAchievementCatalog = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_achievement_catalog"),
+        "achievement-catalog-load-failed",
+      );
+      if (!Array.isArray(result)) {
+        throw createRepositoryError("achievement-catalog-response-invalid");
+      }
+      const achievements = result.map((achievement) => mapAchievement(achievement, false));
+      if (achievements.some((achievement) => !achievement.key
+        || !achievement.name || !achievement.description || !achievement.icon
+        || !achievement.category || !Number.isInteger(achievement.displayOrder))) {
+        throw createRepositoryError("achievement-catalog-response-invalid");
+      }
+      return Object.freeze(achievements);
+    };
+
+    const getUserAchievements = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_user_achievements"),
+        "achievements-load-failed",
+      );
+      if (!Array.isArray(result)) {
+        throw createRepositoryError("achievements-response-invalid");
+      }
+      const achievements = result.map((achievement) => mapAchievement(achievement, true));
+      if (achievements.some((achievement) => !achievement.key
+        || !achievement.name || !achievement.description || !achievement.icon
+        || !achievement.category || !Number.isInteger(achievement.displayOrder)
+        || !Number.isFinite(Date.parse(achievement.unlockedAt)))) {
+        throw createRepositoryError("achievements-response-invalid");
+      }
+      return Object.freeze(achievements);
     };
 
     const loadDailyMissionState = async (dailySessionId) => {
@@ -413,7 +482,9 @@
     };
 
     return Object.freeze({
+      getAchievementCatalog,
       getSkillProgression,
+      getUserAchievements,
       initializeVaultSession,
       loadDailyMissionState,
       loadMissionHistory,

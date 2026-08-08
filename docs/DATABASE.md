@@ -433,3 +433,61 @@ The fault was the accepted-completion dashboard redraw, not SQL persistence or
 RPC restoration. Migrations 001–009 remain unchanged and no migration 010 is
 created. A failed restoration RPC continues to surface the restrained generic
 Vault restoration error; it is never converted into an empty skill array.
+
+## Sprint 11 — Achievements & Milestones
+
+Migration `202608070011_sprint11_achievements.sql` adds two tables:
+
+- `achievement_catalog`: server-managed definitions with stable key, display
+  metadata, category, hidden flag, and display order.
+- `user_achievements`: one immutable unlock per `(user_id, achievement_key)`
+  with a database-owned `unlocked_at` timestamp.
+
+`user_achievements` has RLS enabled and an authenticated owner-read policy.
+Direct insert, update, and delete privileges are revoked. Catalog table access
+is also revoked; its presentation contract is exposed through the read-only
+RPC. The internal evaluator and both restoration functions use
+`SECURITY DEFINER` with `SET search_path = ''`; only the two zero-argument read
+RPCs are executable by `authenticated`.
+
+### RPC contracts
+
+`get_achievement_catalog()` accepts no arguments and returns catalog metadata
+in `displayOrder`. `get_user_achievements()` accepts no arguments, derives the
+owner from `auth.uid()`, and returns only that user's unlocked definitions in
+`unlockedAt DESC` order.
+
+`request_vault_mission_action(text, text)` retains its input signature. An
+accepted completion returns existing progression and skill fields plus
+`newAchievements`. Only rows inserted by the current transaction appear in
+that array, so an existing milestone cannot generate a duplicate notification.
+
+### Unlock rules
+
+- `FIRST_MISSION`: at least one authoritative completed history row.
+- `FIRST_REPLACEMENT`: the completed mission has server state
+  `replacements_used = 1`.
+- `FIRST_SKILL`: at least one positive persisted skill row.
+- `100_XP`, `250_XP`, `500_XP`, `1000_XP`: authoritative overall total meets
+  the named threshold.
+- `LEVEL_2`: overall total is at least 100 XP.
+- `LEVEL_5`: overall total is at least 700 XP, matching the shared progression
+  configuration.
+- `THREE_DAY_STREAK`, `SEVEN_DAY_STREAK`: catalog only; no unlock predicate
+  exists until authoritative consecutive-day tracking is implemented.
+
+The migration reconciles milestones supported by existing authoritative data.
+Because earlier sprints did not store exact threshold-crossing timestamps,
+historical reconciliations use the database migration time. Future unlocks use
+the accepted completion timestamp inside the transaction.
+
+### Installation
+
+If migrations 001–009 are already installed, run only:
+
+```text
+supabase/migrations/202608070011_sprint11_achievements.sql
+```
+
+There is intentionally no migration 010. For a fresh database, run migrations
+001–009 and then 011 in filename order.

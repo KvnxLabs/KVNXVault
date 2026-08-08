@@ -1142,6 +1142,161 @@
   font-size: 0.7rem;
 }
 
+/* Sprint 11 achievements reuse the existing card language and navigation. */
+.achievements-view__heading {
+  margin-bottom: 16px;
+}
+
+.dashboard__heading[hidden],
+.dashboard__grid[hidden],
+.achievements-view[hidden] {
+  display: none;
+}
+
+.achievements-view__intro {
+  max-width: 680px;
+  margin: 0 0 28px;
+  color: var(--app-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement-card {
+  min-height: 190px;
+  padding: 22px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: linear-gradient(145deg, rgba(19, 19, 22, 0.98), rgba(10, 10, 12, 0.96));
+}
+
+.achievement-card.is-unlocked {
+  border-color: rgba(79, 201, 138, 0.26);
+}
+
+.achievement-card.is-locked {
+  opacity: 0.66;
+}
+
+.achievement-card__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  margin-bottom: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: var(--app-red-bright);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.82rem;
+  font-weight: 720;
+}
+
+.achievement-card.is-unlocked .achievement-card__icon {
+  color: var(--app-success);
+  border-color: rgba(79, 201, 138, 0.22);
+}
+
+.achievement-card h2 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 1rem;
+  font-weight: 590;
+}
+
+.achievement-card p {
+  margin: 8px 0 0;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.achievement-card time,
+.achievement-card__status {
+  display: block;
+  margin-top: 18px;
+  color: var(--app-subtle);
+  font-size: 0.62rem;
+  font-weight: 680;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.achievement-unlock {
+  width: min(390px, calc(100vw - 32px));
+  position: fixed;
+  z-index: 121;
+  right: 24px;
+  bottom: 160px;
+  padding: 20px 22px;
+  border: 1px solid rgba(214, 181, 89, 0.34);
+  border-radius: var(--app-radius-md);
+  background: rgba(13, 13, 15, 0.97);
+  box-shadow: var(--app-shadow), 0 0 40px rgba(214, 181, 89, 0.07);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 320ms ease, transform 320ms var(--app-ease);
+}
+
+.achievement-unlock[hidden] { display: none; }
+
+.achievement-unlock.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.achievement-unlock > p {
+  margin: 0 0 12px;
+  color: #d6b559;
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.achievement-unlock ul {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement-unlock li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 11px;
+}
+
+.achievement-unlock li > span {
+  grid-row: span 2;
+  color: #d6b559;
+}
+
+.achievement-unlock strong,
+.achievement-unlock small {
+  display: block;
+}
+
+.achievement-unlock strong {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.achievement-unlock small {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 .level-up p,
 .level-up strong,
 .level-up > span { display: block; }
@@ -1247,6 +1402,10 @@
   .dashboard-card--skills {
     grid-column: span 6;
   }
+
+  .achievement-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 620px) {
@@ -1317,6 +1476,15 @@
     left: 16px;
     bottom: 16px;
   }
+
+  .achievement-unlock {
+    right: 16px;
+    bottom: 152px;
+  }
+
+  .achievement-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1379,5 +1547,11 @@
 
   .quick-actions {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .achievement-unlock {
+    transition: none;
   }
 }

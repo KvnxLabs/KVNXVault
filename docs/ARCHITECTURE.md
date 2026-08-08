@@ -560,3 +560,33 @@ Migrations are append-only. Migration 006 therefore remains byte-for-byte
 unchanged as historical input even though it contains the original bad
 qualification. After migration 009 is applied, the active `pg_proc`
 definitions no longer contain `public.gen_random_uuid()`.
+
+## Sprint 11 Achievement Authority
+
+Achievements are a server-owned projection of verified account history. The
+browser submits the unchanged mission intent `{ missionId, action }`. Inside
+the same locked `request_vault_mission_action(text, text)` transaction,
+PostgreSQL validates the lifecycle transition, commits canonical overall and
+skill XP, writes terminal history, evaluates milestone predicates, and inserts
+new `(user_id, achievement_key)` rows with the database timestamp. The primary
+key plus `ON CONFLICT DO NOTHING` makes lifetime unlocks idempotent under
+duplicate and concurrent requests.
+
+The client restores the fixed catalog through `get_achievement_catalog()` and
+the authenticated user's earned rows through `get_user_achievements()`. Both
+RPCs take zero arguments. The application service merges those read-only
+results into the immutable `achievements` snapshot and reconciles only the
+`newAchievements` returned by an accepted server completion. The dashboard
+formats that snapshot; it never evaluates eligibility or creates an unlock.
+
+The existing dashboard shell now exposes its previously disabled Achievements
+navigation target. Unlocked cards show authoritative metadata and timestamp.
+Visible locked cards show `Locked`; hidden locked cards conceal their name and
+description as `?????`. The completion notice renders every newly returned
+achievement, uses a polite status, dismisses automatically, and removes motion
+when reduced motion is requested.
+
+Three- and seven-day streak definitions are cataloged for future compatibility
+but have no evaluator predicates. Sprint 11 does not infer consecutive days
+from presentation clocks or fabricate a streak without a dedicated
+authoritative streak model.

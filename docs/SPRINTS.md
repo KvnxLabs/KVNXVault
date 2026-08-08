@@ -372,3 +372,36 @@ byte-for-byte unchanged, migration 009 remains compatible, and no migration
 010 is required. Sprint 8 validation, Sprint 9 daily authority, Sprint 9.1
 Daily Complete, Sprint 9.2 countdown, Sprint 10 skill rules, Sprint 10.1 UUID
 hotfix, authentication, RLS, rewards, and replacement limits are unchanged.
+
+## Sprint 11 — Achievements & Milestones
+
+Status: ✅ Complete
+
+Goal: Add permanent, server-authoritative milestones without changing the
+existing mission, XP, skill, countdown, authentication, or dashboard design
+boundaries.
+
+Completed: Added an eleven-entry achievement catalog; user-owned immutable
+unlock rows; RLS and direct-write revocations; zero-argument read RPCs; atomic
+achievement evaluation inside the active mission completion function; first
+mission, first replacement, overall-XP, overall-level, and first-skill rules;
+historical authoritative-data reconciliation; `newAchievements` in the
+completion response; immutable application snapshots; a working Achievements
+view in the existing dashboard shell; hidden and visible locked states; an
+accessible multi-unlock notification; and focused authority, idempotency,
+restoration, UI, security, and regression tests.
+
+Definition of Done: The browser still sends only mission id and action. The
+server alone selects eligibility, ownership, and unlock timestamp. Achievement
+insertion commits with lifecycle, history, 25 overall XP, and 15 mapped skill
+XP. Duplicate/concurrent requests cannot duplicate an unlock. Earned milestones
+restore after refresh and logout/login and display with no fake data.
+
+Result: Verified personal progress now produces a durable achievement record
+without giving the browser milestone authority or redesigning unrelated areas.
+
+Notes: Streak definitions are intentionally dormant because Sprint 11 has no
+authoritative consecutive-day model. Migration 011 follows migration 009;
+there is no migration 010. Migrations 001–009 remain byte-for-byte unchanged.
+Automated database verification is contract/static only because this package
+is not connected to a live Supabase project.

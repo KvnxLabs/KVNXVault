@@ -305,3 +305,37 @@ Skills page yet, so Sprint 10 populates the existing dashboard Skills card and
 does not invent a route. No live Supabase connection is claimed. Run
 `202608070008_sprint10_skill_progression.sql` after migration 007 before testing
 the deployed client.
+
+## Sprint 10.1 — UUID SQL Hotfix
+
+Status: ✅ Complete
+
+Goal: Correct the production UUID function resolution failure without changing
+any mission, progression, countdown, authentication, or security behavior.
+
+Completed: Recorded the live PostgreSQL `42883` error; traced it to
+`public.gen_random_uuid()` in the preserved Sprint 9 implementations; added
+migration 009; recreated only `request_daily_mission_at_sprint9(timestamptz)`
+and `request_daily_mission_replacement_sprint9()` with
+`extensions.gen_random_uuid()`; preserved explicit empty `search_path`,
+`SECURITY DEFINER`, ownership derivation, grants/revocations, locking, lifecycle
+and replacement rules; and added focused immutable-migration, authority,
+frontend-boundary, and skill-regression tests.
+
+Definition of Done: Both initial and replacement mission identities remain
+server-generated UUIDs. The active database definitions contain no
+`public.gen_random_uuid()` call. The public daily/replacement RPCs remain
+zero-argument, the replacement limit remains one, and Sprint 10 overall/skill
+awards are unchanged. Migrations 001–008 remain byte-for-byte identical.
+
+Result: Supabase can resolve the UUID generator through its explicit
+`extensions` schema while the existing empty-search-path security posture
+remains intact. No frontend code, product behavior, RLS policy, authentication
+flow, reward rule, or dashboard view changed.
+
+Notes: Migration 006 remains immutable historical input and still contains the
+original faulty text; migration 009 replaces the active functions created from
+it. Automated verification is contract/static only because no live Supabase
+project is connected. Run
+`202608070009_sprint10_1_uuid_function_hotfix.sql` after migration 008 before
+retesting daily mission generation.

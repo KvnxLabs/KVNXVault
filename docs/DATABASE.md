@@ -358,3 +358,51 @@ an injected next-day timestamp, inspect the returned/new and expired rows, then
 roll the transaction back. `request_daily_mission_at(timestamptz)` has no grant
 to browser roles; a database owner can use it solely for deterministic testing.
 Do not change server time or edit production mission rows manually.
+
+## Sprint 10.1 UUID SQL Hotfix
+
+Live daily mission generation returned PostgreSQL `42883`:
+
+```text
+function public.gen_random_uuid() does not exist
+```
+
+Migration 006 correctly kept mission instance identity on the server, but it
+incorrectly qualified `gen_random_uuid()` as a member of `public`. KVNX Vault's
+Supabase database has pgcrypto installed through migration 001, and Supabase
+places extension objects in the `extensions` schema. Migration 009 therefore
+uses the explicit, empty-search-path-safe call:
+
+```sql
+extensions.gen_random_uuid()
+```
+
+Migration 007 renamed the affected implementations when it added the
+`nextResetAt` response wrapper. Migration 009 consequently recreates only:
+
+- `public.request_daily_mission_at_sprint9(timestamptz)`
+- `public.request_daily_mission_replacement_sprint9()`
+
+The functions retain `SECURITY DEFINER`, `SET search_path = ''`, `auth.uid()`
+ownership, advisory locking, current-day selection, server-side onboarding
+reads, canonical mission construction, conflict-safe creation, terminal-state
+validation, and the one-replacement limit. Their browser-role execution remains
+revoked. Public RPC signatures and grants are untouched.
+
+Migrations 001–008 are installed history and remain byte-for-byte unchanged.
+The literal faulty call therefore remains visible only in historical migration
+006; migration 009 replaces the corresponding active database definitions.
+
+Automated coverage for this hotfix is contract/static only because this package
+is not connected to a live Supabase project. After installing migration 009,
+retest initial mission creation and replacement against the deployed project.
+
+### Installation
+
+If migrations 001–008 are already installed, run only:
+
+```text
+supabase/migrations/202608070009_sprint10_1_uuid_function_hotfix.sql
+```
+
+For a fresh database, run migrations 001–009 in filename order.

@@ -522,3 +522,29 @@ Each sprint contains a goal, acceptance criteria, tasks, implementation, review,
 - Sensei: Product architecture, folder structure, planning, and code review.
 - Claude: Implementation, boilerplate, and components.
 - Doug: Founder and developer.
+
+## Sprint 10.1 UUID Hotfix Boundary
+
+A live Supabase request exposed PostgreSQL error `42883` because the internal
+Sprint 9 creation functions called `public.gen_random_uuid()`. The project uses
+an explicit empty `search_path` for privileged functions, and Supabase's
+pgcrypto installation exposes the generator in the `extensions` schema rather
+than `public`.
+
+Migration 009 replaces only the two active internal definitions retained by
+the Sprint 9.2 wrappers:
+
+- `request_daily_mission_at_sprint9(timestamptz)`
+- `request_daily_mission_replacement_sprint9()`
+
+Both now call `extensions.gen_random_uuid()` explicitly. The public
+zero-argument daily and replacement RPCs, `nextResetAt` wrapper, server-time
+daily key, advisory locking, lifecycle rules, canonical rewards, replacement
+limit, skill attribution, and immutable client reconciliation remain
+unchanged. UUID identity stays inside PostgreSQL; no identifier-generation
+authority moves to the browser.
+
+Migrations are append-only. Migration 006 therefore remains byte-for-byte
+unchanged as historical input even though it contains the original bad
+qualification. After migration 009 is applied, the active `pg_proc`
+definitions no longer contain `public.gen_random_uuid()`.

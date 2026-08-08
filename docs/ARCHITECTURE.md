@@ -590,3 +590,41 @@ Three- and seven-day streak definitions are cataloged for future compatibility
 but have no evaluator predicates. Sprint 11 does not infer consecutive days
 from presentation clocks or fabricate a streak without a dedicated
 authoritative streak model.
+
+## Sprint 11.1 Development Test Clock Boundary
+
+Sprint 11.1 is staging infrastructure, not a product feature. The production
+dashboard loads only an inert frontend gate. The panel repository, panel code,
+and panel stylesheet are requested only when the build explicitly enables
+development tools and the current hostname exactly matches the build allowlist.
+Known KVNX production domains are always rejected by the loader.
+
+The browser gate is convenience, not authority. Migration 012 adds two
+independent server controls that default closed: one singleton environment flag
+and an explicit authenticated test-account allowlist. A privileged function
+must pass both checks before it can read or mutate that account's isolated
+`dev_test_state` row. Those tables have RLS enabled, no browser policies, and no
+browser grants. The RPCs accept no user id or arbitrary value.
+
+```text
+Approved staging build + exact host
+→ authenticated allowlisted test account
+→ disabled-by-default database environment gate
+→ zero-argument dev clock action
+→ current user's simulated timestamp only
+→ normal authoritative mission/XP/skill/achievement RPC
+→ immutable application restoration
+```
+
+The existing internal clock-injectable daily engine remains the source of new
+missions and rollover. Production mission RPC signatures are unchanged.
+`dev_effective_vault_now()` returns a simulated instant only for an allowlisted
+account while the staging environment flag and that account's clock are
+enabled; all other calls return `clock_timestamp()`. Completion still awards
+25 overall XP and 15 mapped skill XP and invokes the Sprint 11 achievement
+evaluator. Clearing the row immediately restores real database-time behavior.
+
+A separate Supabase staging project is the supported deployment. Migration 012
+is hard-disabled if accidentally installed on production, but deliberately
+enabling its server flag on a production database is outside the supported
+architecture.

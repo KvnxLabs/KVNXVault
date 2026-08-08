@@ -1,0 +1,107 @@
+.dev-tools {
+  margin-top: 32px;
+  padding: 22px;
+  border: 1px solid rgba(228, 168, 74, 0.42);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(75, 50, 16, 0.2), rgba(15, 15, 16, 0.94));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.dev-tools__header,
+.dev-tools__clock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.dev-tools__header p,
+.dev-tools__clock span,
+.dev-tools__clock small {
+  margin: 0;
+  color: #9c968b;
+  font-size: 0.69rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.dev-tools__header h2 {
+  margin: 5px 0 0;
+  color: #f2eee6;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dev-tools__header > span {
+  padding: 6px 9px;
+  border: 1px solid rgba(228, 168, 74, 0.4);
+  border-radius: 999px;
+  color: #e4a84a;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dev-tools__clock {
+  align-items: flex-start;
+  flex-direction: column;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.dev-tools__clock strong {
+  color: #fff7e7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(1rem, 2vw, 1.3rem);
+}
+
+.dev-tools__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dev-tools__actions button {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid rgba(228, 168, 74, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #d8d4cc;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.dev-tools__actions button:hover,
+.dev-tools__actions button:focus-visible {
+  border-color: rgba(228, 168, 74, 0.66);
+  color: #fff7e7;
+  outline: none;
+}
+
+.dev-tools__actions button:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.dev-tools__status {
+  min-height: 1.3em;
+  margin: 14px 0 0;
+  color: #aaa49a;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 760px) {
+  .dev-tools__actions { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-tools *,
+  .dev-tools *::before,
+  .dev-tools *::after { scroll-behavior: auto !important; transition: none !important; }
+}

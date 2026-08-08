@@ -491,3 +491,51 @@ supabase/migrations/202608070011_sprint11_achievements.sql
 
 There is intentionally no migration 010. For a fresh database, run migrations
 001–009 and then 011 in filename order.
+
+## Sprint 11.1 — Developer Test Panel (Staging Only)
+
+Migration `202608070012_sprint11_1_developer_test_panel.sql` creates:
+
+- `dev_environment_config`: singleton database-admin environment gate,
+  inserted with `enabled = false`.
+- `dev_test_accounts`: database-admin allowlist of authenticated test users.
+- `dev_test_state`: one optional simulated timestamp per allowlisted user.
+
+All three tables have RLS enabled. They intentionally have no browser policy,
+and all table access is revoked from `public`, `anon`, and `authenticated`.
+Only `SECURITY DEFINER` functions with `SET search_path = ''` access them.
+
+The browser-executable development contracts are zero-argument:
+
+```text
+dev_get_test_state()
+dev_advance_one_hour()
+dev_advance_to_next_day()
+dev_clear_test_clock()
+```
+
+Every call derives identity from `auth.uid()`, checks the server environment
+flag, checks the authenticated account allowlist, and scopes its state access
+to that user. There is no RPC for arbitrary time, user selection, account
+reset, XP, skill XP, achievements, mission definitions, or replacement counts.
+
+`dev_effective_vault_now()` is internal and revoked from browser roles. The
+active daily, replacement, completion, and skill-restoration authorities use
+it as their clock source. It returns the approved account's simulated instant
+only when every gate is open; otherwise it returns `clock_timestamp()`.
+The production signatures and canonical rules remain unchanged:
+
+- `request_daily_mission()` remains zero-argument and calls the established
+  clock-injectable daily engine.
+- `request_daily_mission_replacement()` remains zero-argument and preserves
+  the one-replacement limit and `extensions.gen_random_uuid()`.
+- `request_vault_mission_action(text, text)` still accepts only mission intent,
+  awards exactly 25 overall XP and 15 mapped skill XP, and uses the normal
+  achievement evaluator.
+- `get_skill_progression()` remains a zero-argument authenticated read.
+
+Migration 012 should be installed only in a separate local/development or
+staging Supabase project. Its environment gate remains off after installation.
+See `DEVELOPMENT_TESTING.md` for the database-admin enablement and verification
+workflow. Automated SQL verification in this package is contract/static only;
+no live Supabase test is claimed.

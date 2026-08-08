@@ -405,3 +405,36 @@ authoritative consecutive-day model. Migration 011 follows migration 009;
 there is no migration 010. Migrations 001–009 remain byte-for-byte unchanged.
 Automated database verification is contract/static only because this package
 is not connected to a live Supabase project.
+
+## Sprint 11.1 — Developer Test Panel
+
+Status: ✅ Complete
+
+Goal: Let approved developers simulate future authoritative days in minutes on
+a separate staging database without creating a production cheat system.
+
+Completed: Added a disabled-by-default server environment gate; an explicit
+database-admin test-account allowlist; isolated per-user simulated clocks;
+zero-argument one-hour, next-day, state-read, and clear-clock RPCs; integration
+with the existing clock-aware daily, replacement, completion, skill, countdown,
+and achievement authorities; an exact-host frontend loader; an isolated
+development repository adapter; a clearly internal panel; production-domain
+denials; documentation; and focused security/authority regression coverage.
+
+Definition of Done: A permitted staging user can advance beyond the next
+timezone-aware reset, request the normal authoritative mission, complete it for
+exactly 25 overall and 15 mapped skill XP, trigger only legitimate achievement
+rules, use one replacement, and repeat on the next simulated day. Another user
+cannot see or change that clock. Clearing the clock restores real database
+time. With either server gate closed, every development RPC rejects.
+
+Result: Multi-day mission behavior can be exercised quickly without changing
+PostgreSQL time, fabricating missions, granting progress, unlocking milestones,
+or accepting ownership from the browser. Production users see no panel and
+cannot activate test mutations.
+
+Notes: Migration 012 is for a separate local/development or staging Supabase
+project. It is hard-disabled by default even if installed accidentally, but it
+must not be deliberately enabled on production. Migrations 001–009 and 011 are
+byte-for-byte unchanged. Verification is contract/static because this package
+is not connected to a live Supabase project.

@@ -9,4 +9,8 @@ window.KVNXConfig = Object.freeze({
   supabasePublishableKey: "sb_publishable_GALP6Ry639jW5dRWC8Eeew_t7qZGP9Q",
   vaultApplicationUrl: "https://kvnx-vault.vercel.app",
   authRedirectPath: "/login.html",
+  // Development tooling is opt-in per build and independently gated by the
+  // staging database. Keep false in every production deployment.
+  devToolsEnabled: false,
+  devToolsAllowedHosts: Object.freeze(["localhost", "127.0.0.1", "[::1]"]),
 });

@@ -81,7 +81,7 @@ test("frontend receives no new UUID-generation authority", () => {
     "js/dashboard.js": "3c6cf3a6904bb37d693c4c28fd6fd2f56588e1b1622496697fabaf122c9d671c",
     "js/mission-generator.js": "46159c7e01aa9990f8b4374b5d1f81355e4dc1baf0d6c476bd9390dd98b4a282",
     "js/user-repository.js": "2460df5bc4a7e905980960dc7034553cc2ec4bfa17fcb78d46168123cc39a9ff",
-    "dashboard.html": "4163c0b82029a32998a7920d20d97cad678f7bc63d2375a31d1f08b46a7794cd",
+    "dashboard.html": "546a5ab76734cfcfcdf0ad8606b43d9432f93d19fb5d7f370f72f36c4bef3389",
   };
 
   Object.entries(unchangedProductionFiles)

@@ -539,3 +539,72 @@ staging Supabase project. Its environment gate remains off after installation.
 See `DEVELOPMENT_TESTING.md` for the database-admin enablement and verification
 workflow. Automated SQL verification in this package is contract/static only;
 no live Supabase test is claimed.
+
+## Sprint 12 — Vault History & Legacy
+
+Migration `202608070013_sprint12_vault_history.sql` reuses
+`public.mission_history`. It adds nullable `mission_description` and
+`original_state` columns because those values cannot be reconstructed once
+`daily_mission_state` advances. `capture_vault_history_details()` is an
+internal, non-browser-executable trigger function with `SECURITY DEFINER` and
+`SET search_path = ''`. Before the existing authoritative insert completes, it
+copies the saved mission description and pre-terminal lifecycle state from the
+same owner's current daily row. Existing history is never fabricated: only a
+description whose mission identity still matches can be backfilled, and an
+unprovable old original state remains null.
+
+The existing index from migration 001 already supports chronological owner
+retrieval:
+
+```text
+mission_history_user_id_terminal_at_idx
+(user_id, terminal_at DESC)
+```
+
+No redundant index or duplicate history table is created.
+
+### RPC contract
+
+```text
+get_vault_history()
+```
+
+The RPC accepts exactly zero arguments, derives identity from `auth.uid()`,
+rejects unauthenticated execution, and returns only that user's completed
+history ordered by `terminal_at DESC, id DESC`. Returned fields are:
+
+- `historyId`, `missionId`, `title`, `category`
+- `primarySkillKey`, `primarySkill`
+- `overallXPEarned`, `skillXPEarned`, `status`, `completedAt`
+- `description`, `originalMissionState`, `achievements`
+
+Achievement rows are joined from `user_achievements` and
+`achievement_catalog` only on the authenticated owner and the exact completion
+timestamp used by the server transaction. Earlier reconciled achievements that
+do not have a provable completion timestamp are not assigned to an entry.
+
+Because the function returns a relation, the repository applies a PostgREST
+range window while still invoking the RPC with no arguments. A 20-entry page
+requests indexes `offset` through `offset + 20`; the 21st result is discarded
+after setting `hasMore`. Page size is clamped to 50. This preserves bounded
+long-term retrieval without accepting ownership input.
+
+RLS remains enabled on `mission_history`. Direct insert, update, and delete
+remain revoked from `authenticated`; `public` and `anon` cannot execute the
+RPC; only `authenticated` receives execute. Migration 013 does not alter the
+active mission action signature, canonical 25 overall XP, canonical 15 skill
+XP, skill persistence, achievement evaluation, replacement rules, daily clock,
+or UUID generation.
+
+### Installation
+
+Run migrations in filename order. On production with migrations 001–009 and
+011 installed—or on staging that additionally has migration 012—apply:
+
+```text
+supabase/migrations/202608070013_sprint12_vault_history.sql
+```
+
+Migration 012 remains staging-only under its existing guidance. Database tests
+in this package are contract/static unless run against a connected Supabase
+project.

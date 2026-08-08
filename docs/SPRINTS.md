@@ -438,3 +438,38 @@ project. It is hard-disabled by default even if installed accidentally, but it
 must not be deliberately enabled on production. Migrations 001–009 and 011 are
 byte-for-byte unchanged. Verification is contract/static because this package
 is not connected to a live Supabase project.
+
+## Sprint 12 — Vault History & Legacy
+
+Status: ✅ Complete
+
+Goal: Turn verified mission completion history into a permanent, searchable
+personal archive without duplicating history, redesigning the dashboard, or
+giving the browser ownership or write authority.
+
+Completed: Reused `mission_history`; retained its chronological owner index;
+added authoritative archival capture for mission description and original
+lifecycle state; added the exact zero-argument `get_vault_history()` RPC;
+joined skill names and exact-timestamp achievement unlocks; added bounded
+range pagination and immutable history snapshots; activated the existing Vault
+view; added Today, Yesterday, Earlier This Week, Earlier This Month, and Older
+grouping; added title/category/skill search; completed, achievement, skill,
+category, newest, and oldest controls; added keyboard-operable entry expansion;
+and added restoration, pagination, ordering, grouping, filtering, UI, RLS,
+cross-user, and read-only regression coverage.
+
+Definition of Done: Every rendered entry originates in the authenticated
+user's authoritative completed `mission_history`. The browser supplies no
+owner and performs no history write. Initial and later pages remain bounded;
+refresh and logout/login restore the same archive; inaccessible historical
+details remain explicitly unavailable instead of being fabricated.
+
+Result: The Vault now feels like a durable record of accomplished work while
+remaining a read-only projection of the same server-owned mission, XP, skill,
+and achievement facts.
+
+Notes: Migration 013 is required because descriptions and pre-terminal states
+were not previously retained. Migrations 001–009, 011, and 012 remain
+byte-for-byte unchanged. The staging-only restrictions on migration 012 remain
+in force. Database verification is contract/static because no live Supabase
+project is connected.

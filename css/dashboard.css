@@ -1297,6 +1297,195 @@
   line-height: 1.45;
 }
 
+.vault-view__heading {
+  margin-bottom: 10px;
+}
+
+.vault-view__intro {
+  max-width: 680px;
+  margin: 0 0 24px;
+  color: var(--app-muted);
+  line-height: 1.7;
+}
+
+.vault-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.vault-controls label {
+  display: grid;
+  gap: 7px;
+}
+
+.vault-controls label > span {
+  color: var(--app-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vault-controls select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--app-line);
+  border-radius: 9px;
+  color: var(--app-text);
+  background: #101012;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.vault-view__results {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+
+.vault-history__group {
+  margin-top: 26px;
+}
+
+.vault-history__group > h2 {
+  margin: 0 0 11px;
+  color: var(--app-muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.vault-history__list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-entry {
+  padding: 0;
+  overflow: hidden;
+}
+
+.vault-entry__summary {
+  display: grid;
+  grid-template-columns: 120px minmax(180px, 1.7fr) minmax(150px, 1fr) auto auto 22px;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  padding: 18px 20px;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vault-entry__summary:hover,
+.vault-entry__summary:focus-visible {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.vault-entry__summary time,
+.vault-entry__summary > span {
+  color: var(--app-muted);
+  font-size: 0.74rem;
+}
+
+.vault-entry__summary strong {
+  font-size: 0.9rem;
+  font-weight: 560;
+}
+
+.vault-entry__xp {
+  color: var(--app-text) !important;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.vault-entry__status {
+  color: #91c9a8 !important;
+}
+
+.vault-entry__marker {
+  font-size: 1rem !important;
+  text-align: center;
+}
+
+.vault-entry__details {
+  padding: 0 20px 20px 156px;
+  border-top: 1px solid var(--app-line);
+}
+
+.vault-entry__details[hidden] { display: none; }
+
+.vault-entry__details > p {
+  max-width: 760px;
+  margin: 18px 0;
+  color: var(--app-muted);
+  line-height: 1.65;
+}
+
+.vault-entry__details dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.vault-entry__details dt {
+  color: var(--app-muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-entry__details dd {
+  margin: 5px 0 0;
+  font-size: 0.78rem;
+}
+
+.vault-entry__details h3 {
+  margin: 20px 0 9px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.vault-entry__achievements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-entry__achievements li {
+  padding: 7px 10px;
+  border: 1px solid rgba(214, 181, 89, 0.25);
+  border-radius: 999px;
+  color: #d6b559;
+  font-size: 0.7rem;
+}
+
+.vault-history__empty {
+  margin: 48px 0;
+  color: var(--app-muted);
+  text-align: center;
+}
+
+.vault-history__more {
+  display: block;
+  margin: 24px auto 0;
+}
+
 .level-up p,
 .level-up strong,
 .level-up > span { display: block; }
@@ -1326,6 +1515,18 @@
 }
 
 @media (max-width: 1100px) {
+  .vault-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .vault-entry__summary {
+    grid-template-columns: 105px minmax(160px, 1.5fr) minmax(120px, 1fr) auto 22px;
+  }
+
+  .vault-entry__status { display: none; }
+
+  .vault-entry__details { padding-left: 141px; }
+
   .dashboard-card--welcome {
     grid-column: span 7;
   }
@@ -1406,6 +1607,14 @@
   .achievement-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .vault-entry__summary {
+    grid-template-columns: 100px 1fr auto 22px;
+  }
+
+  .vault-entry__summary > span:nth-of-type(1) { display: none; }
+
+  .vault-entry__details { padding-left: 20px; }
 }
 
 @media (max-width: 620px) {
@@ -1485,9 +1694,59 @@
   .achievement-grid {
     grid-template-columns: 1fr;
   }
+
+  .vault-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .vault-entry__summary {
+    grid-template-columns: 1fr auto 22px;
+    gap: 7px 12px;
+  }
+
+  .vault-entry__summary time {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .vault-entry__summary strong {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .vault-entry__xp {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .vault-entry__marker {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .vault-entry__summary > span:nth-of-type(1),
+  .vault-entry__status { display: none; }
+
+  .vault-entry__details dl {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 480px) {
+  .vault-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-entry__summary { padding: 16px; }
+
+  .vault-entry__details {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .vault-entry__details dl {
+    grid-template-columns: 1fr;
+  }
   .journey-summary {
     grid-template-columns: 1fr;
   }
@@ -1554,4 +1813,6 @@
   .achievement-unlock {
     transition: none;
   }
+
+  .vault-entry__summary { scroll-behavior: auto; }
 }

@@ -61,6 +61,10 @@
     let achievements = [];
     let coordinator;
     let missionHistory = [];
+    let vaultHistory = [];
+    let historyHasMore = false;
+    let historyNextOffset = 0;
+    let historyPageSize = 20;
     let persistenceBlocked = false;
     let terminalAt = null;
     let terminalRecorded = false;
@@ -72,6 +76,12 @@
       progression: progressionEngine.getSnapshot(progression),
       skills: Object.freeze([...skillProgression]),
       achievements: Object.freeze([...achievements]),
+      history: Object.freeze([...vaultHistory]),
+      historyPagination: Object.freeze({
+        hasMore: historyHasMore,
+        nextOffset: historyNextOffset,
+        pageSize: historyPageSize,
+      }),
       coordinator: coordinator.getSnapshot(),
       dailySessionId,
       nextResetAt,
@@ -98,13 +108,32 @@
       )) || null;
     };
 
+    const freezeHistoryEntry = (historyRecord) => Object.freeze({
+      ...historyRecord,
+      achievements: Object.freeze(
+        (Array.isArray(historyRecord?.achievements) ? historyRecord.achievements : [])
+          .map((achievement) => Object.freeze({ ...achievement })),
+      ),
+    });
+
     const appendAuthoritativeHistory = (historyRecord) => {
       if (!historyRecord?.missionId) return;
-      const duplicate = missionHistory.some((record) => (
+      const duplicateMissionHistory = missionHistory.some((record) => (
         record.missionId === historyRecord.missionId
-        && record.terminalAt === historyRecord.terminalAt
+        && (record.terminalAt || record.completedAt) === (historyRecord.terminalAt || historyRecord.completedAt)
       ));
-      if (!duplicate) missionHistory = [...missionHistory, Object.freeze({ ...historyRecord })];
+      const frozen = freezeHistoryEntry(historyRecord);
+      if (!duplicateMissionHistory) missionHistory = [frozen, ...missionHistory];
+
+      const status = historyRecord.status || historyRecord.finalState;
+      const duplicateVaultHistory = vaultHistory.some((record) => (
+        record.missionId === historyRecord.missionId
+        && (record.terminalAt || record.completedAt) === (historyRecord.terminalAt || historyRecord.completedAt)
+      ));
+      if (status === "completed" && !duplicateVaultHistory) {
+        vaultHistory = [frozen, ...vaultHistory];
+        historyNextOffset += 1;
+      }
     };
 
     const createSkillSnapshot = (skill) => {
@@ -180,7 +209,20 @@
       if (typeof result.nextResetAt === "string") nextResetAt = result.nextResetAt;
       progression = progressionEngine.createProgression(result.progression.totalXP);
       const snapshot = progressionEngine.getSnapshot(progression);
-      appendAuthoritativeHistory(result.historyRecord);
+      appendAuthoritativeHistory(result.historyRecord ? {
+        ...result.historyRecord,
+        historyId: result.historyRecord.historyId || null,
+        category: result.historyRecord.category || result.historyRecord.focus,
+        primarySkillKey: result.historyRecord.primarySkillKey || result.historyRecord.skillKey,
+        primarySkill: result.updatedSkill?.name || null,
+        overallXPEarned: Number(result.historyRecord.overallXPEarned ?? result.historyRecord.xpAwarded ?? 0),
+        skillXPEarned: Number(result.historyRecord.skillXPEarned ?? result.historyRecord.skillXPAwarded ?? 0),
+        status: result.historyRecord.status || result.historyRecord.finalState,
+        completedAt: result.historyRecord.completedAt || result.historyRecord.terminalAt,
+        description: result.mission.definition.description || null,
+        originalMissionState: result.event?.previousState || null,
+        achievements: Array.isArray(result.newAchievements) ? result.newAchievements : [],
+      } : null);
       const skillProgressionResult = reconcileUpdatedSkill(result.updatedSkill);
       const newAchievements = reconcileNewAchievements(result.newAchievements);
 
@@ -353,7 +395,9 @@
 
         const [progressionResult, historyResult, skillResult, achievementCatalogResult, achievementResult] = await Promise.all([
           repository.loadProgression(),
-          repository.loadMissionHistory(),
+          typeof repository.getVaultHistory === "function"
+            ? repository.getVaultHistory()
+            : repository.loadMissionHistory(),
           typeof repository.getSkillProgression === "function"
             ? repository.getSkillProgression()
             : Promise.resolve([]),
@@ -414,7 +458,22 @@
         ]);
       }
 
-      missionHistory = Array.isArray(loadedHistory) ? [...loadedHistory] : [];
+      if (loadedHistory && Array.isArray(loadedHistory.entries)) {
+        vaultHistory = loadedHistory.entries.map(freezeHistoryEntry);
+        missionHistory = [...vaultHistory];
+        historyHasMore = Boolean(loadedHistory.hasMore);
+        historyNextOffset = Number(loadedHistory.nextOffset) || vaultHistory.length;
+        historyPageSize = Number(loadedHistory.pageSize) || 20;
+      } else {
+        missionHistory = Array.isArray(loadedHistory)
+          ? loadedHistory.map(freezeHistoryEntry)
+          : [];
+        vaultHistory = missionHistory.filter((entry) => (
+          (entry.status || entry.finalState) === "completed"
+        ));
+        historyHasMore = false;
+        historyNextOffset = vaultHistory.length;
+      }
       restoreSkillProgression(Array.isArray(loadedSkills) ? loadedSkills : []);
       restoreAchievements(
         Array.isArray(loadedAchievementCatalog) ? loadedAchievementCatalog : [],
@@ -545,11 +604,37 @@
       return Object.freeze({ ...result, snapshot: getPublicSnapshot() });
     };
 
+    const loadMoreVaultHistory = async () => {
+      if (!historyHasMore || typeof repository.getVaultHistory !== "function") {
+        return getPublicSnapshot();
+      }
+      const page = await repository.getVaultHistory({
+        offset: historyNextOffset,
+        pageSize: historyPageSize,
+      });
+      const known = new Set(vaultHistory.map((entry) => (
+        entry.historyId || `${entry.missionId}:${entry.completedAt || entry.terminalAt}`
+      )));
+      const additions = page.entries.filter((entry) => {
+        const key = entry.historyId || `${entry.missionId}:${entry.completedAt || entry.terminalAt}`;
+        if (known.has(key)) return false;
+        known.add(key);
+        return true;
+      }).map(freezeHistoryEntry);
+      vaultHistory = Object.freeze([...vaultHistory, ...additions]);
+      missionHistory = Object.freeze([...missionHistory, ...additions]);
+      historyHasMore = Boolean(page.hasMore);
+      historyNextOffset = Number(page.nextOffset) || historyNextOffset + additions.length;
+      historyPageSize = Number(page.pageSize) || historyPageSize;
+      return getPublicSnapshot();
+    };
+
     return Object.freeze({
       complete: () => routeAction("complete"),
       expire: () => routeAction("expire"),
       getSnapshot: getPublicSnapshot,
       initialize,
+      loadMoreVaultHistory,
       requestReplacement,
       signOut: () => authService.signOut(),
       skip: () => routeAction("skip"),

@@ -628,3 +628,55 @@ A separate Supabase staging project is the supported deployment. Migration 012
 is hard-disabled if accidentally installed on production, but deliberately
 enabling its server flag on a production database is outside the supported
 architecture.
+
+## Sprint 12 Vault History & Legacy
+
+The Vault is a read-only projection of `mission_history`, not a second history
+store. Migration 013 retains the table and its existing
+`(user_id, terminal_at DESC)` index, then adds only the two archival attributes
+that could not survive the single current-mission row: mission description and
+the lifecycle state immediately before the terminal transition. An internal
+`BEFORE INSERT` trigger copies both from the authoritative saved mission while
+the completion transaction still holds the original state. Older values remain
+null when they cannot be proven; the UI identifies that limitation instead of
+inventing content.
+
+```text
+Authoritative mission completion
+→ existing mission_history insert
+→ internal archive-detail trigger
+→ existing skill and achievement authority
+→ zero-argument get_vault_history()
+→ bounded range page
+→ immutable application history snapshot
+→ grouping, search, filters, and entry details
+```
+
+`get_vault_history()` is an exact zero-argument `SECURITY DEFINER` read with an
+empty `search_path`. It derives the owner from `auth.uid()`, returns completed
+rows only, and orders by completion timestamp and history UUID descending.
+Primary skill metadata comes from `skill_catalog`. Achievements appear on an
+entry only when an existing `user_achievements.unlocked_at` exactly matches the
+authoritative completion timestamp; no client or query heuristic assigns them.
+
+The RPC returns a relation so Supabase/PostgREST range windows paginate the
+ordered result without adding an owner argument. The repository requests 21
+rows for a 20-row page, returns 20 immutable entries, and uses the extra row
+only to expose `hasMore`. The application service merges later pages by stable
+history identity and includes both `history` and `historyPagination` in every
+public immutable snapshot. Refresh and later login execute the same restoration
+contract.
+
+Today, Yesterday, Earlier This Week, Earlier This Month, and Older are local
+presentation groups. Search matches loaded authoritative title, category, and
+skill values. Achievement, skill, category, and chronological controls filter
+or sort only the loaded snapshot. They never query another owner or mutate a
+history row. Long-term growth is handled through additional bounded pages, so
+years of records are not loaded in one request.
+
+The existing dashboard shell now activates the Vault navigation target. Each
+completed entry exposes date, title, category, primary skill, canonical overall
+and skill XP, exact-timestamp achievements, and status. Its keyboard-operable
+summary expands authoritative description, completion timestamp, rewards,
+unlocks, and original state. No separate task list, editable history, or fake
+archive data is introduced.

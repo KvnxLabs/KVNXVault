@@ -168,12 +168,93 @@ const KVNXAchievementsExperience = (() => {
   return Object.freeze({ createViewModel });
 })();
 
+const KVNXVaultHistoryExperience = (() => {
+  const GROUP_ORDER = Object.freeze([
+    "Today",
+    "Yesterday",
+    "Earlier This Week",
+    "Earlier This Month",
+    "Older",
+  ]);
+
+  const startOfDay = (value) => {
+    const date = new Date(value);
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  };
+
+  const getGroupLabel = (completedAt, now = new Date()) => {
+    const completedDay = startOfDay(completedAt);
+    const today = startOfDay(now);
+    const difference = Math.round((today - completedDay) / 86400000);
+    if (difference === 0) return "Today";
+    if (difference === 1) return "Yesterday";
+
+    const weekStart = new Date(today);
+    const day = weekStart.getDay();
+    weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1));
+    if (completedDay >= weekStart && completedDay < today) return "Earlier This Week";
+    if (completedDay.getFullYear() === today.getFullYear()
+      && completedDay.getMonth() === today.getMonth()) return "Earlier This Month";
+    return "Older";
+  };
+
+  const createViewModel = (entries = [], filters = {}, now = new Date()) => {
+    const search = String(filters.search || "").trim().toLowerCase();
+    const skill = String(filters.skill || "all");
+    const category = String(filters.category || "all");
+    const achievements = String(filters.achievements || "all");
+    const sort = filters.sort === "oldest" ? "oldest" : "newest";
+
+    const filtered = (Array.isArray(entries) ? entries : []).filter((entry) => {
+      if (entry.status !== "completed" && entry.finalState !== "completed") return false;
+      if (skill !== "all" && entry.primarySkillKey !== skill) return false;
+      if (category !== "all" && entry.category !== category) return false;
+      if (achievements === "earned" && !entry.achievements?.length) return false;
+      if (!search) return true;
+      return [entry.title, entry.category, entry.primarySkill]
+        .some((value) => String(value || "").toLowerCase().includes(search));
+    }).sort((left, right) => {
+      const difference = Date.parse(left.completedAt || left.terminalAt)
+        - Date.parse(right.completedAt || right.terminalAt);
+      return sort === "oldest" ? difference : -difference;
+    }).map((entry) => {
+      const completedAt = entry.completedAt || entry.terminalAt;
+      const timestamp = Date.parse(completedAt);
+      return Object.freeze({
+        ...entry,
+        completedAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : completedAt,
+        dateLabel: Number.isFinite(timestamp)
+          ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" })
+            .format(new Date(timestamp))
+          : "Date unavailable",
+        timestampLabel: Number.isFinite(timestamp)
+          ? new Intl.DateTimeFormat("en-US", {
+            month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+          }).format(new Date(timestamp))
+          : "Timestamp unavailable",
+        group: getGroupLabel(completedAt, now),
+        statusLabel: "Completed",
+      });
+    });
+
+    const groups = GROUP_ORDER.map((label) => Object.freeze({
+      label,
+      entries: Object.freeze(filtered.filter((entry) => entry.group === label)),
+    })).filter((group) => group.entries.length > 0);
+
+    return Object.freeze({ entries: Object.freeze(filtered), groups: Object.freeze(groups) });
+  };
+
+  return Object.freeze({ GROUP_ORDER, createViewModel, getGroupLabel });
+})();
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     ...KVNXReplacementRequestController,
     dailyComplete: KVNXDailyCompleteExperience,
     skills: KVNXSkillsExperience,
     achievements: KVNXAchievementsExperience,
+    vaultHistory: KVNXVaultHistoryExperience,
   });
 }
 if (typeof window !== "undefined") {
@@ -181,6 +262,7 @@ if (typeof window !== "undefined") {
   window.KVNXDailyCompleteExperience = KVNXDailyCompleteExperience;
   window.KVNXSkillsExperience = KVNXSkillsExperience;
   window.KVNXAchievementsExperience = KVNXAchievementsExperience;
+  window.KVNXVaultHistoryExperience = KVNXVaultHistoryExperience;
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", async () => {
@@ -195,6 +277,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const currentDate = document.querySelector("[data-current-date]");
   const dashboardHomeSections = document.querySelectorAll("[data-dashboard-home]");
   const achievementsView = document.querySelector("[data-achievements-view]");
+  const vaultView = document.querySelector("[data-vault-view]");
   const viewLinks = document.querySelectorAll("[data-view-link]");
 
   const persistenceError = document.querySelector("[data-persistence-error]");
@@ -317,6 +400,17 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const achievementsCount = document.querySelector("[data-achievements-count]");
   const achievementUnlock = document.querySelector("[data-achievement-unlock]");
   const achievementUnlockList = document.querySelector("[data-achievement-unlock-list]");
+  const vaultHistory = document.querySelector("[data-vault-history]");
+  const vaultCount = document.querySelector("[data-vault-count]");
+  const vaultEmpty = document.querySelector("[data-vault-empty]");
+  const vaultResultsStatus = document.querySelector("[data-vault-results-status]");
+  const vaultSearch = document.querySelector("[data-vault-search]");
+  const vaultAchievementsFilter = document.querySelector("[data-vault-achievements-filter]");
+  const vaultSkillFilter = document.querySelector("[data-vault-skill-filter]");
+  const vaultCategoryFilter = document.querySelector("[data-vault-category-filter]");
+  const vaultSort = document.querySelector("[data-vault-sort]");
+  const vaultLoadMore = document.querySelector("[data-vault-load-more]");
+  const openVaultButton = document.querySelector("[data-open-vault]");
   const levelUpNotice = document.querySelector("[data-level-up]");
   const levelUpValue = document.querySelector("[data-level-up-value]");
   const progressAward = document.querySelector("[data-progress-award]");
@@ -329,6 +423,8 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   let countdownController = null;
   let progressAwardTimer = null;
   let achievementUnlockTimer = null;
+  let vaultEntries = applicationSnapshot.history || [];
+  let vaultPagination = applicationSnapshot.historyPagination || Object.freeze({ hasMore: false });
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -478,6 +574,161 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     });
   };
 
+  const replaceFilterOptions = (select, values, label) => {
+    if (!select) return;
+    const selected = select.value;
+    const first = document.createElement("option");
+    first.value = "all";
+    first.textContent = `All ${label}`;
+    select.replaceChildren(first);
+    values.forEach(({ value, text }) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      select.append(option);
+    });
+    if ([...select.options].some((option) => option.value === selected)) select.value = selected;
+  };
+
+  const renderVaultFilters = () => {
+    const skills = new Map();
+    const categories = new Set();
+    vaultEntries.forEach((entry) => {
+      if (entry.primarySkillKey && entry.primarySkill) skills.set(entry.primarySkillKey, entry.primarySkill);
+      if (entry.category) categories.add(entry.category);
+    });
+    replaceFilterOptions(
+      vaultSkillFilter,
+      [...skills].sort((left, right) => left[1].localeCompare(right[1]))
+        .map(([value, text]) => ({ value, text })),
+      "skills",
+    );
+    replaceFilterOptions(
+      vaultCategoryFilter,
+      [...categories].sort().map((value) => ({ value, text: value })),
+      "categories",
+    );
+  };
+
+  const createVaultDetail = (term, value) => {
+    const wrapper = document.createElement("div");
+    const name = document.createElement("dt");
+    const detail = document.createElement("dd");
+    name.textContent = term;
+    detail.textContent = value;
+    wrapper.append(name, detail);
+    return wrapper;
+  };
+
+  const renderVault = () => {
+    if (!vaultHistory) return;
+    renderVaultFilters();
+    const viewModel = KVNXVaultHistoryExperience.createViewModel(vaultEntries, {
+      search: vaultSearch?.value,
+      achievements: vaultAchievementsFilter?.value,
+      skill: vaultSkillFilter?.value,
+      category: vaultCategoryFilter?.value,
+      sort: vaultSort?.value,
+    });
+    vaultHistory.replaceChildren();
+    if (vaultCount) vaultCount.textContent = `${vaultEntries.length} completed`;
+    if (vaultEmpty) vaultEmpty.hidden = viewModel.entries.length > 0;
+    if (vaultResultsStatus) {
+      vaultResultsStatus.textContent = viewModel.entries.length === vaultEntries.length
+        ? ""
+        : `${viewModel.entries.length} matching ${viewModel.entries.length === 1 ? "entry" : "entries"}`;
+    }
+
+    viewModel.groups.forEach((group) => {
+      const section = document.createElement("section");
+      section.className = "vault-history__group";
+      const heading = document.createElement("h2");
+      heading.textContent = group.label;
+      const list = document.createElement("ol");
+      list.className = "vault-history__list";
+
+      group.entries.forEach((entry) => {
+        const item = document.createElement("li");
+        item.className = "vault-entry app-card";
+        const detailId = `vault-entry-${entry.historyId || entry.missionId}`.replace(/[^A-Za-z0-9_-]/g, "-");
+        const summary = document.createElement("button");
+        summary.className = "vault-entry__summary";
+        summary.type = "button";
+        summary.setAttribute("aria-expanded", "false");
+        summary.setAttribute("aria-controls", detailId);
+
+        const date = document.createElement("time");
+        date.dateTime = entry.completedAt;
+        date.textContent = entry.dateLabel;
+        const title = document.createElement("strong");
+        title.textContent = entry.title;
+        const meta = document.createElement("span");
+        meta.textContent = [entry.category, entry.primarySkill].filter(Boolean).join(" · ");
+        const xp = document.createElement("span");
+        xp.className = "vault-entry__xp";
+        xp.textContent = `+${entry.overallXPEarned} XP`;
+        const status = document.createElement("span");
+        status.className = "vault-entry__status";
+        status.textContent = entry.statusLabel;
+        const marker = document.createElement("span");
+        marker.className = "vault-entry__marker";
+        marker.setAttribute("aria-hidden", "true");
+        marker.textContent = "+";
+        summary.append(date, title, meta, xp, status, marker);
+
+        const details = document.createElement("div");
+        details.className = "vault-entry__details";
+        details.id = detailId;
+        details.hidden = true;
+        const description = document.createElement("p");
+        description.textContent = entry.description
+          || "The mission description was not captured for this earlier archive entry.";
+        const facts = document.createElement("dl");
+        facts.append(
+          createVaultDetail("Completed", entry.timestampLabel),
+          createVaultDetail("Overall XP", `+${entry.overallXPEarned} XP`),
+          createVaultDetail("Skill XP", entry.primarySkill
+            ? `+${entry.skillXPEarned} ${entry.primarySkill}`
+            : `+${entry.skillXPEarned} XP`),
+          createVaultDetail("Original state", entry.originalMissionState
+            ? entry.originalMissionState.replace(/^./, (letter) => letter.toUpperCase())
+            : "Not retained for this earlier entry"),
+        );
+        details.append(description, facts);
+
+        if (entry.achievements?.length) {
+          const achievementHeading = document.createElement("h3");
+          achievementHeading.textContent = "Achievements unlocked";
+          const achievements = document.createElement("ul");
+          achievements.className = "vault-entry__achievements";
+          entry.achievements.forEach((achievement) => {
+            const achievementItem = document.createElement("li");
+            achievementItem.textContent = `${achievement.icon} ${achievement.name}`;
+            achievements.append(achievementItem);
+          });
+          details.append(achievementHeading, achievements);
+        }
+
+        summary.addEventListener("click", () => {
+          const expanded = summary.getAttribute("aria-expanded") === "true";
+          summary.setAttribute("aria-expanded", String(!expanded));
+          marker.textContent = expanded ? "+" : "−";
+          details.hidden = expanded;
+        });
+        item.append(summary, details);
+        list.append(item);
+      });
+      section.append(heading, list);
+      vaultHistory.append(section);
+    });
+
+    if (vaultLoadMore) {
+      vaultLoadMore.hidden = !vaultPagination.hasMore;
+      vaultLoadMore.disabled = false;
+      vaultLoadMore.removeAttribute("aria-busy");
+    }
+  };
+
   const showAchievementUnlocks = (newAchievements) => {
     if (!achievementUnlock || !achievementUnlockList
       || !Array.isArray(newAchievements) || newAchievements.length === 0) return;
@@ -506,10 +757,13 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
   const renderApplicationView = () => {
     const showAchievements = window.location.hash === "#achievements";
-    dashboardHomeSections.forEach((section) => { section.hidden = showAchievements; });
+    const showVault = window.location.hash === "#vault";
+    dashboardHomeSections.forEach((section) => { section.hidden = showAchievements || showVault; });
     if (achievementsView) achievementsView.hidden = !showAchievements;
+    if (vaultView) vaultView.hidden = !showVault;
     viewLinks.forEach((link) => {
-      const active = link.dataset.viewLink === (showAchievements ? "achievements" : "dashboard");
+      const activeView = showAchievements ? "achievements" : showVault ? "vault" : "dashboard";
+      const active = link.dataset.viewLink === activeView;
       link.classList.toggle("sidebar__link--active", active);
       if (active) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
@@ -661,8 +915,35 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderProgression(applicationSnapshot.progression);
   renderSkills(applicationSnapshot.skills);
   renderAchievements(applicationSnapshot.achievements);
+  renderVault();
   renderApplicationView();
   window.addEventListener("hashchange", renderApplicationView);
+
+  [vaultSearch, vaultAchievementsFilter, vaultSkillFilter, vaultCategoryFilter, vaultSort]
+    .forEach((control) => control?.addEventListener(
+      control === vaultSearch ? "input" : "change",
+      renderVault,
+    ));
+
+  openVaultButton?.addEventListener("click", () => {
+    window.location.hash = "#vault";
+  });
+
+  vaultLoadMore?.addEventListener("click", async () => {
+    vaultLoadMore.disabled = true;
+    vaultLoadMore.setAttribute("aria-busy", "true");
+    try {
+      const snapshot = await vaultApplication.loadMoreVaultHistory();
+      applicationSnapshot = snapshot;
+      vaultEntries = snapshot.history || [];
+      vaultPagination = snapshot.historyPagination || Object.freeze({ hasMore: false });
+      renderVault();
+    } catch (error) {
+      if (vaultResultsStatus) vaultResultsStatus.textContent = "Older entries could not be loaded. Please try again.";
+      vaultLoadMore.disabled = false;
+      vaultLoadMore.removeAttribute("aria-busy");
+    }
+  });
 
   startMissionButton?.addEventListener("click", async () => {
     try {
@@ -710,6 +991,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
     const revealDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
     window.setTimeout(() => {
+      applicationSnapshot = applicationResult.snapshot;
+      vaultEntries = applicationResult.snapshot.history || vaultEntries;
+      vaultPagination = applicationResult.snapshot.historyPagination || vaultPagination;
       missionCard.classList.remove("is-completing");
       renderProgression(applicationResult.snapshot.progression);
       // The authoritative completion snapshot already contains the reconciled
@@ -717,6 +1001,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       // as overall XP so the pre-completion empty state cannot remain stale.
       renderSkills(applicationResult.snapshot.skills);
       renderAchievements(applicationResult.snapshot.achievements);
+      renderVault();
       showProgressAward(applicationResult);
       showAchievementUnlocks(applicationResult.newAchievements);
       const isDailyComplete = renderDailyComplete(
@@ -789,8 +1074,11 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
   });
 
-  // Search is visual-only until a future feature sprint supplies search logic.
-  searchForm?.addEventListener("submit", (event) => event.preventDefault());
+  searchForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    window.location.hash = "#vault";
+    renderVault();
+  });
 
   if (currentDate) {
     const now = new Date();

@@ -181,6 +181,35 @@
       terminalAt: row.terminal_at,
     });
 
+    const mapVaultHistoryAchievement = (achievement) => Object.freeze({
+      key: String(achievement?.key || ""),
+      name: String(achievement?.name || ""),
+      description: String(achievement?.description || ""),
+      icon: String(achievement?.icon || ""),
+      unlockedAt: String(achievement?.unlockedAt || ""),
+    });
+
+    const mapVaultHistoryEntry = (row) => Object.freeze({
+      historyId: String(row?.historyId || ""),
+      missionId: String(row?.missionId || ""),
+      title: String(row?.title || ""),
+      category: String(row?.category || ""),
+      primarySkillKey: row?.primarySkillKey ? String(row.primarySkillKey) : null,
+      primarySkill: row?.primarySkill ? String(row.primarySkill) : null,
+      overallXPEarned: Number(row?.overallXPEarned || 0),
+      skillXPEarned: Number(row?.skillXPEarned || 0),
+      status: String(row?.status || ""),
+      completedAt: String(row?.completedAt || ""),
+      description: row?.description ? String(row.description) : null,
+      originalMissionState: row?.originalMissionState
+        ? String(row.originalMissionState)
+        : null,
+      achievements: Object.freeze(
+        (Array.isArray(row?.achievements) ? row.achievements : [])
+          .map(mapVaultHistoryAchievement),
+      ),
+    });
+
     const mapSkill = (skill) => Object.freeze({
       key: String(skill?.key || ""),
       name: String(skill?.name || ""),
@@ -344,6 +373,42 @@
       return Object.freeze((rows || []).map(mapHistory));
     };
 
+    // Sprint 12 permanent archive restoration. The RPC accepts exactly zero
+    // arguments and derives ownership from auth.uid(). PostgREST applies the
+    // range window to the ordered set returned by PostgreSQL; one extra row is
+    // requested only to determine whether another page exists.
+    const getVaultHistory = async ({ offset = 0, pageSize = 20 } = {}) => {
+      await getAuthenticatedUser();
+      const normalizedOffset = Math.max(0, Math.floor(Number(offset) || 0));
+      const normalizedPageSize = Math.min(50, Math.max(1, Math.floor(Number(pageSize) || 20)));
+      const rows = await unwrap(
+        database.rpc("get_vault_history")
+          .range(normalizedOffset, normalizedOffset + normalizedPageSize),
+        "vault-history-load-failed",
+      );
+      if (!Array.isArray(rows)) throw createRepositoryError("vault-history-response-invalid");
+
+      const hasMore = rows.length > normalizedPageSize;
+      const entries = rows.slice(0, normalizedPageSize).map(mapVaultHistoryEntry);
+      if (entries.some((entry) => !entry.historyId || !entry.missionId || !entry.title
+        || !entry.category || entry.status !== "completed"
+        || !Number.isInteger(entry.overallXPEarned) || entry.overallXPEarned < 0
+        || !Number.isInteger(entry.skillXPEarned) || entry.skillXPEarned < 0
+        || !Number.isFinite(Date.parse(entry.completedAt))
+        || entry.achievements.some((achievement) => !achievement.key || !achievement.name
+          || !achievement.description || !achievement.icon
+          || !Number.isFinite(Date.parse(achievement.unlockedAt))))) {
+        throw createRepositoryError("vault-history-response-invalid");
+      }
+
+      return deepFreeze({
+        entries,
+        hasMore,
+        nextOffset: normalizedOffset + entries.length,
+        pageSize: normalizedPageSize,
+      });
+    };
+
     // Creates missing baseline rows without accepting an XP total. The database
     // owns the initial XP value. Mission rewards are not trusted by this call.
     const initializeVaultSession = async ({ dailySessionId, definition } = {}) => {
@@ -485,6 +550,7 @@
       getAchievementCatalog,
       getSkillProgression,
       getUserAchievements,
+      getVaultHistory,
       initializeVaultSession,
       loadDailyMissionState,
       loadMissionHistory,

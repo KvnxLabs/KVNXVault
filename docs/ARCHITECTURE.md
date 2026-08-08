@@ -340,6 +340,18 @@ persist state, and respects the existing reduced-motion rule. Refresh and login
 rebuild the card from PostgreSQL, while replacement and new-day mission creation
 leave lifetime skill totals unchanged.
 
+Sprint 10.2 closes the final presentation handoff in that flow. The database
+was already persisting the 15-XP skill award atomically, the zero-argument RPC
+was already restoring owned rows, and the application service was already
+merging `updatedSkill` into its immutable snapshot. The accepted-completion
+dashboard branch refreshed overall progression and mission state but omitted
+`renderSkills(snapshot.skills)`, leaving the pre-completion empty card visible.
+It now redraws Skills Overview and the restrained dual-award notice from the
+same authoritative completion response. Refresh and login continue to restore
+through `get_skill_progression()`; a restoration error blocks dashboard
+initialization and uses the existing safe Vault error rather than masquerading
+as an empty account.
+
 ### Sprint 9.1 Daily Complete presentation
 
 The dashboard renders a dedicated Daily Complete state only when the restored

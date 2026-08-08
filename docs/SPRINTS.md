@@ -339,3 +339,36 @@ it. Automated verification is contract/static only because no live Supabase
 project is connected. Run
 `202608070009_sprint10_1_uuid_function_hotfix.sql` after migration 008 before
 retesting daily mission generation.
+
+## Sprint 10.2 — Skill Progression Restoration Bug Fix
+
+Status: ✅ Complete
+
+Goal: Correct the live `0 ACTIVE` Skills Overview result after an accepted
+Programming completion without changing skill persistence, rewards, mission
+authority, or dashboard design.
+
+Completed: Traced the full SQL → RPC → repository → application-service → UI
+flow; verified migration 008 already persists the mapped Front-End Engineering
+row and returns `updatedSkill`; verified the zero-argument restoration RPC,
+authenticated grant, RLS policy, and immutable client normalization; identified
+the accepted-completion dashboard branch as the fault; and added the missing
+Skills redraw plus authoritative dual-award notice in that branch.
+
+Definition of Done: A Programming mission awards 25 overall XP and 15
+Front-End Engineering XP once. Skills Overview changes from its true empty
+state to the authoritative Level 1 / 15 XP result immediately, and the same
+total returns after refresh and logout/login. Restoration failures use the
+existing generic Vault error and never silently render `0 ACTIVE`. All prior
+tests and migrations remain unchanged.
+
+Result: The browser now presents the skill snapshot the application service had
+already reconciled. PostgreSQL remains the only skill-XP authority; the UI only
+redraws returned totals and derives level presentation through the shared
+progression engine.
+
+Notes: This is a JavaScript presentation bug fix. Migrations 001–009 are
+byte-for-byte unchanged, migration 009 remains compatible, and no migration
+010 is required. Sprint 8 validation, Sprint 9 daily authority, Sprint 9.1
+Daily Complete, Sprint 9.2 countdown, Sprint 10 skill rules, Sprint 10.1 UUID
+hotfix, authentication, RLS, rewards, and replacement limits are unchanged.

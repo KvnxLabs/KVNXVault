@@ -406,3 +406,30 @@ supabase/migrations/202608070009_sprint10_1_uuid_function_hotfix.sql
 ```
 
 For a fresh database, run migrations 001–009 in filename order.
+
+## Sprint 10.2 Skill Restoration Verification
+
+The production `0 ACTIVE` report did not require a database correction.
+Migration 008 already performs the complete authoritative skill transaction:
+
+- the saved mission definition supplies the server-selected `primarySkill`;
+- `request_vault_mission_action(text, text)` locks the daily mission, overall
+  progression, and owned skill row in order;
+- one accepted completion adds 25 overall XP and exactly 15 skill XP;
+- the skill row, lifecycle, progression, and history changes commit together;
+- duplicate and concurrent completion attempts observe terminal state and
+  cannot repeat either award; and
+- the response includes `updatedSkill` with the persisted total.
+
+`get_skill_progression()` also already has the correct restoration contract. It
+accepts no arguments, derives identity with `auth.uid()`, returns the current
+user's active catalog rows as `key`, `name`, `totalXP`, and `todayGain`, and is
+executable by `authenticated`. `skill_progression` retains RLS, its owner-read
+policy, and revoked direct browser writes. Migration 009 changes only internal
+daily UUID generation functions and does not replace or interfere with the
+Sprint 10 action/restoration functions.
+
+The fault was the accepted-completion dashboard redraw, not SQL persistence or
+RPC restoration. Migrations 001–009 remain unchanged and no migration 010 is
+created. A failed restoration RPC continues to surface the restrained generic
+Vault restoration error; it is never converted into an empty skill array.

@@ -599,6 +599,11 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     window.setTimeout(() => {
       missionCard.classList.remove("is-completing");
       renderProgression(applicationResult.snapshot.progression);
+      // The authoritative completion snapshot already contains the reconciled
+      // skill total. Redraw the existing Skills card in the same accepted path
+      // as overall XP so the pre-completion empty state cannot remain stale.
+      renderSkills(applicationResult.snapshot.skills);
+      showProgressAward(applicationResult);
       const isDailyComplete = renderDailyComplete(
         applicationResult.snapshot.coordinator,
         applicationResult.snapshot.progression,

@@ -1136,3 +1136,95 @@ supabase/migrations/202608070024_sprint24_operational_hardening.sql
 
 `migrations-pre-sprint24.sha256` records migrations 001–023 without changing
 historical baselines.
+
+## Sprint 24.1 Legacy XP Reconciliation Hardening
+
+Migration `202608070025_sprint24_1_legacy_xp_reconciliation.sql` adds one
+administrator-only observational table:
+
+- `vault_xp_reconciliation_baselines` stores a one-time explicitly attested
+  legacy account snapshot: server-read total XP, server-summed completed
+  history XP, server timestamp, required audit reason, and database principal.
+
+The table begins empty. Existing-account status, creation timestamp, mission
+chronology, and migration ordering do not qualify an account automatically.
+The table has RLS enabled, no browser policies, and all privileges revoked from
+`public`, `anon`, and `authenticated`.
+
+`establish_vault_legacy_xp_baseline(uuid, text)` is database-owner-only. It
+accepts an investigated account identifier and audit reason, locks the
+progression row, reads total XP and history itself, and inserts at most one
+baseline. It accepts no XP, date, history amount, or replacement value and is
+fully revoked from browser roles.
+
+Migration 025 replaces only `detect_vault_operational_anomalies()`:
+
+- `overall-progression-legacy-provenance-gap` is a warning only for a difference
+  captured by explicit administrator attestation.
+- `overall-progression-post-boundary-divergence` is critical when current total
+  XP no longer equals baseline total XP plus the completed-history delta.
+- `overall-progression-authoritative-divergence` is critical for every
+  unattested account, including accounts that existed before Migration 025,
+  when total differs from 75 plus all verified completed-history XP.
+
+No timestamps are used to qualify a legacy cohort or decide which history
+rewards count after an attested baseline. The detector compares the history sum
+recorded by the privileged snapshot with the current sum.
+Migration 025 never updates `progression_state`, `skill_progression`, or
+`mission_history`.
+
+Apply after Migration 024:
+
+```text
+supabase/migrations/202608070025_sprint24_1_legacy_xp_reconciliation.sql
+```
+
+`migrations-pre-sprint24.1.sha256` records migrations 001–024 without changing
+any earlier baseline.
+
+## Sprint 24.2 Forward-Only Baseline Remediation
+
+Migration `202608070026_sprint24_2_baseline_remediation.sql` repairs production
+state created by the unsafe early Migration 025 without editing Migration 025
+or gameplay data.
+
+Schema compatibility:
+
+- Adds `attestation_reason`, `established_by`, and `attestation_status` only
+  when the early baseline schema lacks them.
+- Preserves rows that already contain a complete explicit reason and database
+  principal, qualifying them as `attested`.
+- Deletes only automatic rows linked to the exact `sprint24_1` /
+  `sprint24_1_migration` boundary timestamp with `legacy_snapshot` provenance
+  and no attestation evidence.
+- Removes the obsolete per-baseline `boundary_key`; keeps the boundary table as
+  RLS-protected, revoked, superseded migration/incident metadata.
+- Adds constraints requiring every trusted attestation to contain a valid
+  reason and principal.
+
+`establish_vault_legacy_xp_baseline(uuid, text)` is recreated with the reviewed
+owner-only contract. It accepts no XP, history, date, timestamp, or operator
+claim. It serializes by account, locks `progression_state`, computes completed
+history XP server-side, records `session_user`, and inserts at most one
+immutable attestation.
+
+The prior anomaly detector is retained under a revoked internal name so all
+non-overall Sprint 24 rules remain unchanged. The replacement detector applies
+the corrected overall-XP classifications: unattested mismatch is critical,
+explicitly attested pre-boundary gap is warning, post-boundary mismatch is
+critical, and malformed provenance is warning while remaining unable to
+suppress authoritative reconciliation.
+
+No alert, progression, skill, history, mission, achievement, or streak row is
+mutated. Both tables and all helper functions remain revoked from `public`,
+`anon`, and `authenticated`; privileged functions use `SECURITY DEFINER`, an
+empty fixed search path, and schema-qualified objects.
+
+Apply after the production-applied Migration 025:
+
+```text
+supabase/migrations/202608070026_sprint24_2_baseline_remediation.sql
+```
+
+`migrations-pre-sprint24.2.sha256` records migrations 001–025 without changing
+any historical fingerprint baseline.

@@ -1184,3 +1184,71 @@ mission state, progression, skills, and the Sprint 23 event ledger are never
 eligible. The event ledger is preserved because Sprint 23's `all` period
 contract depends on its lifecycle history. No scheduler dependency is assumed;
 an external database-owner scheduler may invoke the same function later.
+
+## Sprint 24.1 Legacy XP Reconciliation Boundary
+
+`mission_history` existed in Sprint 7, but its presence does not prove complete
+XP provenance. The deprecated Sprint 7 contract accepted a client-calculated
+total, and Sprint 7.2's bounded prototype completion updated
+`progression_state` without inserting history. Sprint 8 later coupled the
+authoritative XP update and history insert, but no per-account cutover marker
+was persisted. Historical progression therefore cannot be reconstructed safely
+from timestamps or history alone.
+
+No durable per-account field proves whether a preexisting account actually used
+the prototype XP path. `progression_state.created_at`, mission chronology, Git
+commit time, and database migration ordering cannot safely make that
+classification. Migration 025 therefore creates no automatic baselines. Every
+account remains fully reconstructable—and every divergence remains critical—
+unless a database administrator explicitly attests one investigated account as
+having incomplete prototype-era provenance.
+
+The revoked `establish_vault_legacy_xp_baseline(uuid, text)` function accepts
+only the investigated user and a required audit reason. It locks and reads the
+account's progression itself, sums completed history itself, and inserts one
+immutable baseline. It accepts no XP, history amount, date, or replacement
+baseline. The snapshot is not a reward and is never consulted by gameplay,
+progression, achievements, streaks, Analytics, or mission lifecycle code.
+
+Monitoring distinguishes three cases:
+
+- An explicitly administrator-attested legacy mismatch is retained as a
+  warning because its historical provenance is incomplete.
+- Any later difference between the baseline total and the verified history
+  delta is critical because post-boundary provenance is complete.
+- Every account without that explicit attestation—regardless of creation
+  date—remains fully reconstructable from the fixed 75 XP initial state plus
+  authoritative completed history; any divergence remains critical.
+
+The old critical fingerprint naturally resolves during the next complete
+monitoring run because the corrected detector no longer emits it. A separate
+warning fingerprint preserves an attested legacy gap for investigation.
+Migration 025 does not delete alerts, alter XP, or manufacture history. Its
+administrator-only attestation function can create provenance metadata only.
+
+## Sprint 24.2 Production Baseline Remediation
+
+An early production build of Migration 025 automatically snapshotted every
+existing progression account against a shared `sprint24_1` migration boundary.
+That cohort rule was unsafe: account existence did not prove prototype-era XP,
+so an unexplained authoritative divergence could be mislabeled as legacy.
+
+Migration 026 is a forward-only correction. It recognizes an automatic row
+only when all migration-owned evidence agrees: `legacy_snapshot` provenance,
+the `sprint24_1` boundary sourced by `sprint24_1_migration`, the exact shared
+boundary timestamp, invalid/unattested status, and no reason or principal. It
+does not use account IDs or an observed XP difference. Complete administrator
+attestations are qualified first and cannot match the deletion predicate.
+
+The boundary row remains protected, superseded incident metadata. It no longer
+confers legacy status and is never consulted by anomaly detection. Every
+account without a complete explicit attestation is reconciled as fully
+authoritative from 75 initial XP plus verified completed mission history.
+Missing or corrupt provenance cannot suppress that critical check.
+
+The owner-only attestation API remains the sole trust transition. It accepts
+only an investigated account UUID and a 10–500 character reason, locks and
+reads progression, computes completed-history XP, records the database
+principal and timestamp, and never writes gameplay state. Monitoring continues
+to open, refresh, and resolve alerts through its normal deterministic run; the
+remediation does not delete or rewrite alerts.

@@ -891,3 +891,49 @@ Notes: Migration 024 is required. Migrations 001–023 remain byte-for-byte
 unchanged. Sprint 24 does not implement Quick Actions or any user-facing
 feature. No commit, push, deployment, migration application, or live
 verification is claimed.
+
+## Sprint 24.1 — Legacy XP Reconciliation Hardening
+
+Status: ✅ Code complete; review, migration, deployment, and live verification remain manual
+
+Completed: Added an explicit administrator-attested XP/history provenance
+boundary for individually investigated accounts that may contain Sprint 7
+prototype-era progression. No account is automatically treated as legacy.
+Every unattested account—including pre-Migration-025 accounts—retains critical
+reconstruction enforcement. An attested historical gap remains visible as a
+warning, while every post-baseline divergence remains critical.
+
+Authority: Baselines are observational snapshots, not rewards. They cannot add
+or remove overall XP, Skill XP, history, achievements, streaks, or mission
+state. RLS and full browser-role revocation protect both provenance tables; no
+frontend authority, hard-coded account exception, or automatic alert deletion
+is introduced. The database-owner function accepts only user identity and an
+audit reason; XP/history values are always read from authoritative tables.
+
+Notes: Migration 025 is required. Migrations 001–024 remain byte-for-byte
+unchanged. This is Sprint 24.1, not Quick Actions or product Sprint 25. No
+commit, push, deployment, production migration, XP modification, alert
+deletion, or live verification is claimed.
+
+## Sprint 24.2 — Production Baseline Remediation
+
+Status: ✅ Code complete; review, production migration, and live verification remain manual
+
+Completed: Added forward-only Migration 026 to remove only the automatically
+trusted baseline rows produced by the unsafe early production Migration 025.
+Identification uses the complete migration-owned provenance signature rather
+than account IDs or XP differences. Explicit administrator attestations are
+preserved, while every unattested account returns to full 75-plus-history
+reconciliation.
+
+The original `sprint24_1` boundary remains protected as superseded incident
+metadata and confers no trust. The final owner-only attestation API reads and
+locks server state, computes history, records a reason and principal, and
+cannot mutate XP or gameplay. Detector rules retain all non-overall Sprint 24
+checks and conservatively classify invalid provenance without letting it hide
+an authoritative divergence.
+
+Notes: Migration 026 is required. Migrations 001–025 remain byte-for-byte
+unchanged. No alert is manually deleted; normal monitoring manages deterministic
+alert lifecycle. No commit, push, deployment, production mutation, or live
+verification is claimed.

@@ -515,3 +515,180 @@ If Migration 024 must be rolled back before production acceptance, remove only
 its four functions and three operational tables after backing up operational
 records. Do not touch migrations or objects from 001–023. Once accepted, use a
 new forward migration instead of editing 024.
+
+## Sprint 24.1 Legacy XP Reconciliation Verification
+
+Migration 025 does not repair or normalize XP. Before application, back up the
+database and confirm Migration 024 is installed. Apply Migration 025 as the
+database owner. Confirm that no account was automatically qualified:
+
+```sql
+select count(*) as automatic_legacy_baselines
+from public.vault_xp_reconciliation_baselines;
+```
+
+The expected result immediately after migration is zero. Run monitoring before
+any attestation. Every existing unexplained divergence must still appear as
+`overall-progression-authoritative-divergence` with critical severity.
+
+Only after reviewing an account's development-era evidence may a database owner
+create one legacy provenance baseline. The function accepts no XP or date:
+
+```sql
+select public.establish_vault_legacy_xp_baseline(
+  '<investigated-user-uuid>'::uuid,
+  'Investigated Sprint 7 prototype-era progression without complete history provenance.'
+);
+```
+
+Do not invoke this for an account merely because it existed before Migration
+025 or currently has a divergence. Preserve the investigation record outside
+the database as part of the incident review. Then inspect the server-captured
+baseline:
+
+```sql
+
+select user_id, baseline_total_xp, baseline_history_xp,
+       baseline_total_xp - 75 - baseline_history_xp as legacy_unattributed_xp,
+       established_at, provenance_status, attestation_reason, established_by
+from public.vault_xp_reconciliation_baselines
+order by established_at, user_id;
+```
+
+Run monitoring normally:
+
+```sql
+select public.run_vault_operational_monitoring();
+
+select alert_type, severity, status, occurrence_count,
+       affected_user_id, details, first_detected_at,
+       last_detected_at, resolved_at
+from public.vault_operational_alerts
+where alert_type in (
+  'overall-progression-history-divergence',
+  'overall-progression-legacy-provenance-gap',
+  'overall-progression-post-boundary-divergence',
+  'overall-progression-authoritative-divergence'
+)
+order by first_detected_at, alert_type;
+```
+
+For an explicitly attested legacy account, expect the obsolete Sprint 24
+critical and the interim authoritative critical to resolve through the normal
+complete-scan lifecycle. A warning-only
+`overall-progression-legacy-provenance-gap` remains. Its details show the
+server-captured baseline, history-at-boundary, audit reason, and legacy
+unattributed difference. Do not delete alerts manually.
+
+For every unattested account, including one created before Migration 025,
+unexplained extra or missing XP remains
+`overall-progression-authoritative-divergence` at critical severity.
+
+Read-only reconciliation check:
+
+```sql
+select progression.user_id,
+       progression.total_xp as persisted_total_xp,
+       baseline.baseline_total_xp
+         + coalesce(history.current_history_xp, 0)
+         - baseline.baseline_history_xp as expected_post_boundary_total_xp,
+       baseline.baseline_total_xp - 75 - baseline.baseline_history_xp
+         as legacy_unattributed_xp
+from public.progression_state as progression
+join public.vault_xp_reconciliation_baselines as baseline
+  on baseline.user_id = progression.user_id
+left join (
+  select user_id, sum(xp_awarded)::bigint as current_history_xp
+  from public.mission_history
+  where final_state = 'completed'
+  group by user_id
+) as history on history.user_id = progression.user_id
+order by progression.user_id;
+```
+
+The query must not be converted into an UPDATE. Normal users receive no table
+or function authority over provenance. Future monitoring scans remain
+deterministic and will classify any unexplained post-boundary delta as critical.
+
+## Sprint 24.2 Production Baseline Remediation Verification
+
+Back up production and capture the unsafe rows read-only before applying
+Migration 026. Never edit XP or history during this procedure:
+
+```sql
+select boundary_key, initial_xp, established_at, source
+from public.vault_xp_reconciliation_boundaries
+where boundary_key = 'sprint24_1';
+
+select baseline.user_id, baseline.baseline_total_xp,
+       baseline.baseline_history_xp, baseline.established_at,
+       baseline.provenance_status, baseline.boundary_key
+from public.vault_xp_reconciliation_baselines as baseline
+order by baseline.user_id;
+```
+
+Review and apply
+`202608070026_sprint24_2_baseline_remediation.sql` as the database owner. Then
+verify that no automatic row remains trusted and that the old boundary is only
+metadata:
+
+```sql
+select count(*) as trusted_baselines
+from public.vault_xp_reconciliation_baselines
+where attestation_status = 'attested';
+
+select boundary_key, initial_xp, established_at, source
+from public.vault_xp_reconciliation_boundaries
+where boundary_key = 'sprint24_1';
+
+select user_id, baseline_total_xp, baseline_history_xp,
+       attestation_status, attestation_reason, established_by
+from public.vault_xp_reconciliation_baselines
+order by user_id;
+```
+
+For the observed production signature, the immediate trusted-baseline count is
+zero and the superseded boundary row remains. Confirm gameplay was untouched:
+
+```sql
+select progression.user_id, progression.total_xp,
+       coalesce(sum(history.xp_awarded)
+         filter (where history.final_state = 'completed'), 0) as completed_history_xp
+from public.progression_state as progression
+left join public.mission_history as history
+  on history.user_id = progression.user_id
+group by progression.user_id, progression.total_xp
+order by progression.user_id;
+```
+
+Run one complete monitoring scan and inspect only overall reconciliation:
+
+```sql
+select public.run_vault_operational_monitoring();
+
+select alert_type, severity, status, affected_user_id, details
+from public.vault_operational_alerts
+where alert_type like 'overall-progression-%'
+order by affected_user_id, alert_type;
+```
+
+An unattested account is critical only when `total_xp` differs from
+`75 + completed_history_xp`. In the incident example, `235` versus
+`75 + 110` is critical; `125` equals `75 + 50` and is healthy, though still
+unattested. Do not manufacture an alert for an exact reconstruction.
+
+After individual investigation, attest only the proven prototype account:
+
+```sql
+select public.establish_vault_legacy_xp_baseline(
+  '<investigated-user-uuid>'::uuid,
+  'Reviewed prototype-era progression evidence and incident record; incomplete historical XP provenance confirmed.'
+);
+
+select public.run_vault_operational_monitoring();
+```
+
+Expect that account's captured legacy gap to become warning-only. Every other
+unattested mismatch remains critical, and every later unexplained change to an
+attested account is critical. Do not delete alerts manually; complete scans
+resolve or reopen deterministic fingerprints normally.

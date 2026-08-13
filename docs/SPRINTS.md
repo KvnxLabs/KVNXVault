@@ -810,3 +810,24 @@ Notes: Migration 022 is required. Migrations 001–021 remain byte-for-byte
 unchanged. Production continues using Migration 021 real database time;
 staging retains Migration 012 simulation. No production deployment, production
 verification, staging verification, or live Supabase verification is claimed.
+
+## Sprint 22.1 — Completion Reconciliation + Skill Card Polish
+
+Status: ✅ Code complete; deployment and live retest remain manual
+
+Completed: Side Mission action handling now reconciles and renders the returned
+authoritative snapshot before interpreting retry status or running ancillary
+page redraws. Terminal completed/expired snapshots always remove both mutation
+actions and replace stale status copy. A later presentation exception can no
+longer misreport an already-committed database completion as a persistence
+failure. The action buttons also have an explicit `[hidden]` display rule.
+
+Skill Center's two-column grid now aligns items to the start, and each skill
+card is content-sized. An expanded positive-XP disclosure no longer stretches
+its collapsed neighbor. Native disclosure accessibility, mobile single-column
+layout, and zero-XP compact cards remain unchanged.
+
+Notes: Frontend only. Application Service, Repository, Migration 022, +10/+10
+economy, lifecycle, history, Analytics, streak exclusion, Daily Mission, and
+Daily Complete are unchanged. **NO DATABASE MIGRATION REQUIRED.** No production
+retest is claimed by this package.

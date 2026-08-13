@@ -1432,8 +1432,16 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     [skillSideMissionReward, missionCenterSideReward].forEach((element) => {
       if (element) element.textContent = reward;
     });
-    sideMissionStartButtons.forEach((button) => { button.hidden = !viewModel.canStart; });
-    sideMissionCompleteButtons.forEach((button) => { button.hidden = !viewModel.canComplete; });
+    sideMissionStartButtons.forEach((button) => {
+      button.hidden = !viewModel.canStart;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    });
+    sideMissionCompleteButtons.forEach((button) => {
+      button.hidden = !viewModel.canComplete;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    });
     if (sideMissionStatus) {
       sideMissionStatus.textContent = viewModel.state === "completed"
         ? `${reward} secured. This does not change Daily Complete or the daily streak.`
@@ -2430,17 +2438,45 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     });
     if (sideMissionStatus) sideMissionStatus.textContent = action === "start"
       ? "Starting Side Mission…" : "Securing verified Side Mission completion…";
+    let result;
     try {
-      const result = action === "start"
+      result = action === "start"
         ? await vaultApplication.startSideMission()
         : await vaultApplication.completeSideMission();
-      if (!result?.accepted) throw new Error(result?.reason || "side-mission-rejected");
-      applicationSnapshot = result.snapshot;
-      progressionSnapshot = result.snapshot.progression;
-      vaultEntries = result.snapshot.history || vaultEntries;
-      vaultPagination = result.snapshot.historyPagination || vaultPagination;
-      if (action === "complete") analyticsLoadedPeriod = null;
-      renderSideMission(result.snapshot);
+    } catch (error) {
+      renderSideMission(applicationSnapshot);
+      if (sideMissionStatus) sideMissionStatus.textContent = "The Side Mission could not be updated. Your saved state remains unchanged.";
+      sideMissionActionInFlight = false;
+      return;
+    }
+
+    if (!result?.snapshot) {
+      renderSideMission(applicationSnapshot);
+      if (sideMissionStatus) sideMissionStatus.textContent = "The Vault did not return a valid Side Mission state. Refresh to restore it.";
+      sideMissionActionInFlight = false;
+      return;
+    }
+
+    // Reconcile the server snapshot before interpreting accepted/retry status.
+    // A retry may be rejected because the authoritative mission is already
+    // terminal; that terminal state must still remove every mutation action.
+    applicationSnapshot = result.snapshot;
+    progressionSnapshot = result.snapshot.progression;
+    vaultEntries = result.snapshot.history || vaultEntries;
+    vaultPagination = result.snapshot.historyPagination || vaultPagination;
+    renderSideMission(result.snapshot);
+
+    if (!result.accepted) {
+      const state = result.snapshot.sideMission?.lifecycle?.state;
+      if (!["completed", "expired"].includes(state) && sideMissionStatus) {
+        sideMissionStatus.textContent = "The Vault declined that Side Mission transition. Its authoritative state is unchanged.";
+      }
+      sideMissionActionInFlight = false;
+      return;
+    }
+
+    if (action === "complete") analyticsLoadedPeriod = null;
+    try {
       renderProgression(result.snapshot.progression);
       renderSkills(result.snapshot.skills);
       renderSkillCenter(result.snapshot);
@@ -2449,22 +2485,13 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       renderMissionCenter(result.snapshot);
       showProgressAward(result);
       showAchievementUnlocks(result.newAchievements);
-    } catch (error) {
-      if (sideMissionStatus) sideMissionStatus.textContent = "The Side Mission could not be updated. Your saved state remains unchanged.";
-    } finally {
-      sideMissionActionInFlight = false;
-      const viewModel = KVNXSideMissionExperience.createViewModel(applicationSnapshot);
-      sideMissionStartButtons.forEach((button) => {
-        button.disabled = false;
-        button.removeAttribute("aria-busy");
-        button.hidden = !viewModel.canStart;
-      });
-      sideMissionCompleteButtons.forEach((button) => {
-        button.disabled = false;
-        button.removeAttribute("aria-busy");
-        button.hidden = !viewModel.canComplete;
-      });
+    } catch (renderError) {
+      // The mutation already committed. Keep the authoritative Side Mission
+      // presentation terminal instead of misreporting a persistence failure.
+      renderSideMission(result.snapshot);
     }
+    sideMissionActionInFlight = false;
+    renderSideMission(result.snapshot);
   };
   sideMissionStartButtons.forEach((button) => {
     button.addEventListener("click", () => runSideMissionAction("start"));

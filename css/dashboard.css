@@ -2776,9 +2776,12 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  align-items: start;
 }
 
 .skill-center__card {
+  align-self: start;
+  height: auto;
   padding: 0;
   overflow: hidden;
 }
@@ -3143,6 +3146,7 @@
 .side-mission-panel__details dt { color: var(--app-subtle); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; }
 .side-mission-panel__details dd { margin: 6px 0 0; color: var(--app-text); font-size: 0.7rem; }
 .side-mission-panel__actions { display: flex; gap: 10px; margin-top: 20px; }
+.side-mission-panel__actions .app-button[hidden] { display: none; }
 .side-mission-panel__status { min-height: 18px; margin: 14px 0 0; color: var(--app-subtle); font-size: 0.65rem; line-height: 1.6; }
 
 @media (max-width: 1100px) {

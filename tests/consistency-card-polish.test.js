@@ -78,8 +78,8 @@ test("Sprint 20 Skill Paths remain unchanged", () => {
 });
 
 test("no CSS or Dashboard rendering logic changed", () => {
-  assert.equal(hash("css/dashboard.css"), "be5400abb7c0d551d4f1b74b0a74bf2c92ea0572b260a8b729536e6339c75307");
-  assert.equal(hash("js/dashboard.js"), "cc0ea021627d4eab99be5eada9a896a7407a2667847c1417f49a51b1e45eb203");
+  assert.equal(hash("css/dashboard.css"), "dd0ed98fd8bffbdbffc1870d43feadd3c50b5f8d1d4c4ec297292040d278ab15");
+  assert.equal(hash("js/dashboard.js"), "4db6e97f3f4867912992cab1881a3763212348c6f66e8da0b28c7f85ae6af0b0");
 });
 
 test("Sprint 20.1 remains migration-free after later migrations", () => {

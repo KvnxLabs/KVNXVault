@@ -143,6 +143,122 @@ const KVNXSkillsExperience = (() => {
   return Object.freeze({ createViewModel });
 })();
 
+// Sprint 17 is a read-only merge of the protected canonical catalog, persisted
+// skill totals, and bounded authoritative Vault history. Award amounts and
+// mission attribution are never inferred from current mission content.
+const KVNXSkillCenterExperience = (() => {
+  const FILTERS = Object.freeze(["all", "active", "not-started"]);
+  const SORTS = Object.freeze(["highest-level", "most-xp", "name"]);
+
+  const compareIdentity = (left, right) => (left.sortOrder - right.sortOrder)
+    || left.name.localeCompare(right.name, "en-US");
+
+  const formatDate = (timestamp) => {
+    const parsed = Date.parse(timestamp);
+    return Number.isFinite(parsed)
+      ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" })
+        .format(new Date(parsed))
+      : "Date unavailable";
+  };
+
+  const createViewModel = (snapshot, progressionEngine, options = {}) => {
+    if (typeof progressionEngine?.createProgression !== "function"
+      || typeof progressionEngine?.getSnapshot !== "function") {
+      throw new TypeError("The configured progression engine is required.");
+    }
+
+    const catalog = Array.isArray(snapshot?.skillCatalog) ? snapshot.skillCatalog : [];
+    const progression = Array.isArray(snapshot?.skills) ? snapshot.skills : [];
+    const history = Array.isArray(snapshot?.history) ? snapshot.history : [];
+    const progressionByKey = new Map(progression.map((skill) => [String(skill.key), skill]));
+
+    const allSkills = catalog.map((catalogSkill, index) => {
+      const key = String(catalogSkill.key || "");
+      const persisted = progressionByKey.get(key);
+      const totalXPValue = Number(persisted?.totalXP || 0);
+      const totalXP = Number.isFinite(totalXPValue) ? Math.max(0, Math.floor(totalXPValue)) : 0;
+      const derived = progressionEngine.getSnapshot(
+        progressionEngine.createProgression(totalXP, "skill"),
+      );
+      const recentGains = history
+        .filter((entry) => entry?.status === "completed"
+          && entry?.primarySkillKey === key
+          && Number(entry?.skillXPEarned) > 0
+          && Number.isFinite(Date.parse(entry?.completedAt)))
+        .sort((left, right) => Date.parse(right.completedAt) - Date.parse(left.completedAt))
+        .slice(0, 5)
+        .map((entry) => Object.freeze({
+          historyId: String(entry.historyId || ""),
+          title: String(entry.title || "Verified mission"),
+          completedAt: new Date(Date.parse(entry.completedAt)).toISOString(),
+          dateLabel: formatDate(entry.completedAt),
+          skillXPEarned: Number(entry.skillXPEarned),
+        }));
+
+      return Object.freeze({
+        key,
+        name: String(catalogSkill.name || persisted?.name || "Unnamed skill"),
+        sortOrder: Number.isFinite(Number(catalogSkill.sortOrder))
+          ? Number(catalogSkill.sortOrder)
+          : index,
+        totalXP,
+        active: totalXP > 0,
+        stateLabel: totalXP > 0 ? "Active" : "Not Started",
+        level: derived.currentLevel,
+        nextLevel: derived.nextLevel,
+        currentLevelXP: derived.currentLevelXP,
+        currentLevelTarget: derived.isMaxLevel
+          ? derived.currentLevelXP
+          : derived.xpForNextLevel - (totalXP - derived.currentLevelXP),
+        xpForNextLevel: derived.xpForNextLevel,
+        xpRemaining: derived.xpRemaining,
+        progressPercentage: derived.progressPercentage,
+        isMaxLevel: derived.isMaxLevel,
+        recentGains: Object.freeze(recentGains),
+      });
+    });
+
+    const identitySorted = [...allSkills].sort(compareIdentity);
+    const activeSkills = identitySorted.filter((skill) => skill.active);
+    const highestSkill = [...activeSkills].sort((left, right) => (right.totalXP - left.totalXP)
+      || compareIdentity(left, right))[0] || null;
+    const recentHistoryEntry = history
+      .filter((entry) => entry?.status === "completed"
+        && Number(entry?.skillXPEarned) > 0
+        && Number.isFinite(Date.parse(entry?.completedAt))
+        && identitySorted.some((skill) => skill.key === entry.primarySkillKey))
+      .sort((left, right) => Date.parse(right.completedAt) - Date.parse(left.completedAt))[0] || null;
+    const recentlyDeveloped = recentHistoryEntry
+      ? identitySorted.find((skill) => skill.key === recentHistoryEntry.primarySkillKey) || null
+      : null;
+
+    const filter = FILTERS.includes(options.filter) ? options.filter : "all";
+    const sort = SORTS.includes(options.sort) ? options.sort : "highest-level";
+    const filtered = identitySorted.filter((skill) => filter === "all"
+      || (filter === "active" ? skill.active : !skill.active));
+    filtered.sort((left, right) => {
+      if (sort === "name") return left.name.localeCompare(right.name, "en-US") || compareIdentity(left, right);
+      if (sort === "most-xp") return (right.totalXP - left.totalXP) || compareIdentity(left, right);
+      return (right.level - left.level) || (right.totalXP - left.totalXP) || compareIdentity(left, right);
+    });
+
+    return Object.freeze({
+      empty: activeSkills.length === 0,
+      activeCount: activeSkills.length,
+      totalSkillXP: identitySorted.reduce((total, skill) => total + skill.totalXP, 0),
+      highestSkill,
+      recentlyDeveloped,
+      filter,
+      sort,
+      skills: Object.freeze(filtered),
+      activeSkills: Object.freeze(filtered.filter((skill) => skill.active)),
+      notStartedSkills: Object.freeze(filtered.filter((skill) => !skill.active)),
+    });
+  };
+
+  return Object.freeze({ FILTERS, SORTS, createViewModel });
+})();
+
 const KVNXAchievementsExperience = (() => {
   const createViewModel = (achievements = []) => Object.freeze(
     (Array.isArray(achievements) ? achievements : []).map((achievement) => {
@@ -418,6 +534,7 @@ if (typeof module === "object" && module.exports) {
     ...KVNXReplacementRequestController,
     dailyComplete: KVNXDailyCompleteExperience,
     skills: KVNXSkillsExperience,
+    skillCenter: KVNXSkillCenterExperience,
     achievements: KVNXAchievementsExperience,
     analytics: KVNXAnalyticsExperience,
     vaultHistory: KVNXVaultHistoryExperience,
@@ -429,6 +546,7 @@ if (typeof window !== "undefined") {
   window.KVNXReplacementRequestController = KVNXReplacementRequestController;
   window.KVNXDailyCompleteExperience = KVNXDailyCompleteExperience;
   window.KVNXSkillsExperience = KVNXSkillsExperience;
+  window.KVNXSkillCenterExperience = KVNXSkillCenterExperience;
   window.KVNXAchievementsExperience = KVNXAchievementsExperience;
   window.KVNXAnalyticsExperience = KVNXAnalyticsExperience;
   window.KVNXVaultHistoryExperience = KVNXVaultHistoryExperience;
@@ -462,6 +580,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const currentDate = document.querySelector("[data-current-date]");
   const dashboardHomeSections = document.querySelectorAll("[data-dashboard-home]");
   const missionsView = document.querySelector("[data-missions-view]");
+  const skillsView = document.querySelector("[data-skills-view]");
   const achievementsView = document.querySelector("[data-achievements-view]");
   const vaultView = document.querySelector("[data-vault-view]");
   const analyticsView = document.querySelector("[data-analytics-view]");
@@ -605,6 +724,19 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const skillList = document.querySelector("[data-skill-list]");
   const skillsCount = document.querySelector("[data-skills-count]");
   const skillsEmpty = document.querySelector("[data-skills-empty]");
+  const skillCenterContent = document.querySelector("[data-skill-center-content]");
+  const skillCenterError = document.querySelector("[data-skill-center-error]");
+  const skillCenterActive = document.querySelector("[data-skill-center-active]");
+  const skillCenterTotalXP = document.querySelector("[data-skill-center-total-xp]");
+  const skillCenterHighest = document.querySelector("[data-skill-center-highest]");
+  const skillCenterHighestContext = document.querySelector("[data-skill-center-highest-context]");
+  const skillCenterRecent = document.querySelector("[data-skill-center-recent]");
+  const skillCenterRecentContext = document.querySelector("[data-skill-center-recent-context]");
+  const skillCenterFilterButtons = document.querySelectorAll("[data-skill-filter]");
+  const skillCenterSort = document.querySelector("[data-skill-sort]");
+  const skillCenterEmpty = document.querySelector("[data-skill-center-empty]");
+  const skillCenterResults = document.querySelector("[data-skill-center-results]");
+  const skillCenterGroups = document.querySelector("[data-skill-center-groups]");
   const achievementList = document.querySelector("[data-achievement-list]");
   const achievementsCount = document.querySelector("[data-achievements-count]");
   const achievementUnlock = document.querySelector("[data-achievement-unlock]");
@@ -670,6 +802,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   let analyticsLoadedPeriod = applicationSnapshot.analytics?.period || null;
   let analyticsInFlight = false;
   let completionInFlight = false;
+  let skillCenterFilter = "all";
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -810,6 +943,143 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       item.append(icon, copy, level);
       skillList.append(item);
     });
+  };
+
+  const renderSkillCenter = (snapshot) => {
+    if (!skillsView || !skillCenterGroups) return;
+    try {
+      const viewModel = KVNXSkillCenterExperience.createViewModel(snapshot, window.KVNXProgression, {
+        filter: skillCenterFilter,
+        sort: skillCenterSort?.value,
+      });
+      if (skillCenterError) skillCenterError.hidden = true;
+      if (skillCenterContent) skillCenterContent.hidden = false;
+      if (skillCenterActive) skillCenterActive.textContent = viewModel.activeCount.toLocaleString("en-US");
+      if (skillCenterTotalXP) skillCenterTotalXP.textContent = `${viewModel.totalSkillXP.toLocaleString("en-US")} XP`;
+      if (skillCenterHighest) skillCenterHighest.textContent = viewModel.highestSkill?.name || "Not established";
+      if (skillCenterHighestContext) {
+        skillCenterHighestContext.textContent = viewModel.highestSkill
+          ? `${viewModel.highestSkill.totalXP.toLocaleString("en-US")} XP · Level ${viewModel.highestSkill.level}`
+          : "No mastery recorded";
+      }
+      if (skillCenterRecent) skillCenterRecent.textContent = viewModel.recentlyDeveloped?.name || "Not established";
+      if (skillCenterRecentContext) {
+        skillCenterRecentContext.textContent = viewModel.recentlyDeveloped
+          ? "Latest attributed Vault completion"
+          : "No verified gain yet";
+      }
+      if (skillCenterEmpty) skillCenterEmpty.hidden = !viewModel.empty;
+      if (skillCenterResults) {
+        skillCenterResults.textContent = `${viewModel.skills.length} ${viewModel.skills.length === 1 ? "skill" : "skills"} shown`;
+      }
+      skillCenterFilterButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.skillFilter === viewModel.filter));
+      });
+
+      skillCenterGroups.replaceChildren();
+      const renderGroup = (titleText, skills, stateClass) => {
+        if (skills.length === 0) return;
+        const section = document.createElement("section");
+        section.className = `skill-center__group ${stateClass}`;
+        const heading = document.createElement("div");
+        heading.className = "skill-center__group-heading";
+        const title = document.createElement("h2");
+        title.textContent = titleText;
+        const count = document.createElement("span");
+        count.textContent = `${skills.length} ${skills.length === 1 ? "skill" : "skills"}`;
+        heading.append(title, count);
+        const grid = document.createElement("div");
+        grid.className = "skill-center__grid";
+
+        skills.forEach((skill) => {
+          const details = document.createElement("details");
+          details.className = `skill-center__card app-card ${skill.active ? "is-active" : "is-not-started"}`;
+          const summary = document.createElement("summary");
+          summary.setAttribute("aria-label", `${skill.name}, ${skill.stateLabel}, Level ${skill.level}, ${skill.totalXP} XP. Open skill details.`);
+          const headingCopy = document.createElement("span");
+          headingCopy.className = "skill-center__card-heading";
+          const name = document.createElement("strong");
+          name.textContent = skill.name;
+          const state = document.createElement("span");
+          state.className = "skill-center__state";
+          state.textContent = skill.stateLabel;
+          headingCopy.append(name, state);
+          const level = document.createElement("span");
+          level.className = "skill-center__level";
+          const levelLabel = document.createElement("small");
+          levelLabel.textContent = "Level";
+          level.append(levelLabel, document.createTextNode(String(skill.level)));
+          summary.append(headingCopy, level);
+
+          const overview = document.createElement("div");
+          overview.className = "skill-center__overview";
+          const total = document.createElement("strong");
+          total.textContent = `${skill.totalXP.toLocaleString("en-US")} XP`;
+          const progressCopy = document.createElement("span");
+          progressCopy.textContent = skill.isMaxLevel
+            ? "Current maximum level"
+            : `${skill.currentLevelXP.toLocaleString("en-US")} / ${skill.currentLevelTarget.toLocaleString("en-US")} XP toward Level ${skill.nextLevel}`;
+          const progress = document.createElement("span");
+          progress.className = "skill-center__progress";
+          progress.setAttribute("role", "progressbar");
+          progress.setAttribute("aria-label", skill.isMaxLevel
+            ? `${skill.name} has reached the current maximum level`
+            : `${skill.name}: ${skill.progressPercentage}% toward Level ${skill.nextLevel}; ${skill.xpRemaining} XP remaining`);
+          progress.setAttribute("aria-valuemin", "0");
+          progress.setAttribute("aria-valuemax", "100");
+          progress.setAttribute("aria-valuenow", String(skill.progressPercentage));
+          const fill = document.createElement("i");
+          fill.style.width = `${skill.progressPercentage}%`;
+          progress.append(fill);
+          const remaining = document.createElement("span");
+          remaining.className = "skill-center__remaining";
+          remaining.textContent = skill.isMaxLevel
+            ? "No next threshold in the current progression configuration"
+            : `${skill.xpRemaining.toLocaleString("en-US")} XP remaining`;
+          overview.append(total, progressCopy, progress, remaining);
+
+          const detail = document.createElement("div");
+          detail.className = "skill-center__detail";
+          const detailHeading = document.createElement("h3");
+          detailHeading.textContent = "Recent verified gains";
+          const gains = document.createElement("ol");
+          gains.className = "skill-center__gains";
+          skill.recentGains.forEach((gain) => {
+            const item = document.createElement("li");
+            const date = document.createElement("time");
+            date.dateTime = gain.completedAt;
+            date.textContent = gain.dateLabel;
+            const mission = document.createElement("strong");
+            mission.textContent = gain.title;
+            const award = document.createElement("span");
+            award.textContent = `+${gain.skillXPEarned.toLocaleString("en-US")} XP`;
+            item.append(date, mission, award);
+            gains.append(item);
+          });
+          const noGains = document.createElement("p");
+          noGains.className = "skill-center__no-gains";
+          noGains.hidden = skill.recentGains.length > 0;
+          noGains.textContent = skill.active
+            ? "No attributed gains appear in the restored recent Vault window. Lifetime XP remains authoritative."
+            : "No verified mission has developed this skill yet.";
+          const vaultLink = document.createElement("a");
+          vaultLink.className = "skill-center__vault-link";
+          vaultLink.href = "#vault";
+          vaultLink.textContent = "View in Vault →";
+          detail.append(detailHeading, gains, noGains, vaultLink);
+          details.append(summary, overview, detail);
+          grid.append(details);
+        });
+        section.append(heading, grid);
+        skillCenterGroups.append(section);
+      };
+
+      renderGroup("Active Skills", viewModel.activeSkills, "is-active");
+      renderGroup("Not Started", viewModel.notStartedSkills, "is-not-started");
+    } catch {
+      if (skillCenterContent) skillCenterContent.hidden = true;
+      if (skillCenterError) skillCenterError.hidden = false;
+    }
   };
 
   const renderAchievements = (achievements) => {
@@ -1291,17 +1561,20 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
   const renderApplicationView = () => {
     const showMissions = window.location.hash === "#missions";
+    const showSkills = window.location.hash === "#skills";
     const showAchievements = window.location.hash === "#achievements";
     const showVault = window.location.hash === "#vault";
     const showAnalytics = window.location.hash === "#analytics";
-    dashboardHomeSections.forEach((section) => { section.hidden = showMissions || showAchievements || showVault || showAnalytics; });
+    dashboardHomeSections.forEach((section) => { section.hidden = showMissions || showSkills || showAchievements || showVault || showAnalytics; });
     if (missionsView) missionsView.hidden = !showMissions;
+    if (skillsView) skillsView.hidden = !showSkills;
     if (achievementsView) achievementsView.hidden = !showAchievements;
     if (vaultView) vaultView.hidden = !showVault;
     if (analyticsView) analyticsView.hidden = !showAnalytics;
     viewLinks.forEach((link) => {
       const activeView = showMissions
         ? "missions"
+        : showSkills ? "skills"
         : showAchievements ? "achievements"
         : showVault
           ? "vault"
@@ -1460,6 +1733,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderCoordinator(coordinatorSnapshot);
   renderProgression(applicationSnapshot.progression);
   renderSkills(applicationSnapshot.skills);
+  renderSkillCenter(applicationSnapshot);
   renderStreak(applicationSnapshot.streak);
   renderAchievements(applicationSnapshot.achievements);
   renderVault();
@@ -1467,6 +1741,14 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderApplicationView();
   protectedContentGate.reveal();
   window.addEventListener("hashchange", renderApplicationView);
+
+  skillCenterFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      skillCenterFilter = button.dataset.skillFilter || "all";
+      renderSkillCenter(applicationSnapshot);
+    });
+  });
+  skillCenterSort?.addEventListener("change", () => renderSkillCenter(applicationSnapshot));
 
   analyticsPeriodButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -1496,6 +1778,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       vaultEntries = snapshot.history || [];
       vaultPagination = snapshot.historyPagination || Object.freeze({ hasMore: false });
       renderVault();
+      renderSkillCenter(snapshot);
     } catch (error) {
       if (vaultResultsStatus) vaultResultsStatus.textContent = "Older entries could not be loaded. Please try again.";
       vaultLoadMore.disabled = false;
@@ -1558,6 +1841,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       renderCoordinator(applicationResult.snapshot.coordinator);
       renderProgression(applicationResult.snapshot.progression);
       renderSkills(applicationResult.snapshot.skills);
+      renderSkillCenter(applicationResult.snapshot);
       renderStreak(applicationResult.snapshot.streak);
       renderMissionCenter(applicationResult.snapshot);
       showProgressAward(applicationResult);
@@ -1583,6 +1867,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       // skill total. Redraw the existing Skills card in the same accepted path
       // as overall XP so the pre-completion empty state cannot remain stale.
       renderSkills(applicationResult.snapshot.skills);
+      renderSkillCenter(applicationResult.snapshot);
       renderAchievements(applicationResult.snapshot.achievements);
       renderStreak(applicationResult.snapshot.streak);
       renderVault();

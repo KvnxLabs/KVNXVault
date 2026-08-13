@@ -608,3 +608,37 @@ authority.
 Notes: No database migration is required. Migrations 001–016 remain unchanged.
 No live Supabase, staging, production deployment, or natural new-day verification
 is claimed by this package.
+
+## Sprint 17 — Authoritative Skill Center
+
+Status: ✅ Code complete; deployment and live verification remain manual
+
+Goal: Turn Skills navigation into a dedicated lifetime mastery surface without
+adding browser reward authority, duplicate progression state, or a new backend
+contract.
+
+Completed: Activated `#skills` in the existing shell; merged the canonical skill
+catalog with persisted skill totals; added Active and Not Started presentation;
+reused the existing skill progression configuration for level, current-level
+progress, and XP remaining; added authoritative summary metrics, deterministic
+filtering/sorting, keyboard-native detail disclosures, bounded recent verified
+gains, and Vault links; preserved the Sprint 16.1 restoration gate; reconciled
+accepted completion snapshots into both skill surfaces; and added focused
+authority, accessibility, migration, syntax, security, and packaging coverage.
+
+Definition of Done: Opening, filtering, sorting, expanding, refreshing, or
+revisiting Skill Center cannot add XP, mutate a skill, alter streaks, unlock an
+achievement, expose the mission catalog, or request another user's data. The
+surface renders only catalog identity, persisted totals, existing progression
+math, and attributed completed history already present in the immutable
+application snapshot. Rewards remain exactly 25 overall XP and 15 mapped skill
+XP through accepted server completion.
+
+Result: Skills is now a first-class product surface while Dashboard remains the
+overview, Vault remains the full archive, Analytics remains period-based, and
+Mission Center remains unchanged. Legacy history without trustworthy skill
+attribution is omitted from recent gains rather than fabricated.
+
+Notes: No database migration is required. Migrations 001–016 remain unchanged.
+No live Supabase, staging, production deployment, or live verification is
+claimed by this package.

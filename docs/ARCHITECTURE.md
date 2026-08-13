@@ -854,3 +854,40 @@ refresh and later login therefore restore the same saved mission instance.
 Only explicit Start, Complete, Skip, or Prepare Next Mission controls invoke
 their existing authoritative operations. The shared completion result continues
 to drive XP/skill feedback and all server-returned achievement notifications.
+
+## Sprint 17 Authoritative Skill Center
+
+Skill Center is a read-only lifetime progression surface inside the existing
+dashboard shell. `#skills` uses the same restoration gate and hash router as
+Dashboard, Mission Center, Achievements, Vault, and Analytics. The authenticated
+product shell remains hidden until the immutable application snapshot is ready,
+so a hard refresh cannot expose default skill values or a guest identity.
+
+The responsibility split remains narrow:
+
+- Dashboard keeps the compact Skills Overview and links to `#skills`.
+- Skill Center merges the protected canonical `skill_catalog` with the user's
+  persisted `skill_progression` totals for active and Not Started presentation.
+- Vault remains the permanent mission archive. Skill detail shows at most five
+  attributed gains from the already restored bounded history window and links
+  to `#vault` for the full archive.
+- Analytics remains selected-period insight. Skill Center totals are lifetime
+  authoritative progression and never derive from an Analytics period.
+
+Level, current-level percentage, and XP remaining are presentation projections
+of authoritative total skill XP through the existing `KVNXProgression` skill
+configuration. Sprint 17 adds no threshold table or reward formula. A completion
+still crosses the established Application Service and Repository action path;
+its returned immutable snapshot redraws both Skills Overview and Skill Center.
+
+Most-recent development and recent-gain rows require saved history attribution,
+a positive server-returned skill award, completed state, and a valid completion
+timestamp. Legacy rows without skill attribution are omitted instead of being
+inferred from current mission copy. The initial bounded Vault page is reused;
+opening Skill Center adds no network request and never downloads history once
+per skill.
+
+Filters, sorting, disclosure panels, and Vault navigation operate only on the
+restored immutable snapshot. They cannot write skill XP, select a mission,
+submit rewards, unlock achievements, or alter streaks. No database migration or
+new read contract is required.

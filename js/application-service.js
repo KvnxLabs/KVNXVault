@@ -64,6 +64,7 @@
     let onboarding;
     let progression;
     let skillProgression = [];
+    let skillCatalog = [];
     let achievements = [];
     let streak = Object.freeze({ currentStreak: 0, longestStreak: 0, lastCompletedDailyKey: null });
     let analytics = null;
@@ -84,6 +85,7 @@
       onboarding,
       progression: progressionEngine.getSnapshot(progression),
       skills: Object.freeze([...skillProgression]),
+      skillCatalog: Object.freeze([...skillCatalog]),
       achievements: Object.freeze([...achievements]),
       streak,
       analytics,
@@ -384,6 +386,7 @@
       let loadedDailyMission;
       let loadedHistory;
       let loadedSkills = [];
+      let loadedSkillCatalog = [];
       let loadedAchievementCatalog = [];
       let loadedAchievements = [];
       let loadedStreak = null;
@@ -407,13 +410,16 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, skillCatalogResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
           repository.loadProgression(),
           typeof repository.getVaultHistory === "function"
             ? repository.getVaultHistory()
             : repository.loadMissionHistory(),
           typeof repository.getSkillProgression === "function"
             ? repository.getSkillProgression()
+            : Promise.resolve([]),
+          typeof repository.getSkillCatalog === "function"
+            ? repository.getSkillCatalog()
             : Promise.resolve([]),
           typeof repository.getAchievementCatalog === "function"
             ? repository.getAchievementCatalog()
@@ -431,6 +437,7 @@
         loadedProgression = progressionResult;
         loadedHistory = historyResult;
         loadedSkills = skillResult;
+        loadedSkillCatalog = skillCatalogResult;
         loadedAchievementCatalog = achievementCatalogResult;
         loadedAchievements = achievementResult;
         loadedStreak = streakResult;
@@ -493,6 +500,10 @@
         historyNextOffset = vaultHistory.length;
       }
       restoreSkillProgression(Array.isArray(loadedSkills) ? loadedSkills : []);
+      skillCatalog = Object.freeze(
+        (Array.isArray(loadedSkillCatalog) ? loadedSkillCatalog : [])
+          .map((entry) => Object.freeze({ ...entry })),
+      );
       restoreAchievements(
         Array.isArray(loadedAchievementCatalog) ? loadedAchievementCatalog : [],
         Array.isArray(loadedAchievements) ? loadedAchievements : [],

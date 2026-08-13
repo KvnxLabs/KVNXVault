@@ -312,6 +312,12 @@
       todayGain: Number(skill?.todayGain || 0),
     });
 
+    const mapSkillCatalogEntry = (row) => Object.freeze({
+      key: String(row?.skill_key || ""),
+      name: String(row?.display_name || ""),
+      sortOrder: Number(row?.sort_order),
+    });
+
     const mapAchievement = (achievement, unlocked = false) => Object.freeze({
       key: String(achievement?.key || ""),
       name: String(achievement?.name || ""),
@@ -403,6 +409,27 @@
         throw createRepositoryError("skill-progression-response-invalid");
       }
       return Object.freeze(skills);
+    };
+
+    // Mission Center presentation resolves the mission's server-owned skill
+    // key through the existing read-only canonical catalog. This read cannot
+    // select a mission or mutate catalog, progression, or rewards.
+    const getSkillCatalog = async () => {
+      await getAuthenticatedUser();
+      const rows = await unwrap(
+        database.from("skill_catalog")
+          .select("skill_key, display_name, sort_order")
+          .eq("active", true)
+          .order("sort_order", { ascending: true }),
+        "skill-catalog-load-failed",
+      );
+      if (!Array.isArray(rows)) throw createRepositoryError("skill-catalog-response-invalid");
+      const catalog = rows.map(mapSkillCatalogEntry);
+      if (catalog.some((entry) => !entry.key || !entry.name
+        || !Number.isInteger(entry.sortOrder))) {
+        throw createRepositoryError("skill-catalog-response-invalid");
+      }
+      return Object.freeze(catalog);
     };
 
     // Sprint 11 restoration remains read-only. Both RPCs derive identity and
@@ -670,6 +697,7 @@
 
     return Object.freeze({
       getAchievementCatalog,
+      getSkillCatalog,
       getSkillProgression,
       getUserAchievements,
       getVaultAnalytics,

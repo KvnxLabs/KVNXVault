@@ -317,6 +317,73 @@ const KVNXAnalyticsExperience = (() => {
   return Object.freeze({ PERIOD_LABELS, createViewModel });
 })();
 
+// Sprint 16 Mission Center is a presentation-only projection of the immutable
+// application snapshot. It never creates, selects, transitions, or rewards a
+// mission; those operations remain behind Application Service and PostgreSQL.
+const KVNXMissionCenterExperience = (() => {
+  const STATE_LABELS = Object.freeze({
+    ready: "Ready",
+    active: "Active",
+    completed: "Completed",
+    skipped: "Skipped",
+    expired: "Expired",
+  });
+
+  const formatDays = (value) => `${value} ${value === 1 ? "day" : "days"}`;
+
+  const createViewModel = (snapshot) => {
+    const mission = snapshot?.coordinator?.currentMission;
+    const definition = mission?.definition;
+    const lifecycle = mission?.lifecycle;
+    const dailyStatus = snapshot?.coordinator?.dailyStatus;
+    if (!definition || !lifecycle || !dailyStatus) {
+      return Object.freeze({ available: false, recentMissions: Object.freeze([]) });
+    }
+
+    const state = String(lifecycle.state || "").toLowerCase();
+    const skillKey = String(definition.primarySkill || "");
+    const catalogSkill = (snapshot.skillCatalog || []).find((skill) => skill.key === skillKey);
+    const progressedSkill = (snapshot.skills || []).find((skill) => skill.key === skillKey);
+    const skillName = catalogSkill?.name || progressedSkill?.name || "Canonical skill unavailable";
+    const replacementsRemaining = Number(dailyStatus.replacementsRemaining);
+    const recentMissions = (Array.isArray(snapshot.history) ? snapshot.history : [])
+      .filter((entry) => entry?.status === "completed")
+      .slice(0, 5)
+      .map((entry) => Object.freeze({ ...entry }));
+    const dailyComplete = state === "completed" && replacementsRemaining === 0;
+    const currentXP = Number(snapshot.progression?.currentXP);
+    const currentStreak = Number(snapshot.streak?.currentStreak || 0);
+
+    return Object.freeze({
+      available: true,
+      id: String(definition.id || ""),
+      title: String(definition.title || ""),
+      description: String(definition.description || ""),
+      duration: String(definition.estimatedDuration || ""),
+      difficulty: String(definition.difficulty || ""),
+      xpReward: Number(definition.xpReward),
+      skillKey,
+      skillName,
+      state,
+      stateLabel: STATE_LABELS[state] || "Unavailable",
+      canStart: lifecycle.canStart === true,
+      canComplete: lifecycle.canComplete === true,
+      canSkip: lifecycle.canSkip === true,
+      isTerminal: lifecycle.isTerminal === true,
+      canRequestReplacement: dailyStatus.canRequestReplacement === true,
+      replacementsRemaining: Number.isInteger(replacementsRemaining) ? replacementsRemaining : 0,
+      replacementLabel: replacementsRemaining > 0 ? "Available" : "Used",
+      dailyComplete,
+      currentXPLabel: Number.isFinite(currentXP) ? `${currentXP.toLocaleString("en-US")} XP` : "Unavailable",
+      currentStreakLabel: formatDays(Number.isInteger(currentStreak) && currentStreak >= 0 ? currentStreak : 0),
+      nextResetAt: typeof snapshot.nextResetAt === "string" ? snapshot.nextResetAt : null,
+      recentMissions: Object.freeze(recentMissions),
+    });
+  };
+
+  return Object.freeze({ STATE_LABELS, createViewModel });
+})();
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     ...KVNXReplacementRequestController,
@@ -325,6 +392,7 @@ if (typeof module === "object" && module.exports) {
     achievements: KVNXAchievementsExperience,
     analytics: KVNXAnalyticsExperience,
     vaultHistory: KVNXVaultHistoryExperience,
+    missionCenter: KVNXMissionCenterExperience,
   });
 }
 if (typeof window !== "undefined") {
@@ -334,6 +402,7 @@ if (typeof window !== "undefined") {
   window.KVNXAchievementsExperience = KVNXAchievementsExperience;
   window.KVNXAnalyticsExperience = KVNXAnalyticsExperience;
   window.KVNXVaultHistoryExperience = KVNXVaultHistoryExperience;
+  window.KVNXMissionCenterExperience = KVNXMissionCenterExperience;
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", async () => {
@@ -347,6 +416,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const searchForm = document.querySelector("[data-app-search]");
   const currentDate = document.querySelector("[data-current-date]");
   const dashboardHomeSections = document.querySelectorAll("[data-dashboard-home]");
+  const missionsView = document.querySelector("[data-missions-view]");
   const achievementsView = document.querySelector("[data-achievements-view]");
   const vaultView = document.querySelector("[data-vault-view]");
   const analyticsView = document.querySelector("[data-analytics-view]");
@@ -380,6 +450,14 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     if (persistenceError) {
       persistenceError.hidden = false;
       persistenceError.textContent = "We couldn't restore your Vault. Check your connection, then refresh the page.";
+    }
+    if (window.location.hash === "#missions" && missionsView) {
+      dashboardHomeSections.forEach((section) => { section.hidden = true; });
+      missionsView.hidden = false;
+      const loading = missionsView.querySelector("[data-mission-center-loading]");
+      const restorationError = missionsView.querySelector("[data-mission-center-error]");
+      if (loading) loading.hidden = true;
+      if (restorationError) restorationError.hidden = false;
     }
     return;
   }
@@ -451,6 +529,32 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const missionReplacement = document.querySelector("[data-mission-replacement]");
   const requestMissionButton = document.querySelector("[data-request-mission]");
   const replacementNote = document.querySelector("[data-replacement-note]");
+  const missionCenterLoading = document.querySelector("[data-mission-center-loading]");
+  const missionCenterError = document.querySelector("[data-mission-center-error]");
+  const missionCenterEmpty = document.querySelector("[data-mission-center-empty]");
+  const missionCenterContent = document.querySelector("[data-mission-center-content]");
+  const missionCenterRetry = document.querySelector("[data-mission-center-retry]");
+  const missionCenterStatus = document.querySelector("[data-mission-center-status]");
+  const missionCenterTitle = document.querySelector("[data-mission-center-title]");
+  const missionCenterDescription = document.querySelector("[data-mission-center-description]");
+  const missionCenterDuration = document.querySelector("[data-mission-center-duration]");
+  const missionCenterDifficulty = document.querySelector("[data-mission-center-difficulty]");
+  const missionCenterReward = document.querySelector("[data-mission-center-reward]");
+  const missionCenterSkill = document.querySelector("[data-mission-center-skill]");
+  const missionCenterActions = document.querySelector("[data-mission-center-actions]");
+  const missionCenterStart = document.querySelector("[data-mission-center-start]");
+  const missionCenterComplete = document.querySelector("[data-mission-center-complete]");
+  const missionCenterSkip = document.querySelector("[data-mission-center-skip]");
+  const missionCenterReplacement = document.querySelector("[data-mission-center-replacement]");
+  const missionCenterRequest = document.querySelector("[data-mission-center-request]");
+  const missionCenterDailyComplete = document.querySelector("[data-mission-center-daily-complete]");
+  const missionCenterCurrentXP = document.querySelector("[data-mission-center-current-xp]");
+  const missionCenterCurrentStreak = document.querySelector("[data-mission-center-current-streak]");
+  const missionCenterPrimaryStatus = document.querySelector("[data-mission-center-primary-status]");
+  const missionCenterReplacementStatus = document.querySelector("[data-mission-center-replacement-status]");
+  const missionCenterReset = document.querySelector("[data-mission-center-reset]");
+  const missionCenterRecent = document.querySelector("[data-mission-center-recent]");
+  const missionCenterRecentEmpty = document.querySelector("[data-mission-center-recent-empty]");
   const dailyComplete = document.querySelector("[data-daily-complete]");
   const dailyCompleteXP = document.querySelector("[data-daily-complete-xp]");
   const dailyCompleteResetLabel = document.querySelector("[data-daily-complete-reset-label]");
@@ -522,6 +626,8 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   let nextResetAt = applicationSnapshot.nextResetAt;
   let countdownResetAt = null;
   let countdownController = null;
+  let missionCenterCountdownController = null;
+  let missionCenterCountdownResetAt = null;
   let progressAwardTimer = null;
   let achievementUnlockTimer = null;
   let vaultEntries = applicationSnapshot.history || [];
@@ -529,6 +635,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   let analyticsPeriod = "7d";
   let analyticsLoadedPeriod = applicationSnapshot.analytics?.period || null;
   let analyticsInFlight = false;
+  let completionInFlight = false;
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -540,7 +647,8 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       persistenceError.textContent = "Your latest change couldn't be saved. Refresh to restore the last durable state before continuing.";
       persistenceError.focus();
     }
-    [startMissionButton, completeMissionButton, skipMissionButton, requestMissionButton]
+    [startMissionButton, completeMissionButton, skipMissionButton, requestMissionButton,
+      missionCenterStart, missionCenterComplete, missionCenterSkip, missionCenterRequest]
       .forEach((button) => { if (button) button.disabled = true; });
   };
 
@@ -1046,17 +1154,121 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
   };
 
+  const formatRecentMissionDate = (timestamp) => {
+    const parsed = Date.parse(timestamp);
+    if (!Number.isFinite(parsed)) return "Completion date unavailable";
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+    }).format(new Date(parsed));
+  };
+
+  const renderMissionCenter = (snapshot) => {
+    if (!missionsView) return;
+    if (missionCenterLoading) missionCenterLoading.hidden = true;
+    if (missionCenterError) missionCenterError.hidden = true;
+
+    try {
+      const viewModel = KVNXMissionCenterExperience.createViewModel(snapshot);
+      if (missionCenterEmpty) missionCenterEmpty.hidden = viewModel.available;
+      if (missionCenterContent) missionCenterContent.hidden = !viewModel.available;
+      if (!viewModel.available) {
+        missionCenterCountdownController?.stop();
+        missionCenterCountdownController = null;
+        missionCenterCountdownResetAt = null;
+        return;
+      }
+
+      if (missionCenterStatus) {
+        missionCenterStatus.textContent = viewModel.stateLabel;
+        missionCenterStatus.dataset.state = viewModel.state;
+      }
+      if (missionCenterTitle) missionCenterTitle.textContent = viewModel.title;
+      if (missionCenterDescription) missionCenterDescription.textContent = viewModel.description;
+      if (missionCenterDuration) missionCenterDuration.textContent = viewModel.duration;
+      if (missionCenterDifficulty) missionCenterDifficulty.textContent = viewModel.difficulty;
+      if (missionCenterReward) {
+        missionCenterReward.textContent = Number.isFinite(viewModel.xpReward)
+          ? `+${viewModel.xpReward} XP`
+          : "Unavailable";
+      }
+      if (missionCenterSkill) missionCenterSkill.textContent = viewModel.skillName;
+      if (missionCenterStart) missionCenterStart.hidden = !viewModel.canStart;
+      if (missionCenterComplete) missionCenterComplete.hidden = !viewModel.canComplete;
+      if (missionCenterSkip) missionCenterSkip.hidden = !viewModel.canSkip;
+      if (missionCenterActions) missionCenterActions.hidden = viewModel.isTerminal;
+      if (missionCenterReplacement) {
+        missionCenterReplacement.hidden = !viewModel.canRequestReplacement;
+      }
+      if (missionCenterDailyComplete) missionCenterDailyComplete.hidden = !viewModel.dailyComplete;
+      if (missionCenterCurrentXP) missionCenterCurrentXP.textContent = viewModel.currentXPLabel;
+      if (missionCenterCurrentStreak) missionCenterCurrentStreak.textContent = viewModel.currentStreakLabel;
+      if (missionCenterPrimaryStatus) missionCenterPrimaryStatus.textContent = viewModel.stateLabel;
+      if (missionCenterReplacementStatus) {
+        missionCenterReplacementStatus.textContent = viewModel.replacementLabel;
+      }
+
+      if (missionCenterCountdownResetAt !== viewModel.nextResetAt) {
+        missionCenterCountdownController?.stop();
+        missionCenterCountdownResetAt = viewModel.nextResetAt;
+        missionCenterCountdownController = KVNXDailyCompleteExperience.createCountdown({
+          nextResetAt: viewModel.nextResetAt,
+          onUpdate: ({ label, value }) => {
+            if (missionCenterReset) missionCenterReset.textContent = value || label;
+          },
+        });
+      }
+
+      if (missionCenterRecent) {
+        missionCenterRecent.replaceChildren();
+        viewModel.recentMissions.forEach((entry) => {
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          const copy = document.createElement("span");
+          const title = document.createElement("strong");
+          const context = document.createElement("span");
+          const reward = document.createElement("span");
+          link.className = "mission-center__recent-item";
+          link.href = "#vault";
+          link.setAttribute("aria-label", `${entry.title}, completed ${formatRecentMissionDate(entry.completedAt)}. View in Vault.`);
+          copy.className = "mission-center__recent-copy";
+          title.textContent = entry.title;
+          context.textContent = [
+            formatRecentMissionDate(entry.completedAt),
+            entry.category,
+            entry.primarySkill,
+          ].filter(Boolean).join(" · ");
+          reward.className = "mission-center__recent-reward";
+          reward.textContent = `+${entry.overallXPEarned} XP · +${entry.skillXPEarned} skill XP`;
+          copy.append(title, context);
+          link.append(copy, reward);
+          item.append(link);
+          missionCenterRecent.append(item);
+        });
+      }
+      if (missionCenterRecentEmpty) {
+        missionCenterRecentEmpty.hidden = viewModel.recentMissions.length > 0;
+      }
+    } catch {
+      if (missionCenterContent) missionCenterContent.hidden = true;
+      if (missionCenterEmpty) missionCenterEmpty.hidden = true;
+      if (missionCenterError) missionCenterError.hidden = false;
+    }
+  };
+
   const renderApplicationView = () => {
+    const showMissions = window.location.hash === "#missions";
     const showAchievements = window.location.hash === "#achievements";
     const showVault = window.location.hash === "#vault";
     const showAnalytics = window.location.hash === "#analytics";
-    dashboardHomeSections.forEach((section) => { section.hidden = showAchievements || showVault || showAnalytics; });
+    dashboardHomeSections.forEach((section) => { section.hidden = showMissions || showAchievements || showVault || showAnalytics; });
+    if (missionsView) missionsView.hidden = !showMissions;
     if (achievementsView) achievementsView.hidden = !showAchievements;
     if (vaultView) vaultView.hidden = !showVault;
     if (analyticsView) analyticsView.hidden = !showAnalytics;
     viewLinks.forEach((link) => {
-      const activeView = showAchievements
-        ? "achievements"
+      const activeView = showMissions
+        ? "missions"
+        : showAchievements ? "achievements"
         : showVault
           ? "vault"
           : showAnalytics ? "analytics" : "dashboard";
@@ -1217,6 +1429,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderStreak(applicationSnapshot.streak);
   renderAchievements(applicationSnapshot.achievements);
   renderVault();
+  renderMissionCenter(applicationSnapshot);
   renderApplicationView();
   window.addEventListener("hashchange", renderApplicationView);
 
@@ -1258,40 +1471,62 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   startMissionButton?.addEventListener("click", async () => {
     try {
       const result = await vaultApplication.start();
-      if (result.snapshot?.coordinator) renderCoordinator(result.snapshot.coordinator);
-    } catch (error) {
-      showPersistenceFailure(error);
-    }
-  });
-
-  skipMissionButton?.addEventListener("click", async () => {
-    try {
-      const result = await vaultApplication.skip();
       if (result.snapshot?.coordinator) {
+        applicationSnapshot = result.snapshot;
+        nextResetAt = result.snapshot.nextResetAt;
         renderCoordinator(result.snapshot.coordinator);
-        renderProgression(result.snapshot.progression);
+        renderMissionCenter(result.snapshot);
       }
     } catch (error) {
       showPersistenceFailure(error);
     }
   });
 
+  missionCenterStart?.addEventListener("click", () => startMissionButton?.click());
+
+  skipMissionButton?.addEventListener("click", async () => {
+    try {
+      const result = await vaultApplication.skip();
+      if (result.snapshot?.coordinator) {
+        applicationSnapshot = result.snapshot;
+        nextResetAt = result.snapshot.nextResetAt;
+        renderCoordinator(result.snapshot.coordinator);
+        renderProgression(result.snapshot.progression);
+        renderMissionCenter(result.snapshot);
+      }
+    } catch (error) {
+      showPersistenceFailure(error);
+    }
+  });
+
+  missionCenterSkip?.addEventListener("click", () => skipMissionButton?.click());
+
   const completeFirstMission = async () => {
-    if (!missionCard || !completeMissionButton || !missionSuccess) return;
+    if (!missionCard || !completeMissionButton || !missionSuccess || completionInFlight) return;
+    completionInFlight = true;
+    completeMissionButton.disabled = true;
+    if (missionCenterComplete) missionCenterComplete.disabled = true;
 
     let applicationResult;
     try {
       applicationResult = await vaultApplication.complete();
     } catch (error) {
+      completionInFlight = false;
       showPersistenceFailure(error);
       return;
     }
     if (!applicationResult.accepted) {
+      applicationSnapshot = applicationResult.snapshot;
+      nextResetAt = applicationResult.snapshot.nextResetAt;
+      completeMissionButton.disabled = false;
+      if (missionCenterComplete) missionCenterComplete.disabled = false;
       renderCoordinator(applicationResult.snapshot.coordinator);
       renderProgression(applicationResult.snapshot.progression);
       renderSkills(applicationResult.snapshot.skills);
       renderStreak(applicationResult.snapshot.streak);
+      renderMissionCenter(applicationResult.snapshot);
       showProgressAward(applicationResult);
+      completionInFlight = false;
       return;
     }
 
@@ -1303,6 +1538,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     const revealDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
     window.setTimeout(() => {
       applicationSnapshot = applicationResult.snapshot;
+      nextResetAt = applicationResult.snapshot.nextResetAt;
       analyticsLoadedPeriod = null;
       vaultEntries = applicationResult.snapshot.history || vaultEntries;
       vaultPagination = applicationResult.snapshot.historyPagination || vaultPagination;
@@ -1313,7 +1549,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       // as overall XP so the pre-completion empty state cannot remain stale.
       renderSkills(applicationResult.snapshot.skills);
       renderAchievements(applicationResult.snapshot.achievements);
+      renderStreak(applicationResult.snapshot.streak);
       renderVault();
+      renderMissionCenter(applicationResult.snapshot);
       showProgressAward(applicationResult);
       showAchievementUnlocks(applicationResult.newAchievements);
       const isDailyComplete = renderDailyComplete(
@@ -1332,16 +1570,22 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       if (!isDailyComplete) {
         window.requestAnimationFrame(() => missionSuccess.classList.add("is-visible"));
       }
+      completionInFlight = false;
     }, revealDelay);
   };
 
   completeMissionButton?.addEventListener("click", completeFirstMission);
+  missionCenterComplete?.addEventListener("click", completeFirstMission);
 
-  if (requestMissionButton) {
+  if (requestMissionButton || missionCenterRequest) {
+    const replacementButtons = [requestMissionButton, missionCenterRequest].filter(Boolean);
+    let replacementInFlight = false;
     const replacementRequest = KVNXReplacementRequestController.create({
-      button: requestMissionButton,
+      button: requestMissionButton || missionCenterRequest,
       request: () => vaultApplication.requestReplacement(),
       onAccepted: (result) => {
+        applicationSnapshot = result.snapshot;
+        nextResetAt = result.snapshot.nextResetAt;
         if (missionSuccess) {
           missionSuccess.hidden = true;
           missionSuccess.classList.remove("is-visible");
@@ -1355,6 +1599,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         if (completeMissionButton) completeMissionButton.disabled = false;
         if (skipMissionButton) skipMissionButton.disabled = false;
         renderCoordinator(result.snapshot.coordinator);
+        renderMissionCenter(result.snapshot);
 
         const summaryGoal = document.querySelector("[data-summary-goal]");
         if (summaryGoal) summaryGoal.textContent = result.snapshot.coordinator.currentMission.definition.title;
@@ -1368,8 +1613,28 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       },
     });
 
-    requestMissionButton.addEventListener("click", () => replacementRequest.run());
+    const runReplacement = async () => {
+      if (replacementInFlight) return;
+      replacementInFlight = true;
+      replacementButtons.forEach((button) => {
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+      });
+      try {
+        await replacementRequest.run();
+      } finally {
+        replacementInFlight = false;
+        replacementButtons.forEach((button) => {
+          button.disabled = false;
+          button.removeAttribute("aria-busy");
+        });
+      }
+    };
+    requestMissionButton?.addEventListener("click", runReplacement);
+    missionCenterRequest?.addEventListener("click", runReplacement);
   }
+
+  missionCenterRetry?.addEventListener("click", () => window.location.reload());
 
   logoutButton?.addEventListener("click", async () => {
     logoutButton.disabled = true;

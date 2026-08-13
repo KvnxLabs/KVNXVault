@@ -1,6 +1,6 @@
 # KVNX Vault Architecture
 
-Version: 2.0
+Version: 2.1
 
 Author: Doug (Founder)  
 Architect: Sensei
@@ -812,3 +812,45 @@ Daily creation, replacement, completion, one-replacement enforcement, XP,
 skills, achievements, streaks, Vault History, and Analytics retain their prior
 RPCs and authority. The Sprint 11.1 effective clock reaches this same catalog
 selector; it has no alternate test-mission path.
+
+## Sprint 16 Mission Center
+
+Mission Center is a dedicated presentation and action surface inside the
+existing dashboard shell. `#missions` participates in the same hash router as
+Dashboard, Achievements, Vault, and Analytics. It does not own or generate a
+mission and it does not introduce a second lifecycle.
+
+The responsibility split is intentional:
+
+- Dashboard remains the compact progression overview and keeps its mission card.
+- Mission Center presents the full current-mission detail, authoritative
+  lifecycle, daily availability, mapped skill, reward, Daily Complete state,
+  reset countdown, and five recent completed missions.
+- Vault remains the full permanent archive, including filtering, search, and
+  pagination. Mission Center links to `#vault` instead of duplicating it.
+
+Mission Center projects the immutable Application Service snapshot. Its current
+mission comes from `request_daily_mission()`, its lifecycle and `dailyStatus`
+come from the saved daily mission response, its reset comes from server-returned
+`nextResetAt`, and its recent list comes from the already restored Vault History
+page. The canonical skill display name is resolved through an authenticated,
+read-only repository query to the existing `skill_catalog`; catalog mutation
+and mission-catalog access are not exposed.
+
+All actions reuse the established path:
+
+```text
+Mission Center intent
+→ Application Service
+→ User Repository
+→ existing authenticated RPC
+→ immutable authoritative snapshot
+→ Dashboard and Mission Center redraw
+```
+
+Opening, closing, refreshing, or revisiting `#missions` performs no replacement
+and no client selection. Navigation never calls a mission mutation. Same-day
+refresh and later login therefore restore the same saved mission instance.
+Only explicit Start, Complete, Skip, or Prepare Next Mission controls invoke
+their existing authoritative operations. The shared completion result continues
+to drive XP/skill feedback and all server-returned achievement notifications.

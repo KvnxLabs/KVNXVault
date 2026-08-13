@@ -1,6 +1,6 @@
 # KVNX Vault Database
 
-Version: Sprint 10
+Version: Sprint 16
 
 The authoritative schema and policies live in:
 
@@ -804,3 +804,21 @@ No reset or destructive reconciliation is required. Existing daily missions,
 history, XP, skills, achievements, and streak state remain valid. Package tests
 are static/contract and application tests; they do not claim live Supabase
 execution.
+
+## Sprint 16 Mission Center Read Contract
+
+Sprint 16 adds no table, function, policy, index, or migration. Mission Center
+reuses the existing daily mission, Vault History, streak, progression, and
+`nextResetAt` application snapshot values.
+
+The one additional presentation read is `getSkillCatalog()`. It selects only
+`skill_key`, `display_name`, and `sort_order` for active rows from the existing
+`skill_catalog` table. Migration 008 already enables RLS, revokes every browser
+write, and grants authenticated read access. The repository validates and
+freezes those rows, and Application Service includes the frozen catalog in its
+immutable snapshot. This read resolves the current mission's authoritative
+`primarySkill` key to its canonical display name; it cannot choose a mission,
+change a mapping, alter rewards, or expose `mission_catalog`.
+
+No Migration 017 is required. Migrations 001–016 remain byte-for-byte unchanged,
+and `migrations-pre-sprint16.sha256` records their package baseline.

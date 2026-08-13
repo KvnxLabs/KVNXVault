@@ -574,3 +574,37 @@ and history survive migration without fabricated template identities.
 Notes: Migration 016 is required. Migrations 001–015 remain byte-for-byte
 unchanged. Live Supabase, staging, and production deployment tests are not
 claimed by this package.
+
+## Sprint 16 — Mission Center
+
+Status: ✅ Code complete; deployment and live verification remain manual
+
+Goal: Turn Missions navigation into a premium, dedicated surface for the
+existing server-authoritative daily mission without creating a second mission
+system or changing the dashboard overview.
+
+Completed: Activated `#missions` in the existing shell; added authoritative
+mission detail and explicit Ready, Active, Completed, Skipped, and Expired
+states; reused the established Start, Complete, Skip, and replacement action
+paths; added Daily Complete, replacement availability, canonical skill,
+server-returned reward, current XP, streak, and reset presentation; added a
+five-item authoritative recent-history preview with Vault links; added honest
+loading, error, and empty states; added responsive and accessibility behavior;
+added a read-only canonical skill catalog restoration; and added focused Sprint
+16 regression, authority, migration, syntax, and security coverage.
+
+Definition of Done: Opening or refreshing Mission Center restores the same
+authoritative mission and cannot reroll, replace, reward, advance streak,
+unlock achievements, or mutate history. Explicit actions still cross Application
+Service and Repository to the existing authenticated RPCs. Rewards remain 25
+overall XP and 15 mapped skill XP. Daily Complete still requires a completed
+mission with no replacement remaining, and Vault remains the full archive.
+
+Result: Missions is now a first-class product surface while Dashboard remains
+the overview. The mission system, logical day, one-replacement limit, Sprint 15
+selection, streaks, achievements, and staging clock retain their existing
+authority.
+
+Notes: No database migration is required. Migrations 001–016 remain unchanged.
+No live Supabase, staging, production deployment, or natural new-day verification
+is claimed by this package.

@@ -47,10 +47,10 @@
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
             Dashboard
           </a>
-          <span class="sidebar__link" aria-disabled="true">
+          <a class="sidebar__link" href="#missions" data-view-link="missions">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 4h10M7 8h10M6 4v16h12V4" /><path d="m9 14 2 2 4-4" /></svg>
             Missions
-          </span>
+          </a>
           <span class="sidebar__link" aria-disabled="true">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7l-8-4Z" /><path d="m9 12 2 2 4-4" /></svg>
             Skills
@@ -243,6 +243,98 @@
               </div>
             </section>
           </div>
+
+          <section class="missions-view" data-missions-view hidden aria-labelledby="mission-center-title">
+            <header class="dashboard__heading missions-view__heading">
+              <div>
+                <p class="app-eyebrow">Mission center</p>
+                <h1 id="mission-center-title">Today’s <em>mission.</em></h1>
+              </div>
+              <span class="mission-center__status" data-mission-center-status data-state="ready">Ready</span>
+            </header>
+            <p class="missions-view__intro">One authoritative objective, restored exactly as the Vault saved it.</p>
+
+            <p class="mission-center__loading" data-mission-center-loading role="status">Restoring today’s mission…</p>
+            <section class="mission-center__error app-card" data-mission-center-error hidden role="alert" aria-labelledby="mission-center-error-title">
+              <p class="app-card__label">Connection interrupted</p>
+              <h2 id="mission-center-error-title">Today’s mission could not be restored.</h2>
+              <p>Your saved mission remains unchanged. Refresh when your connection is ready.</p>
+              <button class="app-button" type="button" data-mission-center-retry>Retry restoration</button>
+            </section>
+            <section class="mission-center__empty app-card" data-mission-center-empty hidden aria-labelledby="mission-center-empty-title">
+              <p class="app-card__label">Mission unavailable</p>
+              <h2 id="mission-center-empty-title">There is no mission to display.</h2>
+              <p>The Vault has not returned an authoritative mission for this logical day. No fallback mission has been created.</p>
+            </section>
+
+            <div class="mission-center" data-mission-center-content hidden>
+              <article class="mission-center__primary app-card" aria-labelledby="mission-center-mission-title">
+                <div class="mission-center__primary-heading">
+                  <div>
+                    <p class="app-card__label">Current objective</p>
+                    <h2 id="mission-center-mission-title" data-mission-center-title>—</h2>
+                  </div>
+                  <span class="mission-center__instance-label">Today</span>
+                </div>
+                <p class="mission-center__description" data-mission-center-description>—</p>
+                <dl class="mission-center__details">
+                  <div><dt>Duration</dt><dd data-mission-center-duration>—</dd></div>
+                  <div><dt>Difficulty</dt><dd data-mission-center-difficulty>—</dd></div>
+                  <div><dt>Reward</dt><dd data-mission-center-reward>—</dd></div>
+                </dl>
+
+                <section class="mission-center__builds" aria-labelledby="mission-center-builds-title">
+                  <p class="app-card__label" id="mission-center-builds-title">Builds</p>
+                  <strong data-mission-center-skill>—</strong>
+                  <span>Skill XP is awarded only after a verified completion.</span>
+                </section>
+
+                <div class="mission-center__actions" data-mission-center-actions>
+                  <button class="app-button" type="button" data-mission-center-start aria-label="Start today’s mission">Start Mission</button>
+                  <button class="app-button app-button--primary" type="button" data-mission-center-complete aria-label="Complete today’s mission">Complete Mission <span aria-hidden="true">✓</span></button>
+                  <button class="mission-center__skip" type="button" data-mission-center-skip aria-label="Skip today’s mission">Skip for today</button>
+                </div>
+                <div class="mission-center__replacement" data-mission-center-replacement hidden>
+                  <button class="app-button" type="button" data-mission-center-request aria-label="Prepare the one available replacement mission">Prepare Next Mission</button>
+                </div>
+
+                <section class="mission-center__daily-complete" data-mission-center-daily-complete hidden role="status" aria-live="polite" aria-labelledby="mission-center-daily-complete-title">
+                  <span class="mission-center__complete-mark" aria-hidden="true">✓</span>
+                  <div>
+                    <p class="app-card__label">Daily complete</p>
+                    <h3 id="mission-center-daily-complete-title">The work is secured.</h3>
+                    <p>Today’s mission and replacement opportunity are complete.</p>
+                  </div>
+                  <dl>
+                    <div><dt>Current XP</dt><dd data-mission-center-current-xp>—</dd></div>
+                    <div><dt>Current streak</dt><dd data-mission-center-current-streak>—</dd></div>
+                  </dl>
+                </section>
+              </article>
+
+              <aside class="mission-center__status-card app-card" aria-labelledby="mission-center-daily-status-title">
+                <p class="app-card__label">Daily status</p>
+                <h2 id="mission-center-daily-status-title">Mission availability</h2>
+                <dl class="mission-center__status-list">
+                  <div><dt>Primary mission</dt><dd data-mission-center-primary-status>—</dd></div>
+                  <div><dt>Replacement</dt><dd data-mission-center-replacement-status>—</dd></div>
+                  <div><dt>Next reset</dt><dd data-mission-center-reset role="timer" aria-live="off">—</dd></div>
+                </dl>
+              </aside>
+
+              <section class="mission-center__recent app-card" aria-labelledby="mission-center-recent-title">
+                <div class="mission-center__recent-heading">
+                  <div>
+                    <p class="app-card__label">Recent missions</p>
+                    <h2 id="mission-center-recent-title">Verified momentum</h2>
+                  </div>
+                  <a class="mission-center__vault-link" href="#vault">View Full Vault <span aria-hidden="true">→</span></a>
+                </div>
+                <ol class="mission-center__recent-list" data-mission-center-recent></ol>
+                <p class="mission-center__recent-empty" data-mission-center-recent-empty hidden>No completed missions are archived yet. Complete today’s mission to begin your permanent record.</p>
+              </section>
+            </div>
+          </section>
 
           <section class="achievements-view" data-achievements-view hidden aria-labelledby="achievements-title">
             <header class="dashboard__heading achievements-view__heading">

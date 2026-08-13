@@ -24,6 +24,73 @@
     return Object.freeze(value);
   };
 
+  const ANALYTICS_PERIODS = Object.freeze(["7d", "30d", "all"]);
+
+  const mapVaultAnalytics = (result, requestedPeriod) => {
+    if (!result || typeof result !== "object" || result.period !== requestedPeriod
+      || !Number.isFinite(Date.parse(result.generatedAt))
+      || !result.summary || typeof result.summary !== "object"
+      || !Array.isArray(result.missionActivity)
+      || !Array.isArray(result.xpActivity)
+      || !Array.isArray(result.skillActivity)) {
+      throw createRepositoryError("vault-analytics-response-invalid");
+    }
+
+    const toNonnegativeInteger = (value) => {
+      const number = Number(value);
+      return Number.isInteger(number) && number >= 0 ? number : NaN;
+    };
+    const summary = {
+      missionsCompleted: toNonnegativeInteger(result.summary.missionsCompleted),
+      overallXPEarned: toNonnegativeInteger(result.summary.overallXPEarned),
+      skillXPEarned: toNonnegativeInteger(result.summary.skillXPEarned),
+      activeDays: toNonnegativeInteger(result.summary.activeDays),
+      achievementsUnlocked: toNonnegativeInteger(result.summary.achievementsUnlocked),
+    };
+    const missionActivity = result.missionActivity.map((entry) => ({
+      date: String(entry?.date || ""),
+      completedCount: toNonnegativeInteger(entry?.completedCount),
+    }));
+    const xpActivity = result.xpActivity.map((entry) => ({
+      date: String(entry?.date || ""),
+      xpEarned: toNonnegativeInteger(entry?.xpEarned),
+    }));
+    const skillActivity = result.skillActivity.map((entry) => ({
+      key: String(entry?.key || ""),
+      name: String(entry?.name || ""),
+      xpEarned: toNonnegativeInteger(entry?.xpEarned),
+    }));
+    const mostDevelopedSkill = result.mostDevelopedSkill ? {
+      key: String(result.mostDevelopedSkill.key || ""),
+      name: String(result.mostDevelopedSkill.name || ""),
+      xpEarned: toNonnegativeInteger(result.mostDevelopedSkill.xpEarned),
+    } : null;
+    const validDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+    if (Object.values(summary).some((value) => !Number.isInteger(value))
+      || missionActivity.some((entry) => !validDate(entry.date)
+        || !Number.isInteger(entry.completedCount))
+      || xpActivity.some((entry) => !validDate(entry.date)
+        || !Number.isInteger(entry.xpEarned))
+      || skillActivity.some((entry) => !entry.key || !entry.name
+        || !Number.isInteger(entry.xpEarned))
+      || (mostDevelopedSkill && (!mostDevelopedSkill.key || !mostDevelopedSkill.name
+        || !Number.isInteger(mostDevelopedSkill.xpEarned)))) {
+      throw createRepositoryError("vault-analytics-response-invalid");
+    }
+
+    return deepFreeze({
+      period: requestedPeriod,
+      generatedAt: new Date(result.generatedAt).toISOString(),
+      periodStart: result.periodStart ? String(result.periodStart) : null,
+      summary,
+      mostDevelopedSkill,
+      missionActivity,
+      xpActivity,
+      skillActivity,
+    });
+  };
+
   const mapMissionActionResult = (result) => {
     if (!result || typeof result !== "object" || typeof result.accepted !== "boolean") {
       throw createRepositoryError("mission-action-response-invalid");
@@ -409,6 +476,22 @@
       });
     };
 
+    // Sprint 13 analytics is one authenticated, read-only aggregate request.
+    // The browser supplies only a server-validated period identifier; it never
+    // supplies ownership, dates, counts, XP, skills, or achievement totals.
+    const getVaultAnalytics = async (period = "7d") => {
+      await getAuthenticatedUser();
+      const normalizedPeriod = String(period || "").trim().toLowerCase();
+      if (!ANALYTICS_PERIODS.includes(normalizedPeriod)) {
+        throw new TypeError("A supported analytics period is required.");
+      }
+      const result = await unwrap(
+        database.rpc("get_vault_analytics", { p_period: normalizedPeriod }),
+        "vault-analytics-load-failed",
+      );
+      return mapVaultAnalytics(result, normalizedPeriod);
+    };
+
     // Creates missing baseline rows without accepting an XP total. The database
     // owns the initial XP value. Mission rewards are not trusted by this call.
     const initializeVaultSession = async ({ dailySessionId, definition } = {}) => {
@@ -550,6 +633,7 @@
       getAchievementCatalog,
       getSkillProgression,
       getUserAchievements,
+      getVaultAnalytics,
       getVaultHistory,
       initializeVaultSession,
       loadDailyMissionState,

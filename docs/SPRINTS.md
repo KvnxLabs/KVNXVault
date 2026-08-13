@@ -473,3 +473,42 @@ were not previously retained. Migrations 001–009, 011, and 012 remain
 byte-for-byte unchanged. The staging-only restrictions on migration 012 remain
 in force. Database verification is contract/static because no live Supabase
 project is connected.
+
+## Sprint 13 — Analytics & Insights
+
+Status: ✅ Complete
+
+Goal: Turn the Analytics placeholder into a premium, read-only insight surface
+that explains mission consistency, XP earned, skill development, and activity
+over time using only authoritative persisted data.
+
+Completed: Added the authenticated `get_vault_analytics(text)` aggregate RPC;
+validated `7d`, `30d`, and `all` period contracts; reused `mission_history`,
+`skill_catalog`, and `user_achievements`; added deterministic most-developed
+skill ordering; added active-day and persisted-achievement summaries; added
+repository normalization and deep freezing; added application-service request
+ownership and concurrent-request sharing; activated Analytics in the existing
+dashboard; and added responsive metrics, accessible mission and XP charts,
+period-relative skill bars, loading, empty, error, retry, and reduced-motion
+behavior.
+
+Definition of Done: Analytics accepts no owner or authoritative totals from the
+browser, leaks no cross-account data, performs no write, and never evaluates a
+reward, progression level, skill level, achievement, or streak. Seven- and
+thirty-day periods are zero-filled server windows; All Time uses active dates.
+Every number comes from completed mission history or a persisted achievement
+unlock. Existing mission, replacement, Daily Complete, countdown, skill,
+achievement, Vault History, authentication, RLS, and developer-tool behavior
+remains unchanged.
+
+Result: Users can now see how consistently they are acting, how much verified
+XP they earned, and which areas they are developing without turning Analytics
+into a second source of truth.
+
+Notes: Migration 014 is required and production-safe. It creates one read-only
+RPC and no table or index. Active Days are distinct UTC dates with at least one
+completed mission and are explicitly not streaks. Historical rows without
+skill attribution remain honest: they contribute mission and overall XP totals
+but not invented skill analytics. Migrations 001–013 and both established
+fingerprint baselines remain unchanged. Database verification is contract/static
+because no live Supabase project is connected.

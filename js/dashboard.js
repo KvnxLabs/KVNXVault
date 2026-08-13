@@ -248,12 +248,82 @@ const KVNXVaultHistoryExperience = (() => {
   return Object.freeze({ GROUP_ORDER, createViewModel, getGroupLabel });
 })();
 
+const KVNXAnalyticsExperience = (() => {
+  const PERIOD_LABELS = Object.freeze({ "7d": "7 Days", "30d": "30 Days", all: "All Time" });
+
+  const formatDate = (date, period) => {
+    const value = new Date(`${date}T00:00:00.000Z`);
+    if (!Number.isFinite(value.getTime())) return date;
+    return new Intl.DateTimeFormat("en-US", period === "all"
+      ? { timeZone: "UTC", month: "short", day: "numeric", year: "2-digit" }
+      : { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" }).format(value);
+  };
+
+  const createSeries = (entries, valueKey, period) => {
+    const values = entries.map((entry) => Number(entry[valueKey]) || 0);
+    const maximum = Math.max(1, ...values);
+    return Object.freeze(entries.map((entry, index) => {
+      const value = values[index];
+      return Object.freeze({
+        date: entry.date,
+        dateLabel: formatDate(entry.date, period),
+        value,
+        height: value === 0 ? 2 : Math.max(8, Math.round((value / maximum) * 100)),
+      });
+    }));
+  };
+
+  const createViewModel = (analytics) => {
+    const period = analytics?.period || "7d";
+    const periodLabel = PERIOD_LABELS[period] || period;
+    const summary = analytics?.summary || {};
+    const missionsCompleted = Number(summary.missionsCompleted) || 0;
+    const activeDays = Number(summary.activeDays) || 0;
+    const overallXPEarned = Number(summary.overallXPEarned) || 0;
+    const mostDevelopedSkill = analytics?.mostDevelopedSkill || null;
+    const skillMaximum = Math.max(1, ...(analytics?.skillActivity || [])
+      .map((skill) => Number(skill.xpEarned) || 0));
+
+    return Object.freeze({
+      period,
+      periodLabel,
+      empty: missionsCompleted === 0,
+      generatedAt: analytics?.generatedAt || null,
+      missionsCompleted,
+      overallXPEarned,
+      skillXPEarned: Number(summary.skillXPEarned) || 0,
+      activeDays,
+      achievementsUnlocked: Number(summary.achievementsUnlocked) || 0,
+      mostDevelopedSkill: mostDevelopedSkill ? Object.freeze({
+        ...mostDevelopedSkill,
+        xpLabel: `${Number(mostDevelopedSkill.xpEarned).toLocaleString("en-US")} XP earned`,
+      }) : null,
+      activeDaysLabel: period === "7d"
+        ? `${activeDays} of the last 7 days`
+        : period === "30d"
+          ? `${activeDays} of the last 30 days`
+          : `${activeDays} across all recorded history`,
+      missionChartLabel: `${missionsCompleted} completed ${missionsCompleted === 1 ? "mission" : "missions"} across ${activeDays} active ${activeDays === 1 ? "day" : "days"} for ${periodLabel}.`,
+      xpChartLabel: `${overallXPEarned} XP earned from completed missions for ${periodLabel}.`,
+      missionActivity: createSeries(analytics?.missionActivity || [], "completedCount", period),
+      xpActivity: createSeries(analytics?.xpActivity || [], "xpEarned", period),
+      skillActivity: Object.freeze((analytics?.skillActivity || []).map((skill) => Object.freeze({
+        ...skill,
+        contribution: Math.max(0, Math.round(((Number(skill.xpEarned) || 0) / skillMaximum) * 100)),
+      }))),
+    });
+  };
+
+  return Object.freeze({ PERIOD_LABELS, createViewModel });
+})();
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     ...KVNXReplacementRequestController,
     dailyComplete: KVNXDailyCompleteExperience,
     skills: KVNXSkillsExperience,
     achievements: KVNXAchievementsExperience,
+    analytics: KVNXAnalyticsExperience,
     vaultHistory: KVNXVaultHistoryExperience,
   });
 }
@@ -262,6 +332,7 @@ if (typeof window !== "undefined") {
   window.KVNXDailyCompleteExperience = KVNXDailyCompleteExperience;
   window.KVNXSkillsExperience = KVNXSkillsExperience;
   window.KVNXAchievementsExperience = KVNXAchievementsExperience;
+  window.KVNXAnalyticsExperience = KVNXAnalyticsExperience;
   window.KVNXVaultHistoryExperience = KVNXVaultHistoryExperience;
 }
 
@@ -278,6 +349,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const dashboardHomeSections = document.querySelectorAll("[data-dashboard-home]");
   const achievementsView = document.querySelector("[data-achievements-view]");
   const vaultView = document.querySelector("[data-vault-view]");
+  const analyticsView = document.querySelector("[data-analytics-view]");
   const viewLinks = document.querySelectorAll("[data-view-link]");
 
   const persistenceError = document.querySelector("[data-persistence-error]");
@@ -411,6 +483,30 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const vaultSort = document.querySelector("[data-vault-sort]");
   const vaultLoadMore = document.querySelector("[data-vault-load-more]");
   const openVaultButton = document.querySelector("[data-open-vault]");
+  const analyticsPeriodButtons = document.querySelectorAll("[data-analytics-period]");
+  const analyticsLoading = document.querySelector("[data-analytics-loading]");
+  const analyticsError = document.querySelector("[data-analytics-error]");
+  const analyticsRetry = document.querySelector("[data-analytics-retry]");
+  const analyticsEmpty = document.querySelector("[data-analytics-empty]");
+  const analyticsContent = document.querySelector("[data-analytics-content]");
+  const analyticsGenerated = document.querySelector("[data-analytics-generated]");
+  const analyticsMissions = document.querySelector("[data-analytics-missions]");
+  const analyticsXP = document.querySelector("[data-analytics-xp]");
+  const analyticsSkillXP = document.querySelector("[data-analytics-skill-xp]");
+  const analyticsTopSkill = document.querySelector("[data-analytics-top-skill]");
+  const analyticsTopSkillXP = document.querySelector("[data-analytics-top-skill-xp]");
+  const analyticsPeriodLabel = document.querySelector("[data-analytics-period-label]");
+  const analyticsActiveDays = document.querySelector("[data-analytics-active-days]");
+  const analyticsActiveValue = document.querySelector("[data-analytics-active-value]");
+  const analyticsActiveCopy = document.querySelector("[data-analytics-active-copy]");
+  const analyticsAchievements = document.querySelector("[data-analytics-achievements]");
+  const analyticsXPTotal = document.querySelector("[data-analytics-xp-total]");
+  const analyticsMissionChart = document.querySelector("[data-analytics-mission-chart]");
+  const analyticsXPChart = document.querySelector("[data-analytics-xp-chart]");
+  const analyticsMissionTableBody = document.querySelector("[data-analytics-mission-table] tbody");
+  const analyticsXPTableBody = document.querySelector("[data-analytics-xp-table] tbody");
+  const analyticsSkills = document.querySelector("[data-analytics-skills]");
+  const analyticsSkillsEmpty = document.querySelector("[data-analytics-skills-empty]");
   const levelUpNotice = document.querySelector("[data-level-up]");
   const levelUpValue = document.querySelector("[data-level-up-value]");
   const progressAward = document.querySelector("[data-progress-award]");
@@ -425,6 +521,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   let achievementUnlockTimer = null;
   let vaultEntries = applicationSnapshot.history || [];
   let vaultPagination = applicationSnapshot.historyPagination || Object.freeze({ hasMore: false });
+  let analyticsPeriod = "7d";
+  let analyticsLoadedPeriod = applicationSnapshot.analytics?.period || null;
+  let analyticsInFlight = false;
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -755,19 +854,178 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }, 4800);
   };
 
+  const renderAnalyticsChart = ({ container, tableBody, series, valueLabel, chartLabel }) => {
+    if (!container || !tableBody) return;
+    container.replaceChildren();
+    tableBody.replaceChildren();
+    container.setAttribute("aria-label", chartLabel);
+    const labelInterval = Math.max(1, Math.ceil(series.length / 8));
+
+    series.forEach((entry, index) => {
+      const item = document.createElement("span");
+      item.className = "analytics-chart__item";
+      item.setAttribute("aria-hidden", "true");
+      const bar = document.createElement("span");
+      bar.className = "analytics-chart__bar";
+      bar.style.height = `${entry.height}%`;
+      bar.dataset.zero = String(entry.value === 0);
+      bar.title = `${entry.dateLabel}: ${valueLabel(entry.value)}`;
+      const label = document.createElement("span");
+      label.className = "analytics-chart__label";
+      label.textContent = index % labelInterval === 0 || index === series.length - 1
+        ? entry.dateLabel
+        : "";
+      item.append(bar, label);
+      container.append(item);
+
+      const row = document.createElement("tr");
+      const date = document.createElement("th");
+      date.scope = "row";
+      date.textContent = entry.dateLabel;
+      const value = document.createElement("td");
+      value.textContent = valueLabel(entry.value);
+      row.append(date, value);
+      tableBody.append(row);
+    });
+  };
+
+  const renderAnalytics = (analytics) => {
+    const viewModel = KVNXAnalyticsExperience.createViewModel(analytics);
+    analyticsLoadedPeriod = viewModel.period;
+    if (analyticsLoading) analyticsLoading.hidden = true;
+    if (analyticsError) analyticsError.hidden = true;
+    if (analyticsEmpty) analyticsEmpty.hidden = !viewModel.empty;
+    if (analyticsContent) analyticsContent.hidden = viewModel.empty;
+
+    analyticsPeriodButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.analyticsPeriod === viewModel.period));
+    });
+
+    if (analyticsGenerated && viewModel.generatedAt) {
+      const generatedAt = new Date(viewModel.generatedAt);
+      analyticsGenerated.hidden = false;
+      analyticsGenerated.dateTime = viewModel.generatedAt;
+      analyticsGenerated.textContent = `Updated ${new Intl.DateTimeFormat("en-US", {
+        hour: "numeric", minute: "2-digit",
+      }).format(generatedAt)}`;
+    }
+    if (viewModel.empty) return;
+
+    if (analyticsMissions) analyticsMissions.textContent = viewModel.missionsCompleted.toLocaleString("en-US");
+    if (analyticsXP) analyticsXP.textContent = viewModel.overallXPEarned.toLocaleString("en-US");
+    if (analyticsSkillXP) analyticsSkillXP.textContent = viewModel.skillXPEarned.toLocaleString("en-US");
+    if (analyticsPeriodLabel) analyticsPeriodLabel.textContent = viewModel.periodLabel;
+    if (analyticsTopSkill) {
+      analyticsTopSkill.textContent = viewModel.mostDevelopedSkill?.name || "No skill activity";
+    }
+    if (analyticsTopSkillXP) {
+      analyticsTopSkillXP.textContent = viewModel.mostDevelopedSkill?.xpLabel
+        || "No skill XP in this period";
+    }
+    if (analyticsActiveDays) {
+      analyticsActiveDays.textContent = `${viewModel.activeDays} active ${viewModel.activeDays === 1 ? "day" : "days"}`;
+    }
+    if (analyticsActiveValue) analyticsActiveValue.textContent = viewModel.activeDaysLabel;
+    if (analyticsActiveCopy) analyticsActiveCopy.textContent = "Days with at least one authoritative completed mission.";
+    if (analyticsAchievements) analyticsAchievements.textContent = viewModel.achievementsUnlocked.toLocaleString("en-US");
+    if (analyticsXPTotal) analyticsXPTotal.textContent = `${viewModel.overallXPEarned.toLocaleString("en-US")} XP`;
+
+    renderAnalyticsChart({
+      container: analyticsMissionChart,
+      tableBody: analyticsMissionTableBody,
+      series: viewModel.missionActivity,
+      valueLabel: (value) => `${value} completed ${value === 1 ? "mission" : "missions"}`,
+      chartLabel: viewModel.missionChartLabel,
+    });
+    renderAnalyticsChart({
+      container: analyticsXPChart,
+      tableBody: analyticsXPTableBody,
+      series: viewModel.xpActivity,
+      valueLabel: (value) => `${value} XP earned`,
+      chartLabel: viewModel.xpChartLabel,
+    });
+
+    if (analyticsSkills) {
+      analyticsSkills.replaceChildren();
+      viewModel.skillActivity.forEach((skill) => {
+        const item = document.createElement("li");
+        const heading = document.createElement("div");
+        heading.className = "analytics-skill__heading";
+        const name = document.createElement("strong");
+        name.textContent = skill.name;
+        const value = document.createElement("span");
+        value.textContent = `${Number(skill.xpEarned).toLocaleString("en-US")} XP earned`;
+        heading.append(name, value);
+        const track = document.createElement("div");
+        track.className = "analytics-skill__track";
+        track.setAttribute("role", "progressbar");
+        track.setAttribute("aria-label", `${skill.name}: ${skill.xpEarned} XP earned during ${viewModel.periodLabel}`);
+        track.setAttribute("aria-valuemin", "0");
+        track.setAttribute("aria-valuemax", "100");
+        track.setAttribute("aria-valuenow", String(skill.contribution));
+        const fill = document.createElement("span");
+        fill.className = "analytics-skill__fill";
+        fill.style.width = `${skill.contribution}%`;
+        track.append(fill);
+        item.append(heading, track);
+        analyticsSkills.append(item);
+      });
+      if (analyticsSkillsEmpty) analyticsSkillsEmpty.hidden = viewModel.skillActivity.length > 0;
+    }
+  };
+
+  const loadAnalytics = async (period = analyticsPeriod) => {
+    if (analyticsInFlight) return;
+    analyticsInFlight = true;
+    analyticsPeriod = period;
+    if (analyticsLoading) analyticsLoading.hidden = false;
+    if (analyticsError) analyticsError.hidden = true;
+    if (analyticsEmpty) analyticsEmpty.hidden = true;
+    if (analyticsContent) analyticsContent.hidden = true;
+    analyticsPeriodButtons.forEach((button) => {
+      button.disabled = true;
+      button.setAttribute("aria-pressed", String(button.dataset.analyticsPeriod === analyticsPeriod));
+    });
+
+    try {
+      const snapshot = await vaultApplication.loadAnalytics(analyticsPeriod);
+      applicationSnapshot = snapshot;
+      renderAnalytics(snapshot.analytics);
+    } catch (error) {
+      if (["session-expired", "session-unavailable"].includes(error?.code)) {
+        window.location.replace("login.html");
+        return;
+      }
+      if (analyticsLoading) analyticsLoading.hidden = true;
+      if (analyticsError) analyticsError.hidden = false;
+    } finally {
+      analyticsInFlight = false;
+      analyticsPeriodButtons.forEach((button) => { button.disabled = false; });
+    }
+  };
+
   const renderApplicationView = () => {
     const showAchievements = window.location.hash === "#achievements";
     const showVault = window.location.hash === "#vault";
-    dashboardHomeSections.forEach((section) => { section.hidden = showAchievements || showVault; });
+    const showAnalytics = window.location.hash === "#analytics";
+    dashboardHomeSections.forEach((section) => { section.hidden = showAchievements || showVault || showAnalytics; });
     if (achievementsView) achievementsView.hidden = !showAchievements;
     if (vaultView) vaultView.hidden = !showVault;
+    if (analyticsView) analyticsView.hidden = !showAnalytics;
     viewLinks.forEach((link) => {
-      const activeView = showAchievements ? "achievements" : showVault ? "vault" : "dashboard";
+      const activeView = showAchievements
+        ? "achievements"
+        : showVault
+          ? "vault"
+          : showAnalytics ? "analytics" : "dashboard";
       const active = link.dataset.viewLink === activeView;
       link.classList.toggle("sidebar__link--active", active);
       if (active) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
     });
+    if (showAnalytics && analyticsLoadedPeriod !== analyticsPeriod && !analyticsInFlight) {
+      loadAnalytics(analyticsPeriod);
+    }
   };
 
   const showProgressAward = (result) => {
@@ -919,6 +1177,15 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderApplicationView();
   window.addEventListener("hashchange", renderApplicationView);
 
+  analyticsPeriodButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const period = button.dataset.analyticsPeriod;
+      if (!period || period === analyticsLoadedPeriod || analyticsInFlight) return;
+      loadAnalytics(period);
+    });
+  });
+  analyticsRetry?.addEventListener("click", () => loadAnalytics(analyticsPeriod));
+
   [vaultSearch, vaultAchievementsFilter, vaultSkillFilter, vaultCategoryFilter, vaultSort]
     .forEach((control) => control?.addEventListener(
       control === vaultSearch ? "input" : "change",
@@ -992,6 +1259,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     const revealDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
     window.setTimeout(() => {
       applicationSnapshot = applicationResult.snapshot;
+      analyticsLoadedPeriod = null;
       vaultEntries = applicationResult.snapshot.history || vaultEntries;
       vaultPagination = applicationResult.snapshot.historyPagination || vaultPagination;
       missionCard.classList.remove("is-completing");

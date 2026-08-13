@@ -59,6 +59,8 @@
     let progression;
     let skillProgression = [];
     let achievements = [];
+    let analytics = null;
+    const analyticsRequests = new Map();
     let coordinator;
     let missionHistory = [];
     let vaultHistory = [];
@@ -76,6 +78,7 @@
       progression: progressionEngine.getSnapshot(progression),
       skills: Object.freeze([...skillProgression]),
       achievements: Object.freeze([...achievements]),
+      analytics,
       history: Object.freeze([...vaultHistory]),
       historyPagination: Object.freeze({
         hasMore: historyHasMore,
@@ -225,6 +228,7 @@
       } : null);
       const skillProgressionResult = reconcileUpdatedSkill(result.updatedSkill);
       const newAchievements = reconcileNewAchievements(result.newAchievements);
+      if (result.event?.eventType === "mission.completed") analytics = null;
 
       terminalAt = result.mission.lifecycle.terminalAt || null;
       terminalRecorded = Boolean(result.mission.lifecycle.terminalRecorded);
@@ -629,11 +633,36 @@
       return getPublicSnapshot();
     };
 
+    const loadAnalytics = async (period = "7d") => {
+      if (typeof repository.getVaultAnalytics !== "function") {
+        const error = new Error("Analytics are not available.");
+        error.code = "vault-analytics-unavailable";
+        throw error;
+      }
+      const normalizedPeriod = String(period || "").trim().toLowerCase();
+      if (analyticsRequests.has(normalizedPeriod)) {
+        return analyticsRequests.get(normalizedPeriod);
+      }
+
+      const request = (async () => {
+        const restored = await repository.getVaultAnalytics(normalizedPeriod);
+        analytics = restored;
+        return getPublicSnapshot();
+      })();
+      analyticsRequests.set(normalizedPeriod, request);
+      try {
+        return await request;
+      } finally {
+        analyticsRequests.delete(normalizedPeriod);
+      }
+    };
+
     return Object.freeze({
       complete: () => routeAction("complete"),
       expire: () => routeAction("expire"),
       getSnapshot: getPublicSnapshot,
       initialize,
+      loadAnalytics,
       loadMoreVaultHistory,
       requestReplacement,
       signOut: () => authService.signOut(),

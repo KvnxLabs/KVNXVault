@@ -1149,7 +1149,9 @@
 
 .dashboard__heading[hidden],
 .dashboard__grid[hidden],
-.achievements-view[hidden] {
+.achievements-view[hidden],
+.vault-view[hidden],
+.analytics-view[hidden] {
   display: none;
 }
 
@@ -1486,6 +1488,336 @@
   margin: 24px auto 0;
 }
 
+/* Sprint 13 analytics extends the existing shell with restrained read-only
+   insight cards. Charts remain native DOM/CSS and require no visual library. */
+.analytics-view__heading {
+  margin-bottom: 10px;
+}
+
+.analytics-view__generated {
+  color: var(--app-subtle);
+  font-size: 0.68rem;
+}
+
+.analytics-view__toolbar {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.analytics-view__toolbar > p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--app-muted);
+  line-height: 1.7;
+}
+
+.analytics-period {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--app-line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.analytics-period button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--app-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.analytics-period button:hover:not(:disabled),
+.analytics-period button:focus-visible {
+  color: var(--app-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.analytics-period button[aria-pressed="true"] {
+  color: var(--app-text);
+  background: rgba(183, 32, 52, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(223, 50, 72, 0.22);
+}
+
+.analytics-period button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.analytics-state {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  padding: 28px;
+  color: var(--app-muted);
+  text-align: left;
+}
+
+.analytics-state[hidden] { display: none; }
+
+.analytics-state > div {
+  display: grid;
+  gap: 5px;
+}
+
+.analytics-state strong {
+  color: var(--app-text);
+  font-size: 0.9rem;
+  font-weight: 580;
+}
+
+.analytics-state span {
+  font-size: 0.78rem;
+}
+
+.analytics-state__mark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-top-color: var(--app-red-bright);
+  border-radius: 50%;
+  animation: analytics-spin 800ms linear infinite;
+}
+
+.analytics-state__archive {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+  color: var(--app-red-bright);
+  font-size: 1rem !important;
+}
+
+.analytics-state--error {
+  justify-content: space-between;
+  border-color: rgba(223, 50, 72, 0.24);
+}
+
+@keyframes analytics-spin { to { transform: rotate(360deg); } }
+
+.analytics-content[hidden] { display: none; }
+
+.analytics-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.analytics-metric {
+  min-height: 142px;
+  padding: 20px;
+}
+
+.analytics-metric dt {
+  color: var(--app-muted);
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.analytics-metric dd {
+  margin: 26px 0 7px;
+  color: var(--app-text);
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  font-weight: 520;
+  letter-spacing: -0.04em;
+}
+
+.analytics-metric__skill {
+  overflow: hidden;
+  font-size: clamp(1rem, 1.55vw, 1.35rem) !important;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.analytics-metric > span {
+  color: var(--app-subtle);
+  font-size: 0.68rem;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.analytics-panel {
+  min-width: 0;
+  padding: 22px;
+}
+
+.analytics-panel--wide { grid-column: span 6; }
+.analytics-panel--skills { grid-column: span 7; }
+.analytics-panel--consistency { grid-column: span 5; }
+
+.analytics-panel > header {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.analytics-panel h2 {
+  margin: 5px 0 0;
+  font-size: 0.96rem;
+  font-weight: 560;
+}
+
+.analytics-panel > header > strong {
+  color: var(--app-muted);
+  font-size: 0.67rem;
+  font-weight: 620;
+}
+
+.analytics-chart {
+  display: grid;
+  grid-auto-columns: minmax(8px, 1fr);
+  grid-auto-flow: column;
+  gap: clamp(3px, 0.6vw, 8px);
+  align-items: end;
+  min-height: 190px;
+  padding: 10px 0 0;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.analytics-chart__item {
+  display: grid;
+  grid-template-rows: 1fr 18px;
+  gap: 9px;
+  align-items: end;
+  height: 180px;
+  min-width: 0;
+}
+
+.analytics-chart__bar {
+  position: relative;
+  min-height: 3px;
+  border: 1px solid rgba(223, 50, 72, 0.2);
+  border-radius: 4px 4px 1px 1px;
+  background: rgba(183, 32, 52, 0.55);
+}
+
+.analytics-chart--xp .analytics-chart__bar {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.analytics-chart__bar[data-zero="true"] {
+  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.analytics-chart__label {
+  overflow: hidden;
+  color: var(--app-subtle);
+  font-size: 0.58rem;
+  text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.analytics-skills {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.analytics-skill__heading {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.analytics-skill__heading strong { font-size: 0.8rem; font-weight: 560; }
+.analytics-skill__heading span { color: var(--app-muted); font-size: 0.7rem; }
+
+.analytics-skill__track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.analytics-skill__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--app-red);
+}
+
+.analytics-panel__empty {
+  margin: 36px 0;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.analytics-consistency__value {
+  display: block;
+  margin-top: 34px;
+  font-size: clamp(2.3rem, 5vw, 4rem);
+  font-weight: 460;
+  letter-spacing: -0.06em;
+}
+
+.analytics-panel--consistency > p {
+  margin: 8px 0 24px;
+  color: var(--app-muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.analytics-consistency__facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+}
+
+.analytics-consistency__facts > div {
+  padding: 13px;
+  border: 1px solid var(--app-line);
+  border-radius: 9px;
+}
+
+.analytics-consistency__facts dt {
+  color: var(--app-subtle);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+}
+
+.analytics-consistency__facts dd {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+}
+
+.analytics-consistency__note {
+  color: var(--app-subtle) !important;
+  font-size: 0.66rem !important;
+}
+
 .level-up p,
 .level-up strong,
 .level-up > span { display: block; }
@@ -1515,6 +1847,8 @@
 }
 
 @media (max-width: 1100px) {
+  .analytics-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
   .vault-controls {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1608,6 +1942,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .analytics-panel--wide,
+  .analytics-panel--skills,
+  .analytics-panel--consistency { grid-column: span 12; }
+
   .vault-entry__summary {
     grid-template-columns: 100px 1fr auto 22px;
   }
@@ -1695,6 +2033,22 @@
     grid-template-columns: 1fr;
   }
 
+  .analytics-view__toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .analytics-period { align-self: flex-start; }
+  .analytics-metrics { grid-template-columns: 1fr; }
+
+  .analytics-state--error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .analytics-chart { min-height: 165px; }
+  .analytics-chart__item { height: 155px; }
+
   .vault-controls {
     grid-template-columns: 1fr 1fr;
   }
@@ -1733,6 +2087,16 @@
 }
 
 @media (max-width: 480px) {
+  .analytics-period {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+  }
+
+  .analytics-period button { padding: 0 8px; }
+  .analytics-panel { padding: 18px; }
+  .analytics-consistency__facts { grid-template-columns: 1fr; }
+
   .vault-controls {
     grid-template-columns: 1fr;
   }
@@ -1815,4 +2179,6 @@
   }
 
   .vault-entry__summary { scroll-behavior: auto; }
+
+  .analytics-state__mark { animation: none; }
 }

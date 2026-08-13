@@ -64,10 +64,10 @@
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M8 5V3h8v2M8 10h8M8 14h5" /></svg>
             Vault
           </a>
-          <span class="sidebar__link" aria-disabled="true">
+          <a class="sidebar__link" href="#analytics" data-view-link="analytics">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>
             Analytics
-          </span>
+          </a>
         </nav>
 
         <p class="sidebar__section-label">System</p>
@@ -296,6 +296,82 @@
             <div class="vault-history" data-vault-history></div>
             <p class="vault-history__empty" data-vault-empty hidden>No completed missions are archived yet.</p>
             <button class="app-button vault-history__more" type="button" data-vault-load-more hidden>Load older entries</button>
+          </section>
+
+          <section class="analytics-view" data-analytics-view hidden aria-labelledby="analytics-title">
+            <header class="dashboard__heading analytics-view__heading">
+              <div>
+                <p class="app-eyebrow">Insights</p>
+                <h1 id="analytics-title">Your progress, <em>made visible.</em></h1>
+              </div>
+              <time class="analytics-view__generated" data-analytics-generated hidden></time>
+            </header>
+            <div class="analytics-view__toolbar">
+              <p>Read-only insights drawn from your authoritative Vault history.</p>
+              <fieldset class="analytics-period" data-analytics-periods aria-label="Analytics period">
+                <legend class="app-visually-hidden">Analytics period</legend>
+                <button type="button" data-analytics-period="7d" aria-pressed="true">7 Days</button>
+                <button type="button" data-analytics-period="30d" aria-pressed="false">30 Days</button>
+                <button type="button" data-analytics-period="all" aria-pressed="false">All Time</button>
+              </fieldset>
+            </div>
+
+            <div class="analytics-state analytics-state--loading app-card" data-analytics-loading role="status">
+              <span class="analytics-state__mark" aria-hidden="true"></span>
+              <div><strong>Reading your Vault</strong><span>Building authoritative insights…</span></div>
+            </div>
+            <div class="analytics-state analytics-state--error app-card" data-analytics-error role="alert" hidden>
+              <div><strong>Insights could not be restored.</strong><span>Your dashboard is still available. Try loading Analytics again.</span></div>
+              <button class="app-button" type="button" data-analytics-retry>Try again</button>
+            </div>
+            <div class="analytics-state analytics-state--empty app-card" data-analytics-empty hidden>
+              <span class="analytics-state__archive" aria-hidden="true">◎</span>
+              <div><strong>No progress recorded yet.</strong><span>Complete your first mission to begin building your analytics.</span></div>
+            </div>
+
+            <div class="analytics-content" data-analytics-content hidden>
+              <dl class="analytics-metrics" aria-label="Analytics overview">
+                <div class="analytics-metric app-card"><dt>Missions completed</dt><dd data-analytics-missions>—</dd><span data-analytics-period-label>Selected period</span></div>
+                <div class="analytics-metric app-card"><dt>XP earned</dt><dd data-analytics-xp>—</dd><span>From completed missions</span></div>
+                <div class="analytics-metric app-card"><dt>Skill XP earned</dt><dd data-analytics-skill-xp>—</dd><span>Mapped skill growth</span></div>
+                <div class="analytics-metric app-card"><dt>Most developed skill</dt><dd class="analytics-metric__skill" data-analytics-top-skill>—</dd><span data-analytics-top-skill-xp>No skill XP in this period</span></div>
+              </dl>
+
+              <div class="analytics-grid">
+                <section class="analytics-panel analytics-panel--wide app-card" aria-labelledby="mission-activity-title">
+                  <header><div><p class="app-card__label">Mission activity</p><h2 id="mission-activity-title">Completed over time</h2></div><strong data-analytics-active-days>0 active days</strong></header>
+                  <div class="analytics-chart" data-analytics-mission-chart role="img" aria-label="No completed mission activity"></div>
+                  <table class="app-visually-hidden" data-analytics-mission-table>
+                    <caption>Completed missions by date</caption><thead><tr><th>Date</th><th>Completed missions</th></tr></thead><tbody></tbody>
+                  </table>
+                </section>
+
+                <section class="analytics-panel analytics-panel--wide app-card" aria-labelledby="xp-activity-title">
+                  <header><div><p class="app-card__label">XP earned</p><h2 id="xp-activity-title">Progress over time</h2></div><strong data-analytics-xp-total>0 XP</strong></header>
+                  <div class="analytics-chart analytics-chart--xp" data-analytics-xp-chart role="img" aria-label="No XP activity"></div>
+                  <table class="app-visually-hidden" data-analytics-xp-table>
+                    <caption>XP earned by date</caption><thead><tr><th>Date</th><th>XP earned</th></tr></thead><tbody></tbody>
+                  </table>
+                </section>
+
+                <section class="analytics-panel analytics-panel--skills app-card" aria-labelledby="skill-development-title">
+                  <header><div><p class="app-card__label">Skill development</p><h2 id="skill-development-title">XP earned during period</h2></div></header>
+                  <ol class="analytics-skills" data-analytics-skills></ol>
+                  <p class="analytics-panel__empty" data-analytics-skills-empty hidden>No mapped skill XP was earned in this period.</p>
+                </section>
+
+                <section class="analytics-panel analytics-panel--consistency app-card" aria-labelledby="consistency-title">
+                  <header><div><p class="app-card__label">Consistency</p><h2 id="consistency-title">Active days</h2></div></header>
+                  <strong class="analytics-consistency__value" data-analytics-active-value>0</strong>
+                  <p data-analytics-active-copy>Days with at least one completed mission.</p>
+                  <dl class="analytics-consistency__facts">
+                    <div><dt>Achievements unlocked</dt><dd data-analytics-achievements>0</dd></div>
+                    <div><dt>Definition</dt><dd>1+ completed mission</dd></div>
+                  </dl>
+                  <p class="analytics-consistency__note">Active days are not a current or longest streak.</p>
+                </section>
+              </div>
+            </div>
           </section>
         </div>
       </main>

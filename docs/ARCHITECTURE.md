@@ -680,3 +680,54 @@ and skill XP, exact-timestamp achievements, and status. Its keyboard-operable
 summary expands authoritative description, completion timestamp, rewards,
 unlocks, and original state. No separate task list, editable history, or fake
 archive data is introduced.
+
+## Sprint 13 Analytics & Insights
+
+Analytics is a read-only aggregate projection, not a second event system. The
+authoritative sources remain completed `mission_history` rows and persisted
+`user_achievements` rows. Migration 014 adds one narrow RPC and does not add a
+table, event writer, trigger, or index.
+
+```text
+Analytics period intent: 7d | 30d | all
+→ Application Service
+→ User Repository validation
+→ get_vault_analytics(text)
+→ auth.uid() owner boundary
+→ authoritative server aggregation
+→ deeply frozen application snapshot
+→ accessible metrics and native DOM/CSS charts
+```
+
+The browser may select only a bounded period identifier. It never supplies an
+owner, start or end date, mission count, XP value, skill value, achievement
+count, or historical row. The repository rejects unsupported periods and
+malformed responses, normalizes nonnegative integer values and ISO dates, and
+deeply freezes the result. The application service owns restoration and shares
+duplicate concurrent requests for the same period. Analytics failure is
+isolated to the Analytics view; it does not invalidate the restored dashboard
+session or enable a mutation path.
+
+`7d` includes the current UTC calendar date and six prior UTC dates. `30d`
+includes the current UTC date and twenty-nine prior UTC dates. Both return a
+zero-filled daily series so inactivity is visible without client inference.
+`all` includes every authenticated-owner completed history row and returns only
+dates that contain activity, avoiding a synthetic multi-year calendar. Active
+Days means distinct UTC dates with one or more completed missions. It is not a
+current streak, longest streak, or achievement eligibility calculation.
+
+Overview totals, mission activity, and XP activity use the saved canonical
+awards in `mission_history`. Skill Development groups the saved
+`skill_xp_awarded` values and labels its bars as relative XP earned during the
+selected period; those bars are not skill-level progression. Most Developed
+Skill sorts by period XP descending, then catalog order and skill key for a
+deterministic tie. Achievement insight counts only persisted unlock timestamps
+within the selected period and never evaluates eligibility.
+
+The existing dashboard shell activates the Analytics navigation target and
+retains the established visual language. Loading shows no fake metrics. An
+account without completed history receives an intentional empty state. A
+recoverable error offers retry without destroying the rest of the dashboard.
+Charts use native semantic DOM/CSS, expose concise text labels plus hidden data
+tables, work without color, stack responsively, and stop decorative motion when
+reduced motion is requested.

@@ -608,3 +608,73 @@ supabase/migrations/202608070013_sprint12_vault_history.sql
 Migration 012 remains staging-only under its existing guidance. Database tests
 in this package are contract/static unless run against a connected Supabase
 project.
+
+## Sprint 13 — Analytics & Insights
+
+Migration `202608070014_sprint13_analytics_insights.sql` adds exactly one
+read-only function:
+
+```text
+get_vault_analytics(p_period text) → jsonb
+```
+
+Accepted period values are `7d`, `30d`, and `all`. Every other value raises
+SQLSTATE `22023`. The function rejects unauthenticated execution, derives the
+owner exclusively from `auth.uid()`, uses `SECURITY DEFINER` with
+`SET search_path = ''`, and is executable only by `authenticated`. It performs
+no inserts, updates, deletes, reward calculations, achievement evaluation, or
+history creation.
+
+The response contract is:
+
+```text
+{
+  period,
+  generatedAt,
+  periodStart,
+  summary: {
+    missionsCompleted,
+    overallXPEarned,
+    skillXPEarned,
+    activeDays,
+    achievementsUnlocked
+  },
+  mostDevelopedSkill: { key, name, xpEarned } | null,
+  missionActivity: [{ date, completedCount }],
+  xpActivity: [{ date, xpEarned }],
+  skillActivity: [{ key, name, xpEarned }]
+}
+```
+
+All mission and XP values aggregate authenticated-owner rows where
+`mission_history.final_state = 'completed'`. Overall and skill XP use the
+persisted `xp_awarded` and `skill_xp_awarded` columns. Achievement totals count
+only existing `user_achievements.unlocked_at` rows; Analytics never calls the
+achievement evaluator. Most Developed Skill is ordered by period skill XP
+descending, `skill_catalog.sort_order` ascending, then skill key ascending.
+
+Period boundaries use UTC calendar dates. `7d` starts at UTC midnight six days
+before the generated date; `30d` starts twenty-nine days before it; both end at
+the next UTC midnight and return every date in the window with explicit zeros.
+`all` has no lower bound and returns active dates only. Active Days is the count
+of distinct UTC completion dates, not a streak. Historical records before
+skill attribution was installed can contribute overall XP and mission counts
+but cannot contribute missing skill XP or a missing skill identity.
+
+The existing `(user_id, terminal_at DESC)` history index and
+`(user_id, unlocked_at DESC)` achievement index already support this bounded
+owner aggregation, so no duplicate index or analytics table is created. RLS
+remains enabled and browser writes remain revoked on both source tables.
+
+### Installation
+
+After production migrations 001–009, 011, and 013 are installed, apply:
+
+```text
+supabase/migrations/202608070014_sprint13_analytics_insights.sql
+```
+
+Migration 012 remains staging-only and is not required for production
+Analytics. Migration 014 is production-safe and must be installed before the
+Sprint 13 frontend is tested. Verification in this package is contract/static;
+it does not claim a live Supabase execution.

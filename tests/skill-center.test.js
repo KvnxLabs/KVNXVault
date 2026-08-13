@@ -83,7 +83,38 @@ test("active skills retain authoritative total XP", () => {
 test("catalog skills without progression render Not Started", () => {
   const skill = view().skills.find((entry) => entry.key === "communication");
   assert.equal(skill.active, false);
+  assert.equal(skill.expandable, false);
   assert.equal(skill.stateLabel, "Not Started");
+});
+test("Not Started skills render as non-expandable article cards", () => {
+  assert.match(source, /document\.createElement\(skill\.expandable \? "details" : "article"\)/);
+  assert.match(source, /if \(!skill\.expandable\) \{[\s\S]*card\.append\(heading\);[\s\S]*grid\.append\(card\);[\s\S]*return;/);
+});
+test("Not Started cards expose no disclosure control or aria-expanded state", () => {
+  const skillCenterRenderer = source.match(/const renderSkillCenter = \(snapshot\) => \{[\s\S]*?\n  const renderAchievements/)?.[0] || "";
+  assert.doesNotMatch(skillCenterRenderer, /setAttribute\("aria-expanded"/);
+  assert.match(css, /\.skill-center__card\.is-active summary::after/);
+  assert.doesNotMatch(css, /\.skill-center__card\.is-not-started[^\n]*::after/);
+});
+test("Not Started cards stop before detail and progress construction", () => {
+  assert.match(source, /if \(!skill\.expandable\) \{[\s\S]*return;[\s\S]*const overview = document\.createElement/);
+  assert.match(source, /return;[\s\S]*detailHeading\.textContent = "Recent verified gains"/);
+});
+test("zero authoritative XP remains Not Started", () => {
+  const skill = view().skills.find((entry) => entry.key === "communication");
+  assert.equal(skill.totalXP, 0);
+  assert.equal(skill.active, false);
+  assert.equal(skill.expandable, false);
+});
+test("first positive authoritative skill XP activates disclosure after reconciliation", () => {
+  const reconciled = dashboard.skillCenter.createViewModel({
+    ...snapshot,
+    skills: [...snapshot.skills, { key: "communication", name: "Communication", totalXP: 15, todayGain: 15 }],
+  }, progressionEngine);
+  const skill = reconciled.skills.find((entry) => entry.key === "communication");
+  assert.equal(skill.totalXP, 15);
+  assert.equal(skill.active, true);
+  assert.equal(skill.expandable, true);
 });
 test("skill levels use the injected existing progression engine", () => {
   assert.equal(view().highestSkill.level, 2);
@@ -106,7 +137,11 @@ test("missing historical attribution is not fabricated", () => {
 });
 test("recent verified gains preserve server-returned award values", () => assert.equal(view().highestSkill.recentGains[0].skillXPEarned, 15));
 test("recent gain dates are formatted from authoritative timestamps", () => assert.match(view().highestSkill.recentGains[0].dateLabel, /Aug 12, 2026/));
-test("skill detail uses native keyboard-operable disclosure", () => assert.match(source, /document\.createElement\("details"\)/));
+test("active skill detail retains native keyboard-operable disclosure", () => {
+  assert.equal(view().highestSkill.expandable, true);
+  assert.match(source, /document\.createElement\(skill\.expandable \? "details" : "article"\)/);
+  assert.match(source, /document\.createElement\(skill\.expandable \? "summary" : "div"\)/);
+});
 test("View in Vault uses the existing hash route", () => assert.match(source, /vaultLink\.href = "#vault"/));
 test("Dashboard Skills Overview remains present", () => assert.match(html, /Skills Overview[\s\S]*data-skill-list/));
 test("Dashboard links to the dedicated Skill Center", () => assert.match(html, /View Skill Center[\s\S]*#skills|href="#skills"[^>]*>View Skill Center/));

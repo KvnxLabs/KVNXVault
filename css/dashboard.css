@@ -2421,26 +2421,42 @@
 
 .skill-center__card.is-not-started { opacity: 0.82; }
 
-.skill-center__card summary {
+.skill-center__card.is-active summary,
+.skill-center__static {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 14px;
   gap: 18px;
   align-items: center;
   padding: 22px 22px 14px;
+}
+
+.skill-center__card.is-active summary {
   cursor: pointer;
   list-style: none;
 }
 
-.skill-center__card summary::-webkit-details-marker { display: none; }
+.skill-center__card.is-active summary::-webkit-details-marker { display: none; }
 
-.skill-center__card summary::after {
+.skill-center__card.is-active summary::after {
   content: "+";
   grid-column: 3;
   color: var(--app-subtle);
   font-size: 0.9rem;
 }
 
-.skill-center__card[open] summary::after { content: "−"; }
+.skill-center__card.is-active[open] summary::after { content: "−"; }
+
+.skill-center__static {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 82px;
+  padding: 18px 22px;
+}
+
+.skill-center__static-value {
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
 
 .skill-center__card-heading {
   display: grid;

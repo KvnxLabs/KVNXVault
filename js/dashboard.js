@@ -203,6 +203,7 @@ const KVNXSkillCenterExperience = (() => {
           : index,
         totalXP,
         active: totalXP > 0,
+        expandable: totalXP > 0,
         stateLabel: totalXP > 0 ? "Active" : "Not Started",
         level: derived.currentLevel,
         nextLevel: derived.nextLevel,
@@ -992,10 +993,10 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         grid.className = "skill-center__grid";
 
         skills.forEach((skill) => {
-          const details = document.createElement("details");
-          details.className = `skill-center__card app-card ${skill.active ? "is-active" : "is-not-started"}`;
-          const summary = document.createElement("summary");
-          summary.setAttribute("aria-label", `${skill.name}, ${skill.stateLabel}, Level ${skill.level}, ${skill.totalXP} XP. Open skill details.`);
+          const card = document.createElement(skill.expandable ? "details" : "article");
+          card.className = `skill-center__card app-card ${skill.active ? "is-active" : "is-not-started"}`;
+          const heading = document.createElement(skill.expandable ? "summary" : "div");
+          heading.className = skill.expandable ? "skill-center__summary" : "skill-center__static";
           const headingCopy = document.createElement("span");
           headingCopy.className = "skill-center__card-heading";
           const name = document.createElement("strong");
@@ -1004,12 +1005,24 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
           state.className = "skill-center__state";
           state.textContent = skill.stateLabel;
           headingCopy.append(name, state);
+
+          if (!skill.expandable) {
+            const total = document.createElement("span");
+            total.className = "skill-center__static-value";
+            total.textContent = `${skill.totalXP.toLocaleString("en-US")} XP`;
+            heading.append(headingCopy, total);
+            card.append(heading);
+            grid.append(card);
+            return;
+          }
+
+          heading.setAttribute("aria-label", `${skill.name}, ${skill.stateLabel}, Level ${skill.level}, ${skill.totalXP} XP. Open skill details.`);
           const level = document.createElement("span");
           level.className = "skill-center__level";
           const levelLabel = document.createElement("small");
           levelLabel.textContent = "Level";
           level.append(levelLabel, document.createTextNode(String(skill.level)));
-          summary.append(headingCopy, level);
+          heading.append(headingCopy, level);
 
           const overview = document.createElement("div");
           overview.className = "skill-center__overview";
@@ -1059,16 +1072,14 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
           const noGains = document.createElement("p");
           noGains.className = "skill-center__no-gains";
           noGains.hidden = skill.recentGains.length > 0;
-          noGains.textContent = skill.active
-            ? "No attributed gains appear in the restored recent Vault window. Lifetime XP remains authoritative."
-            : "No verified mission has developed this skill yet.";
+          noGains.textContent = "No attributed gains appear in the restored recent Vault window. Lifetime XP remains authoritative.";
           const vaultLink = document.createElement("a");
           vaultLink.className = "skill-center__vault-link";
           vaultLink.href = "#vault";
           vaultLink.textContent = "View in Vault →";
           detail.append(detailHeading, gains, noGains, vaultLink);
-          details.append(summary, overview, detail);
-          grid.append(details);
+          card.append(heading, overview, detail);
+          grid.append(card);
         });
         section.append(heading, grid);
         skillCenterGroups.append(section);

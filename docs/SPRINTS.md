@@ -642,3 +642,17 @@ attribution is omitted from recent gains rather than fabricated.
 Notes: No database migration is required. Migrations 001–016 remain unchanged.
 No live Supabase, staging, production deployment, or live verification is
 claimed by this package.
+
+## Sprint 17.1 — Skill Center Empty-State Polish
+
+Status: ✅ Code complete; deployment and live verification remain manual
+
+Completed: Kept every canonical zero-XP skill visible while replacing its empty
+disclosure with a compact static Not Started card. Only skills with positive
+authoritative XP render native expandable details, progression, recent verified
+gains, and Vault navigation. A reconciled first positive skill award changes the
+same catalog skill to Active and restores the existing disclosure automatically.
+
+Notes: This is a presentation-only refinement. Repository and Application
+Service contracts, rewards, progression thresholds, authentication restoration,
+and migrations 001–016 remain unchanged. No database migration is required.

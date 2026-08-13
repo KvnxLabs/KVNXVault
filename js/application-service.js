@@ -66,6 +66,7 @@
     let skillProgression = [];
     let skillCatalog = [];
     let skillPaths = [];
+    let skillPathMissionOffers = [];
     let achievements = [];
     let streak = Object.freeze({ currentStreak: 0, longestStreak: 0, lastCompletedDailyKey: null });
     let analytics = null;
@@ -106,6 +107,7 @@
       skills: Object.freeze([...skillProgression]),
       skillCatalog: Object.freeze([...skillCatalog]),
       skillPaths: Object.freeze([...skillPaths]),
+      skillPathMissionOffers: Object.freeze([...skillPathMissionOffers]),
       achievements: Object.freeze(achievements.map(toPublicAchievement)),
       streak,
       analytics,
@@ -211,6 +213,27 @@
         ...skillPaths.filter((path) => path.key !== nextPath.key),
       ]);
       return nextPath;
+    };
+
+    const restoreSkillPathMissionOffers = (states = []) => {
+      skillPathMissionOffers = Object.freeze(states.map((state) => Object.freeze({
+        ...state,
+        offers: Object.freeze((state.offers || []).map((offer) => Object.freeze({ ...offer }))),
+      })));
+      return skillPathMissionOffers;
+    };
+
+    const reconcileSkillPathMissionOffers = (updatedState) => {
+      if (!updatedState?.skillKey) return null;
+      const nextState = Object.freeze({
+        ...updatedState,
+        offers: Object.freeze((updatedState.offers || []).map((offer) => Object.freeze({ ...offer }))),
+      });
+      skillPathMissionOffers = Object.freeze([
+        nextState,
+        ...skillPathMissionOffers.filter((state) => state.skillKey !== nextState.skillKey),
+      ]);
+      return nextState;
     };
 
     const reconcileUpdatedSkill = (updatedSkill) => {
@@ -431,6 +454,7 @@
       let loadedSkills = [];
       let loadedSkillCatalog = [];
       let loadedSkillPaths = [];
+      let loadedSkillPathMissionOffers = [];
       let loadedAchievementCatalog = [];
       let loadedAchievements = [];
       let loadedStreak = null;
@@ -458,7 +482,7 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, skillPathMissionOffersResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
           repository.loadProgression(),
           typeof repository.getVaultHistory === "function"
             ? repository.getVaultHistory()
@@ -471,6 +495,9 @@
             : Promise.resolve([]),
           typeof repository.getSkillPaths === "function"
             ? repository.getSkillPaths()
+            : Promise.resolve([]),
+          typeof repository.getSkillPathMissionOffers === "function"
+            ? repository.getSkillPathMissionOffers()
             : Promise.resolve([]),
           typeof repository.getAchievementCatalog === "function"
             ? repository.getAchievementCatalog()
@@ -490,6 +517,7 @@
         loadedSkills = skillResult;
         loadedSkillCatalog = skillCatalogResult;
         loadedSkillPaths = skillPathsResult;
+        loadedSkillPathMissionOffers = skillPathMissionOffersResult;
         loadedAchievementCatalog = achievementCatalogResult;
         loadedAchievements = achievementResult;
         loadedStreak = streakResult;
@@ -560,6 +588,9 @@
           .map((entry) => Object.freeze({ ...entry })),
       );
       restoreSkillPaths(Array.isArray(loadedSkillPaths) ? loadedSkillPaths : []);
+      restoreSkillPathMissionOffers(
+        Array.isArray(loadedSkillPathMissionOffers) ? loadedSkillPathMissionOffers : [],
+      );
       restoreAchievements(
         Array.isArray(loadedAchievementCatalog) ? loadedAchievementCatalog : [],
         Array.isArray(loadedAchievements) ? loadedAchievements : [],
@@ -753,11 +784,43 @@
       }
       const path = await method.call(repository, skillKey);
       const reconciled = reconcileSkillPath(path);
+      if (!pathActive) {
+        skillPathMissionOffers = Object.freeze(
+          skillPathMissionOffers.filter((state) => state.skillKey !== path.key),
+        );
+      }
       return Object.freeze({
         accepted: true,
         path: reconciled,
         snapshot: getPublicSnapshot(),
       });
+    };
+
+    const requestSkillPathMissionOffers = async (skillKey) => {
+      if (persistenceBlocked || typeof repository.requestSkillPathMissionOffers !== "function") {
+        return Object.freeze({
+          accepted: false,
+          reason: persistenceBlocked ? "persistence-blocked" : "skill-path-offers-unavailable",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+      const state = await repository.requestSkillPathMissionOffers(skillKey);
+      const reconciled = reconcileSkillPathMissionOffers(state);
+      return Object.freeze({ ...state, offerState: reconciled, snapshot: getPublicSnapshot() });
+    };
+
+    const selectSkillPathMissionOffer = async (offerId) => {
+      if (persistenceBlocked || typeof repository.selectSkillPathMissionOffer !== "function") {
+        return Object.freeze({
+          accepted: false,
+          reason: persistenceBlocked ? "persistence-blocked" : "skill-path-offers-unavailable",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+      const result = await repository.selectSkillPathMissionOffer(offerId);
+      const reconciled = result.skillKey && result.reason !== "path-inactive"
+        ? reconcileSkillPathMissionOffers(result) : null;
+      return Object.freeze({ ...result, offerState: reconciled, snapshot: getPublicSnapshot() });
     };
 
     const loadMoreVaultHistory = async () => {
@@ -819,7 +882,9 @@
       loadAnalytics,
       loadMoreVaultHistory,
       requestReplacement,
+      requestSkillPathMissionOffers,
       selectDailyMission,
+      selectSkillPathMissionOffer,
       signOut: () => authService.signOut(),
       skip: () => routeAction("skip"),
       start: () => routeAction("start"),

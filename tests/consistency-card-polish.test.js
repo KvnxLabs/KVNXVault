@@ -50,8 +50,8 @@ test("zero state and singular-plural grammar remain unchanged", () => {
 });
 
 test("server-authoritative streak restoration remains unchanged", () => {
-  assert.equal(hash("js/user-repository.js"), "961db72c6b0412f8274766ba662df479ab11ab09bade184ecd809fa0766e89c0");
-  assert.equal(hash("js/application-service.js"), "bed0ace324d931a9b528167ebd9c57fefa01d741c044b6b2d3f8e2a8cd2c1d7e");
+  assert.equal(hash("js/user-repository.js"), "70a39141a787b739243a713d464313ecb687e15360d4b189c987c3a82f0b7885");
+  assert.equal(hash("js/application-service.js"), "11c0109e187e09967ed6c3c5beae4f7e7ff397e50146027f3e2e56be61f954e0");
   assert.match(repositorySource, /database\.rpc\("get_vault_streak"\)/);
   assert.match(serviceSource, /typeof repository\.getVaultStreak === "function"/);
 });
@@ -78,14 +78,13 @@ test("Sprint 20 Skill Paths remain unchanged", () => {
 });
 
 test("no CSS or Dashboard rendering logic changed", () => {
-  assert.equal(hash("css/dashboard.css"), "64c4963db9c60f39778cb3b04f6f5424390c17cf9e72a5ae9f87498ea4e17ae4");
-  assert.equal(hash("js/dashboard.js"), "d83c3ce0519caae64282297b6eb0f72341ea5f5aece232321ea04b90c6e46f70");
+  assert.equal(hash("css/dashboard.css"), "b4905d310bf1ccc66bb21c6ba90774473216b2dfdaabb7b00398cae0d8bc47f9");
+  assert.equal(hash("js/dashboard.js"), "60b69b0821bf22645748785a62c8ab5861ecd561f95bf6bae3c75aba706b314f");
 });
 
-test("Sprint 20.1 added no migration", () => {
+test("Sprint 20.1 remains migration-free after later migrations", () => {
   const migrations = fs.readdirSync(path.join(root, "supabase/migrations"));
-  assert.equal(migrations.length, 18);
-  assert.equal(migrations.some((name) => /sprint20_1|sprint20\.1|202608070020/.test(name)), false);
+  assert.equal(migrations.some((name) => /sprint20_1|sprint20\.1/.test(name)), false);
 });
 
 test("migrations 001 through 019 remain byte-for-byte unchanged", () => {

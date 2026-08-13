@@ -246,3 +246,41 @@ gates or advancing production time.
 Production verification requires no clock operation. The pending Sprint 15 and
 Sprint 19 natural-new-day checks remain deferred until the next real logical-day
 rollover and should be performed separately from Skill Path state testing.
+
+## Sprint 21 Skill Path Mission Offer Verification
+
+Install Migration 020 after Migration 019. Use the normal staging gates and an
+allowlisted account; do not weaken the production-domain block.
+
+1. Activate Fitness and one other canonical path through Skill Center. Record
+   overall XP, all skill XP, streak, achievements, history/Analytics counts,
+   today's primary mission or choice, replacement allowance, and Daily Complete
+   state.
+2. Choose **Explore Missions** for Fitness. Confirm zero to three offers appear
+   (the installed catalog normally provides three), all build Fitness, and no
+   reward or mission-lifecycle action is shown.
+3. Refresh `#skills`, navigate across every center, and sign out/in. Confirm the
+   same opaque IDs and offer order restore behind the protected loading gate.
+4. Select one offer. Confirm it becomes **Planned** and that a different offer
+   cannot replace it. Repeat the winning ID through the RPC to confirm
+   idempotent restoration.
+5. Confirm every value recorded in step 1 is unchanged. In particular, no
+   mission/history row exists for the offer, today's Sprint 19 primary state is
+   unchanged, and no progression or notification occurs.
+6. Pause the path. Confirm its current offer state is no longer restored and a
+   stale selection is rejected. Reactivate it on the same logical day and
+   confirm the persisted set restores rather than rerolls.
+7. Attempt an arbitrary UUID, another owner's ID, a noncanonical/inactive skill,
+   an inactive path, and direct table writes. Each must be rejected.
+8. Issue simultaneous offer requests for one owner/day/skill; both must restore
+   the same row. Issue simultaneous conflicting selections; exactly one planned
+   item may win.
+9. On approved staging only, advance one logical day. Confirm requesting the
+   same active path produces the next day's normal stable set and prefers unused
+   or least-recently-used authoritative templates.
+
+Production verification uses natural time only. Install the migration, deploy
+the frontend, verify same-day restoration and zero side effects, then wait for a
+natural logical-day rollover for the new-day stability/variety check. Do not
+alter production time. Sprint 15 and Sprint 19 pending natural-new-day checks
+remain separate acceptance items.

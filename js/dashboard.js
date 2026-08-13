@@ -889,6 +889,12 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const skillCenterResults = document.querySelector("[data-skill-center-results]");
   const skillCenterGroups = document.querySelector("[data-skill-center-groups]");
   const skillPathStatus = document.querySelector("[data-skill-path-status]");
+  const skillPathOffersPanel = document.querySelector("[data-skill-path-offers-panel]");
+  const skillPathOffersTitle = document.querySelector("[data-skill-path-offers-title]");
+  const skillPathOffersList = document.querySelector("[data-skill-path-offers-list]");
+  const skillPathOffersEmpty = document.querySelector("[data-skill-path-offers-empty]");
+  const skillPathOffersStatus = document.querySelector("[data-skill-path-offers-status]");
+  const skillPathOffersClose = document.querySelector("[data-skill-path-offers-close]");
   const achievementList = document.querySelector("[data-achievement-list]");
   const achievementsCount = document.querySelector("[data-achievements-count]");
   const achievementCenterContent = document.querySelector("[data-achievement-center-content]");
@@ -1180,6 +1186,16 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
           const pathControl = document.createElement("div");
           pathControl.className = "skill-center__path-control";
+          if (skill.developmentPathActive) {
+            const exploreButton = document.createElement("button");
+            exploreButton.type = "button";
+            exploreButton.className = "skill-center__path-action";
+            exploreButton.dataset.skillPathKey = skill.key;
+            exploreButton.dataset.skillPathAction = "explore";
+            exploreButton.textContent = "Explore Missions";
+            exploreButton.setAttribute("aria-label", `Explore authoritative ${skill.name} mission offers`);
+            pathControl.append(exploreButton);
+          }
           const pathButton = document.createElement("button");
           pathButton.type = "button";
           pathButton.className = `skill-center__path-action${skill.developmentPathActive ? " is-secondary" : ""}`;
@@ -1275,6 +1291,45 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       if (skillCenterContent) skillCenterContent.hidden = true;
       if (skillCenterError) skillCenterError.hidden = false;
     }
+  };
+
+  const renderSkillPathOffers = (state) => {
+    if (!skillPathOffersPanel || !skillPathOffersList || !state?.skillKey) return;
+    skillPathOffersPanel.dataset.skillPathOffersSkill = state.skillKey;
+    if (skillPathOffersTitle) skillPathOffersTitle.textContent = `Develop ${state.skillName}`;
+    skillPathOffersList.replaceChildren();
+    const offers = Array.isArray(state.offers) ? state.offers : [];
+    offers.forEach((offer) => {
+      const card = document.createElement("article");
+      card.className = "skill-path-offers__option";
+      const copy = document.createElement("div");
+      const title = document.createElement("h3");
+      title.textContent = offer.title;
+      const description = document.createElement("p");
+      description.textContent = offer.description;
+      const meta = document.createElement("span");
+      meta.textContent = `${offer.estimatedDuration} · ${offer.skillName}`;
+      copy.append(title, description, meta);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "app-button skill-path-offers__select";
+      button.dataset.skillPathOfferSelect = offer.offerId;
+      const selected = state.selectedOfferId === offer.offerId;
+      button.textContent = selected ? "Planned" : "Select Practice";
+      button.disabled = state.status === "planned";
+      button.setAttribute("aria-label", `${selected ? "Planned practice" : "Select practice"}: ${offer.title}`);
+      card.classList.toggle("is-selected", selected);
+      card.append(copy, button);
+      skillPathOffersList.append(card);
+    });
+    if (skillPathOffersEmpty) skillPathOffersEmpty.hidden = offers.length > 0;
+    if (skillPathOffersStatus) {
+      skillPathOffersStatus.textContent = state.status === "planned"
+        ? "Practice selected and preserved as planned work. No progression has been awarded."
+        : offers.length > 0 ? `${offers.length} server-approved ${offers.length === 1 ? "practice" : "practices"}.` : "";
+    }
+    skillPathOffersPanel.hidden = false;
+    skillPathOffersPanel.scrollIntoView?.({ block: "nearest" });
   };
 
   const renderAchievements = (snapshot) => {
@@ -2150,7 +2205,26 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     const button = event.target.closest("[data-skill-path-action]");
     if (!button || !skillCenterGroups.contains(button) || button.disabled) return;
     const skillKey = button.dataset.skillPathKey;
-    const activate = button.dataset.skillPathAction === "activate";
+    const action = button.dataset.skillPathAction;
+    if (action === "explore") {
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      if (skillPathStatus) skillPathStatus.textContent = "Restoring authoritative mission offers…";
+      try {
+        const result = await vaultApplication.requestSkillPathMissionOffers(skillKey);
+        if (!result?.accepted || !result.offerState) throw new Error(result?.reason || "offers-rejected");
+        applicationSnapshot = result.snapshot;
+        renderSkillPathOffers(result.offerState);
+        if (skillPathStatus) skillPathStatus.textContent = "";
+      } catch {
+        if (skillPathStatus) skillPathStatus.textContent = "The Vault could not restore mission offers for that path.";
+      } finally {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+      }
+      return;
+    }
+    const activate = action === "activate";
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     if (skillPathStatus) skillPathStatus.textContent = `${activate ? "Activating" : "Pausing"} development path…`;
@@ -2161,6 +2235,10 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       if (!result?.accepted) throw new Error(result?.reason || "skill-path-rejected");
       applicationSnapshot = result.snapshot;
       renderSkillCenter(applicationSnapshot);
+      if (!activate && !skillPathOffersPanel?.hidden
+        && skillPathOffersPanel.dataset.skillPathOffersSkill === skillKey) {
+        skillPathOffersPanel.hidden = true;
+      }
       if (skillPathStatus) {
         const skillName = result.path?.name || "Skill";
         skillPathStatus.textContent = `${skillName} is ${activate ? "now a development path" : "no longer an active development path"}.`;
@@ -2170,6 +2248,30 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       button.removeAttribute("aria-busy");
       if (skillPathStatus) skillPathStatus.textContent = "The Vault could not update that development path. Try again.";
     }
+  });
+
+  skillPathOffersList?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-skill-path-offer-select]");
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    if (skillPathOffersStatus) skillPathOffersStatus.textContent = "Securing planned practice…";
+    try {
+      const result = await vaultApplication.selectSkillPathMissionOffer(
+        button.dataset.skillPathOfferSelect,
+      );
+      if (!result?.accepted || !result.offerState) throw new Error(result?.reason || "selection-rejected");
+      applicationSnapshot = result.snapshot;
+      renderSkillPathOffers(result.offerState);
+    } catch {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      if (skillPathOffersStatus) skillPathOffersStatus.textContent = "That practice could not be selected. Restore the path and try again.";
+    }
+  });
+
+  skillPathOffersClose?.addEventListener("click", () => {
+    if (skillPathOffersPanel) skillPathOffersPanel.hidden = true;
   });
 
   achievementCenterFilterButtons.forEach((button) => {

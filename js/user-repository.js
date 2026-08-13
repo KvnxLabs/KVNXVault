@@ -74,6 +74,71 @@
     });
   };
 
+  const mapSkillPathMissionOffers = (result) => {
+    const responseKeys = new Set([
+      "accepted", "reason", "dailyKey", "skillKey", "skillName", "status",
+      "offers", "selectedOfferId", "selectedAt",
+    ]);
+    const offerKeys = new Set([
+      "offerId", "title", "description", "estimatedDuration", "skillKey", "skillName",
+    ]);
+    if (!result || typeof result !== "object" || typeof result.accepted !== "boolean") {
+      throw createRepositoryError("skill-path-offers-response-invalid");
+    }
+    if (Object.keys(result).some((key) => !responseKeys.has(key))) {
+      throw createRepositoryError("skill-path-offers-response-invalid");
+    }
+    if (result.accepted === false && result.reason === "offer-not-found-or-stale"
+      && result.dailyKey === undefined && result.offers === undefined) {
+      return deepFreeze({ accepted: false, reason: "offer-not-found-or-stale" });
+    }
+    const dailyKey = String(result.dailyKey || "");
+    const skillKey = String(result.skillKey || "");
+    const skillName = String(result.skillName || "");
+    const status = String(result.status || "");
+    const reason = String(result.reason || "");
+    const rawOffers = Array.isArray(result.offers) ? result.offers : null;
+    const offers = rawOffers ? rawOffers.map((offer) => ({
+      offerId: String(offer?.offerId || "").toLowerCase(),
+      title: String(offer?.title || ""),
+      description: String(offer?.description || ""),
+      estimatedDuration: String(offer?.estimatedDuration || ""),
+      skillKey: String(offer?.skillKey || ""),
+      skillName: String(offer?.skillName || ""),
+    })) : null;
+    const selectedOfferId = result.selectedOfferId == null
+      ? null : String(result.selectedOfferId).toLowerCase();
+    const selectedAt = result.selectedAt == null
+      ? null : Number.isFinite(Date.parse(result.selectedAt))
+        ? new Date(Date.parse(result.selectedAt)).toISOString() : null;
+
+    if (!reason || !isISOCalendarDate(dailyKey) || !SKILL_KEY_PATTERN.test(skillKey)
+      || !skillName || !["offered", "planned"].includes(status)
+      || !offers || offers.length > 3
+      || rawOffers.some((offer) => !offer || typeof offer !== "object"
+        || Object.keys(offer).some((key) => !offerKeys.has(key)))
+      || offers.some((offer) => !isUUID(offer.offerId) || !offer.title
+        || !offer.description || !offer.estimatedDuration
+        || offer.skillKey !== skillKey || offer.skillName !== skillName)
+      || new Set(offers.map((offer) => offer.offerId)).size !== offers.length
+      || (status === "offered" && (selectedOfferId !== null || selectedAt !== null))
+      || (status === "planned" && (!isUUID(selectedOfferId) || !selectedAt
+        || !offers.some((offer) => offer.offerId === selectedOfferId)))) {
+      throw createRepositoryError("skill-path-offers-response-invalid");
+    }
+    return deepFreeze({
+      accepted: result.accepted,
+      reason,
+      dailyKey,
+      skillKey,
+      skillName,
+      status,
+      offers,
+      selectedOfferId,
+      selectedAt,
+    });
+  };
+
   const mapVaultStreak = (result) => {
     if (!result || typeof result !== "object") {
       throw createRepositoryError("vault-streak-response-invalid");
@@ -535,6 +600,60 @@
     const activateSkillPath = (skillKey) => requestSkillPathState(skillKey, true);
     const deactivateSkillPath = (skillKey) => requestSkillPathState(skillKey, false);
 
+    // Sprint 21 restoration accepts no browser identity, skill, date, or day.
+    const getSkillPathMissionOffers = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_skill_path_mission_offers"),
+        "skill-path-offers-load-failed",
+      );
+      if (!Array.isArray(result)) {
+        throw createRepositoryError("skill-path-offers-response-invalid");
+      }
+      const states = result.map(mapSkillPathMissionOffers);
+      if (new Set(states.map((state) => state.skillKey)).size !== states.length) {
+        throw createRepositoryError("skill-path-offers-response-invalid");
+      }
+      return Object.freeze(states);
+    };
+
+    // Request input is one canonical key; PostgreSQL independently proves the
+    // authenticated owner, active path, catalog eligibility, and logical day.
+    const requestSkillPathMissionOffers = async (skillKey) => {
+      await getAuthenticatedUser();
+      const normalizedSkillKey = String(skillKey || "").trim().toLowerCase();
+      if (!SKILL_KEY_PATTERN.test(normalizedSkillKey)) {
+        throw new TypeError("A canonical skill key is required.");
+      }
+      const result = await unwrap(
+        database.rpc("request_skill_path_mission_offers", {
+          p_skill_key: normalizedSkillKey,
+        }),
+        "skill-path-offers-request-failed",
+      );
+      const mapped = mapSkillPathMissionOffers(result);
+      if (mapped.skillKey !== normalizedSkillKey) {
+        throw createRepositoryError("skill-path-offers-response-invalid");
+      }
+      return mapped;
+    };
+
+    // Selection submits only the opaque ID from a persisted server offer set.
+    const selectSkillPathMissionOffer = async (offerId) => {
+      await getAuthenticatedUser();
+      const normalizedOfferId = String(offerId || "").trim().toLowerCase();
+      if (!isUUID(normalizedOfferId)) {
+        throw new TypeError("An authoritative Skill Path offer id is required.");
+      }
+      const result = await unwrap(
+        database.rpc("select_skill_path_mission_offer", {
+          p_offer_id: normalizedOfferId,
+        }),
+        "skill-path-offer-selection-failed",
+      );
+      return mapSkillPathMissionOffers(result);
+    };
+
     // Sprint 11 restoration remains read-only. Both RPCs derive identity and
     // ownership inside PostgreSQL and accept no browser-supplied arguments.
     const getAchievementCatalog = async () => {
@@ -827,6 +946,7 @@
       deactivateSkillPath,
       getAchievementCatalog,
       getSkillCatalog,
+      getSkillPathMissionOffers,
       getSkillPaths,
       getSkillProgression,
       getUserAchievements,
@@ -845,7 +965,9 @@
       requestDailyMission,
       requestDailyMissionReplacement,
       requestMissionAction,
+      requestSkillPathMissionOffers,
       selectDailyMissionChoice,
+      selectSkillPathMissionOffer,
       saveOnboarding,
       saveProfile,
     });

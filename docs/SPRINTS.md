@@ -666,6 +666,32 @@ unchanged. Sprint 20 adds no Side Missions, skill-specific mission generation,
 new economy, custom skills, subcategories, or AI Coach. No production, staging,
 or live Supabase verification is claimed by this package.
 
+## Sprint 21 — Authoritative Skill Path Mission Offers
+
+Status: ✅ Code complete; migration, deployment, and live verification remain manual
+
+Goal: Let a user explore bounded, stable practice options for an active
+canonical development path while keeping eligibility, content, logical time,
+membership, and selection lock authoritative.
+
+Completed: Added owner/day/skill offer persistence, up to three canonical
+server-built snapshots, opaque IDs, active-path and exact-membership validation,
+concurrency-safe stable restoration, one idempotent planned selection, frozen
+Repository/Application Service restoration, and a separate responsive Skill
+Center offer panel. Added path-only catalog coverage so every canonical skill
+has an eligible pool without entering Sprint 19 onboarding focus selection.
+
+Definition of Done: Offer request, view, and planned selection award nothing,
+create no mission or history, and change no streak, achievement, Analytics,
+Daily Mission Choice, replacement, or Daily Complete state. Paused paths cannot
+request or select. Zero-XP Developing cards remain compact.
+
+Notes: Migration 020 is required. Migrations 001–019 remain byte-for-byte
+unchanged. Sprint 21 adds no Side Mission lifecycle, completion, XP economy,
+recurrence, deadlines, capacity limits, AI Coach, custom skills, or Sprint 19
+mission-pool integration. No live Supabase, staging, production deployment, or
+live verification is claimed by this package.
+
 ## Sprint 17.1 — Skill Center Empty-State Polish
 
 Status: ✅ Code complete; deployment and live verification remain manual

@@ -914,3 +914,44 @@ supabase/migrations/202608070019_sprint20_skill_paths.sql
 
 `migrations-pre-sprint20.sha256` records migrations 001–018 without changing
 any historical fingerprint baseline.
+
+## Sprint 21 Skill Path Mission Offer Authority
+
+Migration `202608070020_sprint21_skill_path_mission_offers.sql` adds
+`skill_path_mission_offer_state`, keyed by `(user_id, daily_key, skill_key)`.
+Each row stores zero to three server-built offer snapshots and, optionally, the
+single planned offer. Offer UUIDs are generated inside PostgreSQL. Template
+identity remains internal; public responses contain only the opaque offer ID
+and the presentation fields required by Skill Center.
+
+The table has RLS enabled, no browser policies, and no direct grants for
+`public`, `anon`, or `authenticated`. Only these authenticated contracts are
+exposed:
+
+- `get_skill_path_mission_offers()` restores all current-day active-path offer
+  states for `auth.uid()` and accepts no arguments.
+- `request_skill_path_mission_offers(p_skill_key text)` validates an active
+  canonical owner path and creates/restores the bounded stable set.
+- `select_skill_path_mission_offer(p_offer_id uuid)` proves current-day exact
+  membership and records one immutable planned selection.
+
+All three use `SECURITY DEFINER`, `SET search_path = ''`, schema-qualified
+objects, and the existing effective server clock/logical-day functions. Internal
+builders are fully revoked. Mutations are confined to offer state and cannot
+touch mission, progression, history, streak, achievement, or Analytics tables.
+
+Migration 020 also adds `skill_path` as a path-only `mission_catalog.focus_key`
+and inserts six active canonical templates for each of Back-End Engineering,
+Reading, and Writing. All twelve canonical skills consequently have at least
+three eligible offers. The new focus is not recognized by Sprint 19's saved
+onboarding-focus mapping and therefore cannot enter primary Daily Mission
+Choice.
+
+Apply after Migration 019 and before deploying the Sprint 21 frontend:
+
+```text
+supabase/migrations/202608070020_sprint21_skill_path_mission_offers.sql
+```
+
+`migrations-pre-sprint21.sha256` records migrations 001–019 without changing
+any historical fingerprint baseline.

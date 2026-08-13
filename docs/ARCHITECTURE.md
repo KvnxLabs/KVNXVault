@@ -1014,3 +1014,45 @@ Sprint 19 is deliberately not integrated. Path mutations do not read or write
 Daily Mission Choice, reroll choices, create missions, alter onboarding focus,
 or affect today's mission. A later bounded mission layer may use active paths
 as server-owned eligibility input, but Sprint 20 implements no such economy.
+
+## Sprint 21 Authoritative Skill Path Mission Offers
+
+Sprint 21 adds a planning layer beside the existing Daily Mission system. An
+authenticated user may request bounded practice offers only for a currently
+active canonical development path. PostgreSQL derives the owner, effective
+server time, saved timezone, logical day, canonical skill, eligible catalog
+pool, recent authoritative use, and stable offer set. The browser submits only
+the canonical path key when requesting a set and one opaque UUID when selecting
+an offered item.
+
+```text
+Explore Missions
+→ Application Service
+→ Repository
+→ authenticated offer RPC
+→ active owner path + canonical skill validation
+→ stable owner/day/skill offer row (zero to three snapshots)
+
+Select Practice
+→ one opaque offered UUID
+→ exact persisted membership + current-day validation
+→ planned state only
+```
+
+Offer rows are unique by owner, logical day, and skill. An owner/day/skill
+advisory lock makes simultaneous requests converge; a row lock makes duplicate
+selection idempotent and prevents a conflicting selection from replacing the
+planned item. Repeated request, refresh, route changes, and logout/login restore
+the same row. Paused paths cannot request or select offers.
+
+This layer intentionally creates no mission instance or second lifecycle.
+Requesting, viewing, or selecting an offer writes no mission history and changes
+no overall XP, skill XP, streak, achievement, Analytics value, Daily Mission
+Choice, replacement allowance, or Daily Complete state. The immutable
+Application Service snapshot carries the restored planning state, and the Skill
+Center renders it in a separate panel so zero-XP path cards remain compact.
+
+The offer catalog pool uses the canonical mission-to-skill mapping. Migration
+020 adds path-only templates for the three skills that previously lacked
+eligible templates; the `skill_path` focus is outside every Sprint 19 onboarding
+focus map, so primary Daily Mission selection remains unchanged.

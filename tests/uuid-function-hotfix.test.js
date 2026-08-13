@@ -77,11 +77,11 @@ test("Sprint 10 skill progression remains unchanged", () => {
 
 test("frontend receives no new UUID-generation authority", () => {
   const unchangedProductionFiles = {
-    "js/application-service.js": "bed0ace324d931a9b528167ebd9c57fefa01d741c044b6b2d3f8e2a8cd2c1d7e",
-    "js/dashboard.js": "d83c3ce0519caae64282297b6eb0f72341ea5f5aece232321ea04b90c6e46f70",
+    "js/application-service.js": "11c0109e187e09967ed6c3c5beae4f7e7ff397e50146027f3e2e56be61f954e0",
+    "js/dashboard.js": "60b69b0821bf22645748785a62c8ab5861ecd561f95bf6bae3c75aba706b314f",
     "js/mission-generator.js": "46159c7e01aa9990f8b4374b5d1f81355e4dc1baf0d6c476bd9390dd98b4a282",
-    "js/user-repository.js": "961db72c6b0412f8274766ba662df479ab11ab09bade184ecd809fa0766e89c0",
-    "dashboard.html": "fa4656e21db4f6cc621dfec42e249fa50b1b96cd2162959f24a8f63916b2c894",
+    "js/user-repository.js": "70a39141a787b739243a713d464313ecb687e15360d4b189c987c3a82f0b7885",
+    "dashboard.html": "483c783ca85af0cc385df8c32412b1167e531d3257e8cc0a0315c578a6530331",
   };
 
   Object.entries(unchangedProductionFiles)

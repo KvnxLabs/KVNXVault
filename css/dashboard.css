@@ -2857,6 +2857,8 @@
 
 .skill-center__path-control {
   display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   justify-content: flex-end;
   padding: 0 22px 18px;
 }
@@ -3002,6 +3004,78 @@
 
 .skill-center__vault-link:hover,
 .skill-center__vault-link:focus-visible { color: var(--app-text); }
+
+.skill-path-offers {
+  margin-top: 28px;
+  padding: 24px;
+}
+
+.skill-path-offers[hidden] { display: none; }
+
+.skill-path-offers__header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.skill-path-offers__header h2 {
+  margin: 7px 0 0;
+  font-size: clamp(1.15rem, 3vw, 1.75rem);
+  font-weight: 480;
+}
+
+.skill-path-offers__close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  color: var(--app-muted);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.skill-path-offers__close:hover,
+.skill-path-offers__close:focus-visible { color: var(--app-text); border-color: rgba(255, 255, 255, 0.25); }
+
+.skill-path-offers__intro {
+  max-width: 680px;
+  margin: 14px 0 22px;
+  color: var(--app-muted);
+  font-size: 0.76rem;
+  line-height: 1.65;
+}
+
+.skill-path-offers__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.skill-path-offers__option {
+  display: flex;
+  min-width: 0;
+  min-height: 230px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  border: 1px solid var(--app-line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.skill-path-offers__option.is-selected { border-color: rgba(214, 181, 89, 0.38); }
+.skill-path-offers__option h3 { margin: 0; font-size: 0.9rem; font-weight: 560; }
+.skill-path-offers__option p { margin: 12px 0; color: var(--app-muted); font-size: 0.7rem; line-height: 1.6; }
+.skill-path-offers__option span { color: var(--app-subtle); font-size: 0.6rem; }
+.skill-path-offers__select { width: 100%; margin-top: 20px; }
+.skill-path-offers__empty,
+.skill-path-offers__status { color: var(--app-muted); font-size: 0.68rem; }
+.skill-path-offers__empty[hidden] { display: none; }
+.skill-path-offers__status { min-height: 18px; margin: 14px 0 0; }
 
 @media (max-width: 1100px) {
   .mission-center {
@@ -3392,6 +3466,7 @@
   .skill-center__sort select { width: 100%; }
   .skill-center__gains li { grid-template-columns: minmax(0, 1fr) auto; }
   .skill-center__gains time { grid-column: 1 / -1; }
+  .skill-path-offers__grid { grid-template-columns: minmax(0, 1fr); }
 
   .missions-view__heading {
     align-items: flex-start;

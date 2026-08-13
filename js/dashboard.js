@@ -356,7 +356,6 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const vaultApplication = window.KVNXApplicationService.createApplicationService({
     authService: protectedContext.authService,
     repository: protectedContext.repository,
-    missionEngine: window.KVNXMissionEngine,
     lifecycleEngine: window.KVNXMissionLifecycle,
     coordinatorEngine: window.KVNXMissionCoordinator,
     progressionEngine: window.KVNXProgression,

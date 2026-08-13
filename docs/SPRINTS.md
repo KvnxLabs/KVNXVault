@@ -543,3 +543,34 @@ identity as daily missions and the staging simulated clock. No existing
 migration was edited. Migration 015 and a new pre-Sprint-14 fingerprint
 baseline are included. Live Supabase, staging, and production deployment tests
 are intentionally not claimed.
+
+## Sprint 15 — Server-Authoritative Mission Catalog + Variety
+
+Status: ✅ Code complete; database and deployment verification remain manual
+
+Goal: Replace the single-template-per-focus server builder with a rich mission
+catalog while preserving every ownership, lifecycle, reward, history,
+achievement, Analytics, streak, replacement, and staging-clock boundary.
+
+Completed: Added 66 protected templates across ten canonical focus categories
+and a General custom-focus fallback; canonical skill foreign keys; deterministic
+owner/day selection; five-template recent-use avoidance; least-recently-used
+fallback; current-template replacement exclusion; nullable authoritative
+template identity in history; snapshot-safe archival capture; production
+removal of the legacy browser generator; a new pre-Sprint-15 fingerprint
+baseline; documentation; and focused security and regression coverage.
+
+Definition of Done: The browser asks for a daily mission or replacement but
+cannot choose its focus, template, copy, skill, reward, UUID, owner, date, or
+logical day. Same-day requests restore one saved mission. Replacement remains
+limited to one and awards nothing until completion. Completion remains exactly
+25 overall XP and 15 mapped skill XP. Completing two missions on one logical
+day remains one streak day.
+
+Result: Daily missions now vary meaningfully without adding a client-side
+source of truth or changing the existing dashboard design. Existing missions
+and history survive migration without fabricated template identities.
+
+Notes: Migration 016 is required. Migrations 001–015 remain byte-for-byte
+unchanged. Live Supabase, staging, and production deployment tests are not
+claimed by this package.

@@ -738,3 +738,69 @@ supabase/migrations/202608070015_sprint14_authoritative_streaks.sql
 Migration 012 remains staging-only under its existing gates. Migration 015 is
 required before the Sprint 14 frontend is released. Package verification is
 static/contract-based and does not claim live Supabase execution.
+
+## Sprint 15 — Server-Authoritative Mission Catalog
+
+Migration `202608070016_sprint15_mission_catalog.sql` creates
+`public.mission_catalog` with:
+
+- stable `template_key` primary key
+- canonical `focus_key`
+- snapshot-ready title and description
+- foreign-keyed `primary_skill_key`
+- validated estimated minutes
+- server-managed active flag and timestamps
+
+The catalog has 66 active-by-default templates: six each for the ten canonical
+onboarding categories and six General templates for arbitrary custom focus.
+Browser roles receive no table privileges or policies. Catalog reads occur
+only inside the internal `SECURITY DEFINER` builder with an empty search path.
+
+### Canonical focus mapping
+
+| Onboarding focus | Catalog focus | Skill |
+| --- | --- | --- |
+| Career | `career` | Leadership |
+| Business | `business` | Business |
+| Programming | `programming` | Front-End Engineering |
+| Fitness | `fitness` | Fitness |
+| Health | `health` | Fitness |
+| Learning | `learning` | Learning |
+| Creativity | `creativity` | Product Design |
+| Finance | `finance` | Business |
+| Relationships | `relationships` | Communication |
+| Mindset | `mindset` | Discipline |
+| Custom value | `general` | Problem Solving |
+
+`build_vault_daily_mission(onboarding_profiles, uuid)` now reads only the
+authenticated user's saved onboarding row supplied by the trusted caller,
+derives the same timezone-aware logical key through the existing clock system,
+and selects an active template with an active canonical skill. It returns the
+server UUID, catalog snapshot, intensity-derived difficulty, and fixed 25 XP.
+
+Selection considers the five most recent template identities from authoritative
+daily assignments and completion history. Unused candidates rank first; then
+least-recently-used candidates; then a deterministic owner/day/template hash.
+The current daily template ranks last during replacement when multiple
+candidates exist. No random value, history, category, skill, reward, date, or
+owner is accepted from the browser.
+
+Migration 016 adds nullable `mission_history.template_key` and extends the
+existing archive trigger. It captures template identity only when the current
+saved mission ID matches the inserted history mission. A limited reconciliation
+uses the same exact identity rule. Existing rows remain unchanged when a
+template cannot be proven, and Vault History continues displaying its saved
+title, description, category, skill, rewards, timestamp, and original state.
+
+### Installation
+
+After migration 015, apply:
+
+```text
+supabase/migrations/202608070016_sprint15_mission_catalog.sql
+```
+
+No reset or destructive reconciliation is required. Existing daily missions,
+history, XP, skills, achievements, and streak state remain valid. Package tests
+are static/contract and application tests; they do not claim live Supabase
+execution.

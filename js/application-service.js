@@ -39,15 +39,21 @@
       progressionEngine,
     } = dependencies;
 
-    if (!authService || !repository || !missionEngine || !lifecycleEngine
-      || !coordinatorEngine || !progressionEngine) {
-      throw new TypeError("Authentication, repository, mission, lifecycle, coordinator, and progression dependencies are required.");
-    }
-
     const transitionMode = dependencies.transitionMode
       || (typeof repository.requestMissionAction === "function"
         ? "authoritative"
         : "legacy-test-adapter");
+    if (!authService || !repository || !lifecycleEngine
+      || !coordinatorEngine || !progressionEngine
+      || (transitionMode !== "authoritative" && !missionEngine)) {
+      throw new TypeError("Authentication, repository, lifecycle, coordinator, progression, and any required legacy mission dependencies are required.");
+    }
+    // Production never loads a browser mission generator. The coordinator
+    // requires a function while restoring a server definition, but this guard
+    // cannot generate content and would fail closed if that invariant changed.
+    const generateMission = typeof missionEngine?.generateMission === "function"
+      ? missionEngine.generateMission
+      : async () => { throw new Error("Mission generation is server-authoritative."); };
     const hasAuthoritativeDailyMission = transitionMode === "authoritative"
       && typeof repository.requestDailyMission === "function";
     let dailySessionId = hasAuthoritativeDailyMission
@@ -237,7 +243,7 @@
       terminalRecorded = Boolean(result.mission.lifecycle.terminalRecorded);
       coordinator = await coordinatorEngine.createDailyMissionCoordinator(onboarding, {
         createLifecycle: lifecycleEngine.createMissionLifecycle,
-        generateMission: missionEngine.generateMission,
+        generateMission,
         restoreState: {
           currentMission: {
             definition: result.mission.definition,
@@ -457,7 +463,7 @@
         && typeof repository.initializeVaultSession === "function") {
         const seedCoordinator = await coordinatorEngine.createDailyMissionCoordinator(onboarding, {
           createLifecycle: lifecycleEngine.createMissionLifecycle,
-          generateMission: missionEngine.generateMission,
+          generateMission,
         });
         await repository.initializeVaultSession({
           dailySessionId,
@@ -510,7 +516,7 @@
 
       coordinator = await coordinatorEngine.createDailyMissionCoordinator(onboarding, {
         createLifecycle: lifecycleEngine.createMissionLifecycle,
-        generateMission: missionEngine.generateMission,
+        generateMission,
         restoreState,
       });
 

@@ -767,3 +767,48 @@ repository validates calendar dates and numerical invariants, freezes the
 response, and the application service restores it on every authenticated
 initialization. Dashboard and Analytics surfaces only format those values;
 Active Days remains its separate Sprint 13 period metric.
+
+## Sprint 15 Authoritative Mission Catalog
+
+Mission variety now comes from `mission_catalog`, a protected server-managed
+catalog. The production dashboard no longer loads the legacy JavaScript mission
+generator. It requests a mission with the existing zero-argument RPC and can
+only render the authoritative definition returned by PostgreSQL.
+
+```text
+request_daily_mission()
+→ auth.uid() + effective server clock
+→ saved timezone logical day
+→ saved onboarding primary focus
+→ protected active catalog candidates
+→ recent authoritative assignment/history check
+→ deterministic server selection
+→ server UUID + fixed 25 XP + canonical skill
+→ existing daily_mission_state lifecycle
+```
+
+The catalog contains six templates for each canonical onboarding focus:
+Career, Business, Programming, Fitness, Health, Learning, Creativity, Finance,
+Relationships, and Mindset. Six General templates safely support custom focus
+text. General selection preserves the user's saved display focus while using
+the canonical Problem Solving skill.
+
+Selection first avoids the five most recently assigned or completed template
+identities. When all candidates have recent use, it chooses the least recently
+used candidate. A deterministic hash of owner, authoritative daily key, and
+template key breaks ties without client randomness. On replacement, the
+current template is ranked last whenever another active candidate exists. A
+single valid candidate remains a safe fallback.
+
+Every definition is copied into `daily_mission_state`, including its title,
+description, category, duration, difficulty, fixed reward, canonical skill,
+and template key. The existing history trigger copies the selected description
+and template identity into history during the same authoritative transaction.
+Vault History continues reading saved snapshots, never mutable catalog copy.
+Older missions remain valid and may retain a null template key when identity
+cannot be proven.
+
+Daily creation, replacement, completion, one-replacement enforcement, XP,
+skills, achievements, streaks, Vault History, and Analytics retain their prior
+RPCs and authority. The Sprint 11.1 effective clock reaches this same catalog
+selector; it has no alternate test-mission path.

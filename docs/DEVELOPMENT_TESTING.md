@@ -149,3 +149,35 @@ award 25 overall XP, 15 mapped skill XP, one history row, one streak-day
 evaluation, and eligible achievements. The other must be a terminal duplicate
 rejection. Confirm direct authenticated insert/update/delete against
 `user_streak_state` fails and `get_vault_streak` accepts no parameters.
+
+## Sprint 15 Mission Variety Verification
+
+After migration 016 is installed on the separate staging project:
+
+1. Use an allowlisted account whose saved primary focus is one of the canonical
+   onboarding values.
+2. Clear its test clock and request the normal daily mission. Record the title,
+   template key from the RPC response, mapped skill, and logical day.
+3. Refresh and sign out/in. Confirm the exact saved mission instance returns;
+   neither action may reroll it.
+4. Complete it and confirm exactly 25 overall XP and 15 XP for the returned
+   canonical skill.
+5. Request the one replacement. Confirm its template differs from the first,
+   its instance UUID is new, and XP, achievements, and streak state do not
+   change until completion.
+6. Complete the replacement. Confirm the normal rewards apply and the streak
+   remains one day for that logical key.
+7. Select **Advance To Next Day**, then request through the normal dashboard.
+   Confirm the new mission comes from the same catalog path and avoids recent
+   templates while alternatives exist.
+8. Repeat across several logical days, checking that refresh restoration,
+   Daily Complete, countdown, Vault History, Analytics, achievements, and
+   streak milestones remain intact.
+9. Attempt authenticated insert/update/delete against `mission_catalog`; every
+   write must fail. Confirm the public daily and replacement RPCs accept no
+   content, focus, template, skill, reward, user, date, or timezone arguments.
+
+For concurrency, issue two simultaneous `request_daily_mission()` calls for a
+new logical day. Both responses must resolve to the same saved mission instance.
+For replacement concurrency, issue two requests against one terminal mission;
+exactly one may consume the daily replacement allowance.

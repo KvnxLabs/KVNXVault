@@ -193,7 +193,7 @@ test("migrations 001 through 016 remain byte-for-byte unchanged", () => {
     assert.equal(actual, digest, relativePath);
   });
 });
-test("Sprint 17 creates no Migration 017", () => assert.equal(fs.readdirSync(path.join(root, "supabase/migrations")).some((name) => name.includes("0017")), false));
+test("Sprint 17 created no Skill Center migration", () => assert.equal(fs.existsSync(path.join(root, "supabase/migrations/202608070017_sprint17_skill_center.sql")), false));
 test("JavaScript syntax and local script references remain valid", () => {
   assert.equal(spawnSync(process.execPath, ["--check", path.join(root, "js/dashboard.js")]).status, 0);
   for (const match of html.matchAll(/(?:src|href)="((?:js|css)\/[^"]+)"/g)) assert.equal(fs.existsSync(path.join(root, match[1])), true, match[1]);

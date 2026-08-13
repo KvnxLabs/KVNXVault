@@ -261,6 +261,26 @@ const KVNXSkillCenterExperience = (() => {
 })();
 
 const KVNXAchievementsExperience = (() => {
+  const REQUIREMENTS = Object.freeze({
+    FIRST_MISSION: Object.freeze({ label: "Complete your first verified mission." }),
+    FIRST_REPLACEMENT: Object.freeze({ label: "Complete a verified replacement mission." }),
+    LEVEL_2: Object.freeze({ label: "Reach overall Level 2.", kind: "xp", target: 100 }),
+    FIRST_SKILL: Object.freeze({ label: "Develop your first skill.", kind: "skill" }),
+    "100_XP": Object.freeze({ label: "Reach 100 total XP.", kind: "xp", target: 100 }),
+    "250_XP": Object.freeze({ label: "Reach 250 total XP.", kind: "xp", target: 250 }),
+    "500_XP": Object.freeze({ label: "Reach 500 total XP.", kind: "xp", target: 500 }),
+  });
+
+  const formatDate = (timestamp) => {
+    const parsed = Date.parse(timestamp);
+    return Number.isFinite(parsed)
+      ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" })
+        .format(new Date(parsed))
+      : null;
+  };
+
+  const formatDays = (value) => `${value} ${value === 1 ? "day" : "days"}`;
+
   const createViewModel = (achievements = []) => Object.freeze(
     (Array.isArray(achievements) ? achievements : []).map((achievement) => {
       const unlocked = achievement?.unlocked === true;
@@ -282,7 +302,97 @@ const KVNXAchievementsExperience = (() => {
     }),
   );
 
-  return Object.freeze({ createViewModel });
+  const createProgress = (achievement, snapshot) => {
+    if (!achievement.unlocked && achievement.hidden) return null;
+    const requirement = REQUIREMENTS[achievement.key];
+    if (!requirement?.kind) return null;
+    if (requirement.kind === "skill") {
+      const developed = (snapshot.skills || []).some((skill) => Number(skill?.totalXP) > 0);
+      return developed
+        ? Object.freeze({ value: 1, target: 1, percentage: 100, label: "1 / 1 skill developed" })
+        : null;
+    }
+    const authoritativeXP = Math.max(0, Number(snapshot.progression?.currentXP) || 0);
+    const value = Math.min(authoritativeXP, requirement.target);
+    return Object.freeze({
+      value,
+      target: requirement.target,
+      percentage: Math.min(100, Math.round((value / requirement.target) * 100)),
+      label: `${value.toLocaleString("en-US")} / ${requirement.target.toLocaleString("en-US")} XP`,
+    });
+  };
+
+  const createCenterViewModel = (snapshot, options = {}) => {
+    const achievements = Array.isArray(snapshot?.achievements) ? snapshot.achievements : [];
+    const filter = ["all", "unlocked", "locked"].includes(options.filter) ? options.filter : "all";
+    const cards = achievements.map((achievement, index) => {
+      const unlocked = achievement?.unlocked === true;
+      const hiddenLocked = !unlocked && achievement?.hidden === true;
+      if (hiddenLocked) {
+        return Object.freeze({
+          confidential: true,
+          key: null,
+          icon: "?",
+          name: "?????",
+          description: "?????",
+          category: null,
+          unlocked: false,
+          unlockedAt: null,
+          dateLabel: null,
+          statusLabel: "Hidden milestone",
+          requirement: null,
+          progress: null,
+          displayOrder: Number(achievement.displayOrder) || index,
+        });
+      }
+
+      const parsedTime = unlocked ? Date.parse(achievement.unlockedAt) : NaN;
+      const requirement = REQUIREMENTS[achievement.key];
+      const verifiedContext = unlocked && achievement.category === "Consistency"
+        ? `Current streak: ${formatDays(Number(snapshot.streak?.currentStreak || 0))} · Longest streak: ${formatDays(Number(snapshot.streak?.longestStreak || 0))}`
+        : null;
+      return Object.freeze({
+        confidential: false,
+        key: String(achievement.key || ""),
+        icon: String(achievement.icon || "◆"),
+        name: String(achievement.name || "Achievement"),
+        description: String(achievement.description || ""),
+        category: String(achievement.category || ""),
+        unlocked,
+        unlockedAt: Number.isFinite(parsedTime) ? new Date(parsedTime).toISOString() : null,
+        dateLabel: Number.isFinite(parsedTime) ? formatDate(achievement.unlockedAt) : null,
+        statusLabel: unlocked ? "Unlocked" : "Locked",
+        requirement: unlocked
+          ? String(achievement.description || "")
+          : requirement?.label || String(achievement.description || ""),
+        progress: createProgress(achievement, snapshot),
+        verifiedContext,
+        displayOrder: Number(achievement.displayOrder) || index,
+      });
+    });
+
+    const unlockedCards = cards.filter((achievement) => achievement.unlocked)
+      .sort((left, right) => Date.parse(right.unlockedAt) - Date.parse(left.unlockedAt)
+        || left.displayOrder - right.displayOrder);
+    const lockedCards = cards.filter((achievement) => !achievement.unlocked)
+      .sort((left, right) => left.displayOrder - right.displayOrder);
+    const filtered = filter === "unlocked" ? unlockedCards : filter === "locked" ? lockedCards : cards;
+    const mostRecent = unlockedCards[0] || null;
+
+    return Object.freeze({
+      filter,
+      empty: unlockedCards.length === 0,
+      unlockedCount: unlockedCards.length,
+      totalCount: cards.length,
+      completionPercentage: cards.length > 0 ? Math.round((unlockedCards.length / cards.length) * 100) : 0,
+      mostRecent,
+      achievements: Object.freeze(filtered),
+      unlocked: Object.freeze(filter === "locked" ? [] : unlockedCards),
+      locked: Object.freeze(filter === "unlocked" ? [] : lockedCards),
+    });
+  };
+
+  return Object.freeze({ REQUIREMENTS, createCenterViewModel, createViewModel });
 })();
 
 const KVNXVaultHistoryExperience = (() => {
@@ -740,6 +850,18 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const skillCenterGroups = document.querySelector("[data-skill-center-groups]");
   const achievementList = document.querySelector("[data-achievement-list]");
   const achievementsCount = document.querySelector("[data-achievements-count]");
+  const achievementCenterContent = document.querySelector("[data-achievement-center-content]");
+  const achievementCenterError = document.querySelector("[data-achievement-center-error]");
+  const achievementCenterUnlocked = document.querySelector("[data-achievement-center-unlocked]");
+  const achievementCenterTotal = document.querySelector("[data-achievement-center-total]");
+  const achievementCenterCompletion = document.querySelector("[data-achievement-center-completion]");
+  const achievementCenterRecent = document.querySelector("[data-achievement-center-recent]");
+  const achievementCenterRecentDate = document.querySelector("[data-achievement-center-recent-date]");
+  const achievementCenterRecentEmpty = document.querySelector("[data-achievement-center-recent-empty]");
+  const achievementCenterFilterButtons = document.querySelectorAll("[data-achievement-filter]");
+  const achievementCenterEmpty = document.querySelector("[data-achievement-center-empty]");
+  const achievementCenterResults = document.querySelector("[data-achievement-center-results]");
+  const achievementCenterGroups = document.querySelector("[data-achievement-center-groups]");
   const achievementUnlock = document.querySelector("[data-achievement-unlock]");
   const achievementUnlockList = document.querySelector("[data-achievement-unlock-list]");
   const vaultHistory = document.querySelector("[data-vault-history]");
@@ -804,6 +926,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   let analyticsInFlight = false;
   let completionInFlight = false;
   let skillCenterFilter = "all";
+  let achievementCenterFilter = "all";
 
   const showPersistenceFailure = (error) => {
     if (["session-expired", "session-unavailable"].includes(error?.code)) {
@@ -1093,41 +1216,127 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
   };
 
-  const renderAchievements = (achievements) => {
-    if (!achievementList) return;
-    const viewModel = KVNXAchievementsExperience.createViewModel(achievements);
-    achievementList.replaceChildren();
-    const unlockedCount = viewModel.filter((achievement) => achievement.unlocked).length;
-    if (achievementsCount) achievementsCount.textContent = `${unlockedCount} unlocked`;
+  const renderAchievements = (snapshot) => {
+    if (!achievementsView || !achievementCenterGroups) return;
+    try {
+      const viewModel = KVNXAchievementsExperience.createCenterViewModel(snapshot, {
+        filter: achievementCenterFilter,
+      });
+      if (achievementCenterError) achievementCenterError.hidden = true;
+      if (achievementCenterContent) achievementCenterContent.hidden = false;
+      if (achievementCenterUnlocked) achievementCenterUnlocked.textContent = viewModel.unlockedCount.toLocaleString("en-US");
+      if (achievementCenterTotal) achievementCenterTotal.textContent = viewModel.totalCount.toLocaleString("en-US");
+      if (achievementCenterCompletion) achievementCenterCompletion.textContent = `${viewModel.completionPercentage}%`;
+      if (achievementCenterRecent) achievementCenterRecent.textContent = viewModel.mostRecent?.name || "Not established";
+      if (achievementCenterRecentDate) {
+        achievementCenterRecentDate.hidden = !viewModel.mostRecent?.unlockedAt;
+        achievementCenterRecentDate.dateTime = viewModel.mostRecent?.unlockedAt || "";
+        achievementCenterRecentDate.textContent = viewModel.mostRecent?.dateLabel
+          ? `Unlocked ${viewModel.mostRecent.dateLabel}`
+          : "";
+      }
+      if (achievementCenterRecentEmpty) achievementCenterRecentEmpty.hidden = Boolean(viewModel.mostRecent);
+      if (achievementCenterEmpty) achievementCenterEmpty.hidden = !viewModel.empty;
+      if (achievementCenterResults) {
+        achievementCenterResults.textContent = `${viewModel.achievements.length} ${viewModel.achievements.length === 1 ? "achievement" : "achievements"} shown`;
+      }
+      achievementCenterFilterButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.achievementFilter === viewModel.filter));
+      });
 
-    viewModel.forEach((achievement) => {
-      const item = document.createElement("li");
-      item.className = `achievement-card ${achievement.unlocked ? "is-unlocked" : "is-locked"}`;
-
-      const icon = document.createElement("span");
-      icon.className = "achievement-card__icon";
-      icon.setAttribute("aria-hidden", "true");
-      icon.textContent = achievement.icon;
-
-      const name = document.createElement("h2");
-      name.textContent = achievement.name;
-      const description = document.createElement("p");
-      description.textContent = achievement.description;
-      item.append(icon, name, description);
-
-      if (achievement.unlocked && achievement.unlockedAt) {
-        const unlockedAt = document.createElement("time");
-        unlockedAt.dateTime = achievement.unlockedAt;
-        unlockedAt.textContent = `Unlocked ${achievement.dateLabel}`;
-        item.append(unlockedAt);
-      } else {
+      const renderCard = (achievement) => {
+        const item = document.createElement("li");
+        item.className = `achievement-card ${achievement.unlocked ? "is-unlocked" : "is-locked"}${achievement.confidential ? " is-confidential" : ""}`;
+        const top = document.createElement("div");
+        top.className = "achievement-card__top";
+        const icon = document.createElement("span");
+        icon.className = "achievement-card__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = achievement.icon;
         const status = document.createElement("span");
         status.className = "achievement-card__status";
         status.textContent = achievement.statusLabel;
-        item.append(status);
-      }
-      achievementList.append(item);
-    });
+        top.append(icon, status);
+
+        const name = document.createElement("h3");
+        name.textContent = achievement.name;
+        const description = document.createElement("p");
+        description.className = "achievement-card__description";
+        description.textContent = achievement.description;
+        item.append(top, name, description);
+
+        if (achievement.unlockedAt) {
+          const unlockedAt = document.createElement("time");
+          unlockedAt.className = "achievement-card__date";
+          unlockedAt.dateTime = achievement.unlockedAt;
+          unlockedAt.textContent = `Unlocked ${achievement.dateLabel}`;
+          item.append(unlockedAt);
+        }
+        if (achievement.requirement) {
+          const requirement = document.createElement("p");
+          requirement.className = "achievement-card__requirement";
+          const label = document.createElement("span");
+          label.textContent = achievement.unlocked ? "Milestone" : "Requirement";
+          const copy = document.createElement("strong");
+          copy.textContent = achievement.requirement;
+          requirement.append(label, copy);
+          item.append(requirement);
+        }
+        if (achievement.progress) {
+          const progressBlock = document.createElement("div");
+          progressBlock.className = "achievement-card__progress-block";
+          const progressLabel = document.createElement("span");
+          progressLabel.textContent = achievement.progress.label;
+          const progress = document.createElement("span");
+          progress.className = "achievement-card__progress";
+          progress.setAttribute("role", "progressbar");
+          progress.setAttribute("aria-label", `${achievement.name}: ${achievement.progress.label}`);
+          progress.setAttribute("aria-valuemin", "0");
+          progress.setAttribute("aria-valuemax", String(achievement.progress.target));
+          progress.setAttribute("aria-valuenow", String(achievement.progress.value));
+          const fill = document.createElement("i");
+          fill.style.width = `${achievement.progress.percentage}%`;
+          progress.append(fill);
+          progressBlock.append(progressLabel, progress);
+          item.append(progressBlock);
+        }
+        if (achievement.verifiedContext) {
+          const context = document.createElement("p");
+          context.className = "achievement-card__verified-context";
+          const label = document.createElement("span");
+          label.textContent = "Authoritative context";
+          const copy = document.createElement("strong");
+          copy.textContent = achievement.verifiedContext;
+          context.append(label, copy);
+          item.append(context);
+        }
+        return item;
+      };
+
+      achievementCenterGroups.replaceChildren();
+      const renderGroup = (titleText, achievements, stateClass) => {
+        if (achievements.length === 0) return;
+        const section = document.createElement("section");
+        section.className = `achievement-center__group ${stateClass}`;
+        const heading = document.createElement("div");
+        heading.className = "achievement-center__group-heading";
+        const title = document.createElement("h2");
+        title.textContent = titleText;
+        const count = document.createElement("span");
+        count.textContent = `${achievements.length} ${achievements.length === 1 ? "milestone" : "milestones"}`;
+        heading.append(title, count);
+        const list = document.createElement("ul");
+        list.className = "achievement-grid";
+        achievements.forEach((achievement) => list.append(renderCard(achievement)));
+        section.append(heading, list);
+        achievementCenterGroups.append(section);
+      };
+      renderGroup("Unlocked", viewModel.unlocked, "is-unlocked");
+      renderGroup("Locked", viewModel.locked, "is-locked");
+    } catch {
+      if (achievementCenterContent) achievementCenterContent.hidden = true;
+      if (achievementCenterError) achievementCenterError.hidden = false;
+    }
   };
 
   const replaceFilterOptions = (select, values, label) => {
@@ -1746,7 +1955,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderSkills(applicationSnapshot.skills);
   renderSkillCenter(applicationSnapshot);
   renderStreak(applicationSnapshot.streak);
-  renderAchievements(applicationSnapshot.achievements);
+  renderAchievements(applicationSnapshot);
   renderVault();
   renderMissionCenter(applicationSnapshot);
   renderApplicationView();
@@ -1760,6 +1969,13 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     });
   });
   skillCenterSort?.addEventListener("change", () => renderSkillCenter(applicationSnapshot));
+
+  achievementCenterFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      achievementCenterFilter = button.dataset.achievementFilter || "all";
+      renderAchievements(applicationSnapshot);
+    });
+  });
 
   analyticsPeriodButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -1879,7 +2095,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       // as overall XP so the pre-completion empty state cannot remain stale.
       renderSkills(applicationResult.snapshot.skills);
       renderSkillCenter(applicationResult.snapshot);
-      renderAchievements(applicationResult.snapshot.achievements);
+      renderAchievements(applicationResult.snapshot);
       renderStreak(applicationResult.snapshot.streak);
       renderVault();
       renderMissionCenter(applicationResult.snapshot);

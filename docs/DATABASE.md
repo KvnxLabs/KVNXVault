@@ -822,3 +822,22 @@ change a mapping, alter rewards, or expose `mission_catalog`.
 
 No Migration 017 is required. Migrations 001–016 remain byte-for-byte unchanged,
 and `migrations-pre-sprint16.sha256` records their package baseline.
+
+## Sprint 18 Hidden Achievement Read Confidentiality
+
+Migration `202608070017_sprint18_achievement_center.sql` replaces only the
+existing zero-argument `get_achievement_catalog()` read definition. Migration
+011 previously returned complete hidden catalog definitions and relied on the
+browser to mask locked entries. Sprint 18 performs that masking inside the
+authenticated `SECURITY DEFINER` read boundary instead.
+
+For a hidden catalog row without a matching owner row in `user_achievements`,
+the response contains a null key and category plus the approved `?` / `?????`
+placeholder fields. Once an authoritative unlock exists for `auth.uid()`, the
+real catalog definition is returned. Visible milestones are unchanged.
+
+The function remains zero-argument, derives its owner exclusively from
+`auth.uid()`, pins `search_path = ''`, and grants only authenticated execution.
+It performs no insert, update, delete, evaluation, or reward operation. Existing
+RLS and direct-write revocations remain unchanged. `migrations-pre-sprint18.sha256`
+records the immutable 001–016 baseline without changing earlier baselines.

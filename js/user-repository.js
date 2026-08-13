@@ -444,9 +444,15 @@
         throw createRepositoryError("achievement-catalog-response-invalid");
       }
       const achievements = result.map((achievement) => mapAchievement(achievement, false));
-      if (achievements.some((achievement) => !achievement.key
-        || !achievement.name || !achievement.description || !achievement.icon
-        || !achievement.category || !Number.isInteger(achievement.displayOrder))) {
+      if (achievements.some((achievement) => {
+        const confidential = achievement.hidden && !achievement.key;
+        return (!confidential && (!achievement.key || !achievement.name
+          || !achievement.description || !achievement.icon || !achievement.category))
+          || (confidential && (achievement.name !== "?????"
+            || achievement.description !== "?????" || achievement.icon !== "?"
+            || achievement.category !== ""))
+          || !Number.isInteger(achievement.displayOrder);
+      })) {
         throw createRepositoryError("achievement-catalog-response-invalid");
       }
       return Object.freeze(achievements);

@@ -891,3 +891,45 @@ Filters, sorting, disclosure panels, and Vault navigation operate only on the
 restored immutable snapshot. They cannot write skill XP, select a mission,
 submit rewards, unlock achievements, or alter streaks. No database migration or
 new read contract is required.
+
+## Sprint 18 Authoritative Achievement Center
+
+Achievement Center is the detailed read-only milestone surface at
+`#achievements`. Dashboard completion feedback remains compact and continues to
+render only `newAchievements` returned by the accepted server transaction;
+Achievement Center never evaluates eligibility or creates an unlock.
+
+The immutable application snapshot supplies persisted catalog/unlock state,
+overall progression, skill progression, and streak state. Presentation merges
+that authoritative data into Unlocked and Locked groups, summary totals, the
+most recent persisted unlock, conservative requirement copy, and only progress
+that can be proven from restored totals. Overall-XP bars use authoritative
+account XP. First-skill progress uses positive persisted skill progression.
+Unlocked consistency milestones may display current and longest authoritative
+streak context. Mission causality is omitted because the current contract does
+not persist an exact unlock-to-mission relationship.
+
+Migration 017 narrows the existing zero-argument catalog read for hidden
+confidentiality. A locked hidden catalog row is returned only as an approved
+placeholder with null key/category and masked copy/icon. PostgreSQL reveals the
+real definition only when the authenticated owner has a matching persisted
+`user_achievements` row. The repository validates that exact placeholder shape,
+and the Application Service defensively redacts locked hidden definitions again
+before producing a public immutable snapshot.
+
+```text
+authenticated restoration
+→ redacted achievement catalog + persisted owner unlocks
+→ immutable application snapshot
+→ Achievement Center summary, filters, and cards
+
+accepted mission completion
+→ existing PostgreSQL evaluator
+→ persisted user_achievements + newAchievements
+→ immutable snapshot reconciliation
+→ existing notification + Achievement Center redraw
+```
+
+Hard refresh remains behind the Sprint 16.1 protected-content gate. Filters and
+progress bars operate only on restored data and submit no identity, XP, skill
+XP, streak, eligibility, or achievement state.

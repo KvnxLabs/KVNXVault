@@ -389,13 +389,43 @@
           <section class="achievements-view" data-achievements-view hidden aria-labelledby="achievements-title">
             <header class="dashboard__heading achievements-view__heading">
               <div>
-                <p class="app-eyebrow">Milestones</p>
-                <h1 id="achievements-title">Your <em>achievements.</em></h1>
+                <p class="app-eyebrow">Achievement center</p>
+                <h1 id="achievements-title">Your milestones, <em>earned and preserved.</em></h1>
               </div>
-              <span class="dashboard-card__meta" data-achievements-count>0 unlocked</span>
             </header>
-            <p class="achievements-view__intro">A permanent record of the progress your verified actions have earned.</p>
-            <ul class="achievement-grid" data-achievement-list aria-live="polite"></ul>
+            <p class="achievements-view__intro">A permanent, read-only record of the milestones your verified progress has secured.</p>
+
+            <section class="achievement-center__error app-card" data-achievement-center-error hidden role="alert" aria-labelledby="achievement-center-error-title">
+              <p class="app-card__label">Restoration interrupted</p>
+              <h2 id="achievement-center-error-title">Your achievements could not be displayed.</h2>
+              <p>Your persisted milestones remain unchanged. Refresh when your connection is ready.</p>
+            </section>
+
+            <div data-achievement-center-content>
+              <dl class="achievement-center__metrics" aria-label="Achievement summary">
+                <div class="achievement-center__metric app-card"><dt>Unlocked</dt><dd data-achievement-center-unlocked data-achievements-count>—</dd><span>Persisted milestones</span></div>
+                <div class="achievement-center__metric app-card"><dt>Total</dt><dd data-achievement-center-total>—</dd><span>Catalog milestones</span></div>
+                <div class="achievement-center__metric app-card"><dt>Completion</dt><dd data-achievement-center-completion>—</dd><span>Authoritative unlocks</span></div>
+                <div class="achievement-center__metric app-card"><dt>Most recent unlock</dt><dd data-achievement-center-recent>—</dd><time data-achievement-center-recent-date hidden></time><span data-achievement-center-recent-empty>No unlock recorded</span></div>
+              </dl>
+
+              <div class="achievement-center__toolbar">
+                <fieldset class="achievement-center__filters" aria-label="Filter achievements">
+                  <legend class="app-visually-hidden">Filter achievements</legend>
+                  <button type="button" data-achievement-filter="all" aria-pressed="true">All</button>
+                  <button type="button" data-achievement-filter="unlocked" aria-pressed="false">Unlocked</button>
+                  <button type="button" data-achievement-filter="locked" aria-pressed="false">Locked</button>
+                </fieldset>
+              </div>
+
+              <section class="achievement-center__empty" data-achievement-center-empty hidden aria-labelledby="achievement-center-empty-title">
+                <strong id="achievement-center-empty-title">No milestones unlocked yet.</strong>
+                <span>Your verified progress will appear here as you reach new milestones.</span>
+              </section>
+
+              <p class="achievement-center__results" data-achievement-center-results role="status" aria-live="polite"></p>
+              <div class="achievement-center__groups" data-achievement-center-groups data-achievement-list></div>
+            </div>
           </section>
 
           <section class="vault-view" data-vault-view hidden aria-labelledby="vault-title">

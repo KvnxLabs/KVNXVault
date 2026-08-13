@@ -80,13 +80,30 @@
     let terminalRecorded = false;
     let nextResetAt = null;
 
+    const toPublicAchievement = (achievement) => {
+      if (achievement?.hidden && !achievement?.unlocked) {
+        return Object.freeze({
+          key: null,
+          name: "?????",
+          description: "?????",
+          icon: "?",
+          category: null,
+          hidden: true,
+          displayOrder: achievement.displayOrder,
+          unlockedAt: null,
+          unlocked: false,
+        });
+      }
+      return Object.freeze({ ...achievement });
+    };
+
     const getPublicSnapshot = () => Object.freeze({
       profile,
       onboarding,
       progression: progressionEngine.getSnapshot(progression),
       skills: Object.freeze([...skillProgression]),
       skillCatalog: Object.freeze([...skillCatalog]),
-      achievements: Object.freeze([...achievements]),
+      achievements: Object.freeze(achievements.map(toPublicAchievement)),
       streak,
       analytics,
       history: Object.freeze([...vaultHistory]),
@@ -205,8 +222,11 @@
     const reconcileNewAchievements = (newAchievements = []) => {
       if (!Array.isArray(newAchievements) || newAchievements.length === 0) return Object.freeze([]);
       const byKey = new Map(newAchievements.map((achievement) => [achievement.key, achievement]));
+      const byDisplayOrder = new Map(newAchievements.map((achievement) => [achievement.displayOrder, achievement]));
       achievements = Object.freeze(achievements.map((achievement) => {
-        const earned = byKey.get(achievement.key);
+        const earned = byKey.get(achievement.key) || (achievement.hidden
+          ? byDisplayOrder.get(achievement.displayOrder)
+          : null);
         return earned ? Object.freeze({ ...achievement, ...earned, unlocked: true }) : achievement;
       }));
       return Object.freeze(newAchievements.map((achievement) => Object.freeze({ ...achievement })));

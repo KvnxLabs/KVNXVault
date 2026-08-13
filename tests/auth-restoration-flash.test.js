@@ -135,18 +135,18 @@ test("the auth-pending exception applies only to the explicitly gated dashboard"
   assert.doesNotMatch(read("onboarding.html"), /data-protected-loading-page/);
 });
 
-test("backend, repository, auth, and routing modules are unchanged", () => {
+test("auth and routing remain unchanged while approved read-boundary modules retain current fingerprints", () => {
   const expected = {
     "js/auth-service.js": "3b0b2ac7b341528ac946000ea5eb8e72860b1f1ffefc0542f0f3eb48c3db95d5",
     "js/route-guard.js": "17ca3c71023d603f951cb8b593d57e09a1e3dac3e802cda32a4344b0897d71ad",
-    "js/application-service.js": "1987cc1130b1c3ec5836dbefb2ed34ca507ff66f3f139bca7c811a2e15beb57e",
-    "js/user-repository.js": "0777bddc43f2954b59d6a9298f04b3ae4198c74bf08af8bd9a6c443810d6056e",
+    "js/application-service.js": "5fa58695c22110408147fa03f930a7ea75baa5dd3f5a31c34c368db1998e5063",
+    "js/user-repository.js": "db03e585ca6928e3dcdf6f90a0af2ea21cd2ef8bc63d7a67aa10d45332e42233",
   };
   Object.entries(expected).forEach(([file, digest]) => assert.equal(hash(file), digest, file));
   assert.doesNotMatch(gateSource, /supabase|repository|vaultApplication|\.rpc\(|\.from\(/i);
 });
 
-test("no migration 017 exists and migrations 001 through 016 remain immutable", () => {
+test("the Sprint 16 hotfix added no migration and migrations 001 through 016 remain immutable", () => {
   assert.equal(fs.existsSync(path.join(root, "supabase/migrations/202608070017_sprint16_mission_center.sql")), false);
   assert.equal(fs.existsSync(path.join(root, "supabase/migrations/202608070017_sprint16_1_auth_restoration_flash.sql")), false);
   const baseline = read("../migrations-pre-sprint16.sha256").trim().split("\n");

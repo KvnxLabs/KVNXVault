@@ -656,3 +656,30 @@ same catalog skill to Active and restores the existing disclosure automatically.
 Notes: This is a presentation-only refinement. Repository and Application
 Service contracts, rewards, progression thresholds, authentication restoration,
 and migrations 001–016 remain unchanged. No database migration is required.
+
+## Sprint 18 — Authoritative Achievement Center Enhancement
+
+Status: ✅ Code complete; migration, deployment, and live verification remain manual
+
+Goal: Turn Achievements into a premium, detailed milestone surface without
+moving evaluation, rewards, progression, or unlock authority into the browser.
+
+Completed: Added authoritative summary metrics, Unlocked and Locked groups,
+persisted unlock dates, most-recent ordering, keyboard-native filters, visible
+requirement copy, conservative overall-XP and skill progress, unlocked streak
+context, an intentional zero state, recoverable rendering failure, responsive
+cards, and accepted-completion reconciliation through the existing immutable
+snapshot and multi-achievement notification path.
+
+Hidden confidentiality is now enforced at the authenticated database read
+boundary. Locked hidden definitions are redacted before reaching browser
+serialization and are defensively masked again in the Application Service and
+Achievement Center projection. Real content appears only after a persisted
+owner unlock exists. No mission attribution is fabricated because the current
+archive does not persist exact achievement causality.
+
+Notes: Migration 017 is required solely for the confidentiality-safe read
+contract. It changes no achievement eligibility, rewards, writes, RLS, mission
+rules, replacement rules, streak rules, or progression thresholds. Migrations
+001–016 remain byte-for-byte unchanged. No live Supabase, staging, production
+deployment, or live verification is claimed by this package.

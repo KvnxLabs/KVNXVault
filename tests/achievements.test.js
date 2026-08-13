@@ -289,7 +289,7 @@ test("streaks are catalog-only and migrations 001 through 009 are immutable", ()
     "supabase/migrations/202608070009_sprint10_1_uuid_function_hotfix.sql": "0d308478d8ee377311f3c6cc8f29c95fa5206f13df83b37cdbc13557bf592523",
   };
   Object.entries(expected).forEach(([file, digest]) => assert.equal(hash(file), digest, file));
-  assert.match(applicationSource, /achievements: Object\.freeze\(\[\.\.\.achievements\]\)/);
+  assert.match(applicationSource, /achievements: Object\.freeze\(achievements\.map\(toPublicAchievement\)\)/);
 });
 
 (async () => {

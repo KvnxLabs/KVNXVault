@@ -33,6 +33,9 @@
       && new Date(timestamp).toISOString().slice(0, 10) === value;
   };
 
+  const isUUID = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(String(value || ""));
+
   const mapVaultStreak = (result) => {
     if (!result || typeof result !== "object") {
       throw createRepositoryError("vault-streak-response-invalid");
@@ -185,11 +188,24 @@
       throw createRepositoryError("daily-mission-response-invalid");
     }
 
+    const choices = Array.isArray(result.choices) ? result.choices.map((choice) => ({
+      choiceId: String(choice?.choiceId || ""),
+      title: String(choice?.title || ""),
+      description: String(choice?.description || ""),
+      estimatedDuration: String(choice?.estimatedDuration || ""),
+      difficulty: String(choice?.difficulty || ""),
+      xpReward: Number(choice?.xpReward),
+      primarySkill: String(choice?.primarySkill || ""),
+      primarySkillName: String(choice?.primarySkillName || ""),
+    })) : [];
+    const choiceRequired = result.choiceRequired === true;
     const mapped = {
       accepted: result.accepted,
       reason: result.reason || null,
       dailyKey: result.dailyKey || null,
       nextResetAt: typeof result.nextResetAt === "string" ? result.nextResetAt : null,
+      choiceRequired,
+      choices,
       mission: result.mission ? {
         definition: { ...(result.mission.definition || {}) },
         lifecycle: { ...(result.mission.lifecycle || {}) },
@@ -200,8 +216,18 @@
       } : null,
     };
 
-    if (mapped.accepted && (!mapped.dailyKey || !mapped.mission?.definition?.id
-      || !mapped.mission?.lifecycle?.state || !mapped.dailyStatus)) {
+    const validMission = Boolean(mapped.mission?.definition?.id
+      && mapped.mission?.lifecycle?.state && mapped.dailyStatus);
+    const validChoices = choiceRequired
+      && choices.length >= 1 && choices.length <= 3
+      && choices.every((choice) => isUUID(choice.choiceId)
+        && choice.title && choice.description && choice.estimatedDuration
+        && choice.difficulty && choice.primarySkill && choice.primarySkillName
+        && choice.xpReward === 25);
+    if (mapped.accepted && (!isISOCalendarDate(String(mapped.dailyKey || ""))
+      || (validMission === validChoices)
+      || (choiceRequired && mapped.mission)
+      || (!choiceRequired && choices.length > 0))) {
       throw createRepositoryError("daily-mission-response-invalid");
     }
     if (mapped.progression && !Number.isInteger(mapped.progression.totalXP)) {
@@ -604,6 +630,24 @@
       return mapDailyMissionResult(result);
     };
 
+    // Sprint 19 choice selection accepts exactly one opaque UUID from the
+    // server-returned choice set. No mission object, template, reward, skill,
+    // owner, logical day, date, or timezone crosses this mutation boundary.
+    const selectDailyMissionChoice = async (choiceId) => {
+      await getAuthenticatedUser();
+      const normalizedChoiceId = String(choiceId || "").trim().toLowerCase();
+      if (!isUUID(normalizedChoiceId)) {
+        throw new TypeError("An authoritative mission choice id is required.");
+      }
+      const result = await unwrap(
+        database.rpc("select_daily_mission_choice", {
+          p_choice_id: normalizedChoiceId,
+        }),
+        "daily-mission-selection-failed",
+      );
+      return mapDailyMissionResult(result);
+    };
+
     // Sprint 9 replacement authority is also intent-only. The server locates
     // today's terminal mission and chooses/persists its one allowed successor.
     const requestDailyMissionReplacement = async () => {
@@ -721,6 +765,7 @@
       requestDailyMission,
       requestDailyMissionReplacement,
       requestMissionAction,
+      selectDailyMissionChoice,
       saveOnboarding,
       saveProfile,
     });

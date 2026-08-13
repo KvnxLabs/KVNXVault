@@ -611,6 +611,32 @@ const KVNXMissionCenterExperience = (() => {
   return Object.freeze({ STATE_LABELS, createViewModel });
 })();
 
+// Sprint 19 choice presentation consumes only the immutable server-returned
+// option snapshot. It never constructs candidates or submits mission content.
+const KVNXDailyMissionChoiceExperience = (() => {
+  const createViewModel = (snapshot) => {
+    const required = snapshot?.dailyChoice?.required === true;
+    const options = required && Array.isArray(snapshot?.dailyChoice?.options)
+      ? snapshot.dailyChoice.options
+      : [];
+    return Object.freeze({
+      required: required && options.length > 0,
+      options: Object.freeze(options.map((option) => Object.freeze({
+        choiceId: String(option.choiceId || ""),
+        title: String(option.title || ""),
+        description: String(option.description || ""),
+        estimatedDuration: String(option.estimatedDuration || ""),
+        difficulty: String(option.difficulty || ""),
+        xpReward: Number(option.xpReward),
+        primarySkill: String(option.primarySkill || ""),
+        primarySkillName: String(option.primarySkillName || ""),
+      }))),
+    });
+  };
+
+  return Object.freeze({ createViewModel });
+})();
+
 const KVNXProtectedContentGate = (() => {
   const create = ({ loading, content, title, message, retry } = {}) => {
     if (!loading || !content) {
@@ -650,6 +676,7 @@ if (typeof module === "object" && module.exports) {
     analytics: KVNXAnalyticsExperience,
     vaultHistory: KVNXVaultHistoryExperience,
     missionCenter: KVNXMissionCenterExperience,
+    dailyMissionChoice: KVNXDailyMissionChoiceExperience,
     protectedContent: KVNXProtectedContentGate,
   });
 }
@@ -662,6 +689,7 @@ if (typeof window !== "undefined") {
   window.KVNXAnalyticsExperience = KVNXAnalyticsExperience;
   window.KVNXVaultHistoryExperience = KVNXVaultHistoryExperience;
   window.KVNXMissionCenterExperience = KVNXMissionCenterExperience;
+  window.KVNXDailyMissionChoiceExperience = KVNXDailyMissionChoiceExperience;
   window.KVNXProtectedContentGate = KVNXProtectedContentGate;
 }
 
@@ -729,7 +757,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const onboardingState = applicationSnapshot.onboarding || {};
   const profile = applicationSnapshot.profile || {};
   let coordinatorSnapshot = applicationSnapshot.coordinator;
-  let firstMission = coordinatorSnapshot.currentMission.definition;
+  let firstMission = coordinatorSnapshot?.currentMission?.definition || null;
   const getInitials = (name) => name
     .split(/\s+/)
     .filter(Boolean)
@@ -768,7 +796,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
     const personalizedValues = {
       "[data-summary-focus]": primaryFocus,
-      "[data-summary-goal]": firstMission.title,
+      "[data-summary-goal]": firstMission?.title || "Choose today’s path",
       "[data-summary-challenge]": challenge,
       "[data-summary-commitment]": commitment,
     };
@@ -780,6 +808,10 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   }
 
   const missionCard = document.querySelector("[data-mission-card]");
+  const dashboardDailyChoice = document.querySelector("[data-dashboard-daily-choice]");
+  const missionCenterDailyChoice = document.querySelector("[data-mission-center-daily-choice]");
+  const dailyChoiceLists = document.querySelectorAll("[data-daily-choice-list]");
+  const dailyChoiceErrors = document.querySelectorAll("[data-daily-choice-error]");
   const missionActions = document.querySelector("[data-mission-actions]");
   const startMissionButton = document.querySelector("[data-start-mission]");
   const completeMissionButton = document.querySelector("[data-complete-mission]");
@@ -941,6 +973,8 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     [startMissionButton, completeMissionButton, skipMissionButton, requestMissionButton,
       missionCenterStart, missionCenterComplete, missionCenterSkip, missionCenterRequest]
       .forEach((button) => { if (button) button.disabled = true; });
+    document.querySelectorAll("[data-daily-choice-select]")
+      .forEach((button) => { button.disabled = true; });
   };
 
   const formatStreakDays = (value) => `${value} ${value === 1 ? "day" : "days"}`;
@@ -1686,12 +1720,75 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }).format(new Date(parsed));
   };
 
+  const renderDailyMissionChoices = (snapshot) => {
+    const viewModel = KVNXDailyMissionChoiceExperience.createViewModel(snapshot);
+    if (dashboardDailyChoice) dashboardDailyChoice.hidden = !viewModel.required;
+    if (missionCenterDailyChoice) missionCenterDailyChoice.hidden = !viewModel.required;
+    if (missionCard) missionCard.hidden = viewModel.required;
+    dailyChoiceErrors.forEach((error) => { error.hidden = true; });
+
+    dailyChoiceLists.forEach((list) => {
+      list.replaceChildren();
+      if (!viewModel.required) return;
+      viewModel.options.forEach((option, index) => {
+        const card = document.createElement("article");
+        const marker = document.createElement("span");
+        const title = document.createElement("h3");
+        const description = document.createElement("p");
+        const details = document.createElement("dl");
+        const button = document.createElement("button");
+        card.className = "daily-choice__option";
+        marker.className = "daily-choice__number";
+        marker.textContent = String(index + 1).padStart(2, "0");
+        marker.setAttribute("aria-hidden", "true");
+        title.textContent = option.title;
+        description.textContent = option.description;
+
+        [
+          ["Duration", option.estimatedDuration],
+          ["Difficulty", option.difficulty],
+          ["Builds", option.primarySkillName],
+          ["Reward", `+${option.xpReward} XP`],
+        ].forEach(([label, value]) => {
+          const row = document.createElement("div");
+          const term = document.createElement("dt");
+          const detail = document.createElement("dd");
+          term.textContent = label;
+          detail.textContent = value;
+          row.append(term, detail);
+          details.append(row);
+        });
+
+        button.className = "app-button app-button--primary daily-choice__select";
+        button.type = "button";
+        button.dataset.dailyChoiceSelect = option.choiceId;
+        button.textContent = "Choose Mission";
+        button.setAttribute("aria-label", `Choose ${option.title} as today’s mission`);
+        card.append(marker, title, description, details, button);
+        list.append(card);
+      });
+    });
+  };
+
   const renderMissionCenter = (snapshot) => {
     if (!missionsView) return;
     if (missionCenterLoading) missionCenterLoading.hidden = true;
     if (missionCenterError) missionCenterError.hidden = true;
 
     try {
+      const choiceRequired = snapshot?.dailyChoice?.required === true;
+      if (choiceRequired) {
+        if (missionCenterStatus) {
+          missionCenterStatus.textContent = "Choice required";
+          missionCenterStatus.dataset.state = "choice";
+        }
+        if (missionCenterEmpty) missionCenterEmpty.hidden = true;
+        if (missionCenterContent) missionCenterContent.hidden = true;
+        missionCenterCountdownController?.stop();
+        missionCenterCountdownController = null;
+        missionCenterCountdownResetAt = null;
+        return;
+      }
       const viewModel = KVNXMissionCenterExperience.createViewModel(snapshot);
       if (missionCenterEmpty) missionCenterEmpty.hidden = viewModel.available;
       if (missionCenterContent) missionCenterContent.hidden = !viewModel.available;
@@ -1903,6 +2000,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   // ownership, lifecycle transitions, history, or replacement eligibility.
   const renderCoordinator = (snapshot) => {
     if (!snapshot || !missionCard) return;
+    missionCard.hidden = false;
     coordinatorSnapshot = snapshot;
     const definition = snapshot.currentMission.definition;
     const lifecycle = snapshot.currentMission.lifecycle;
@@ -1950,6 +2048,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     renderDailyComplete(snapshot, progressionSnapshot);
   };
 
+  renderDailyMissionChoices(applicationSnapshot);
   renderCoordinator(coordinatorSnapshot);
   renderProgression(applicationSnapshot.progression);
   renderSkills(applicationSnapshot.skills);
@@ -1961,6 +2060,56 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderApplicationView();
   protectedContentGate.reveal();
   window.addEventListener("hashchange", renderApplicationView);
+
+  let dailyChoiceSelectionInFlight = false;
+  const selectDailyChoice = async (choiceId) => {
+    if (dailyChoiceSelectionInFlight) return;
+    dailyChoiceSelectionInFlight = true;
+    const buttons = [...document.querySelectorAll("[data-daily-choice-select]")];
+    buttons.forEach((button) => {
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+    });
+    dailyChoiceErrors.forEach((error) => { error.hidden = true; });
+
+    try {
+      const result = await vaultApplication.selectDailyMission(choiceId);
+      applicationSnapshot = result.snapshot;
+      nextResetAt = result.snapshot.nextResetAt;
+      renderDailyMissionChoices(result.snapshot);
+      renderMissionCenter(result.snapshot);
+      if (result.snapshot.coordinator) {
+        coordinatorSnapshot = result.snapshot.coordinator;
+        renderCoordinator(coordinatorSnapshot);
+        const selectedTitle = coordinatorSnapshot.currentMission.definition.title;
+        const summaryGoal = document.querySelector("[data-summary-goal]");
+        if (summaryGoal) summaryGoal.textContent = selectedTitle;
+        (window.location.hash === "#missions" ? missionCenterStart : startMissionButton)?.focus();
+      } else if (!result.accepted) {
+        dailyChoiceErrors.forEach((error) => { error.hidden = false; });
+      }
+    } catch (error) {
+      if (["session-expired", "session-unavailable"].includes(error?.code)) {
+        window.location.replace("login.html");
+        return;
+      }
+      dailyChoiceErrors.forEach((message) => { message.hidden = false; });
+    } finally {
+      dailyChoiceSelectionInFlight = false;
+      document.querySelectorAll("[data-daily-choice-select]").forEach((button) => {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+      });
+    }
+  };
+
+  dailyChoiceLists.forEach((list) => {
+    list.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-daily-choice-select]");
+      if (!button || !list.contains(button)) return;
+      selectDailyChoice(button.dataset.dailyChoiceSelect);
+    });
+  });
 
   skillCenterFilterButtons.forEach((button) => {
     button.addEventListener("click", () => {

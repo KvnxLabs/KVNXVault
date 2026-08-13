@@ -181,3 +181,39 @@ For concurrency, issue two simultaneous `request_daily_mission()` calls for a
 new logical day. Both responses must resolve to the same saved mission instance.
 For replacement concurrency, issue two requests against one terminal mission;
 exactly one may consume the daily replacement allowance.
+
+## Sprint 19 Daily Mission Choice Verification
+
+Install Migration 018 on the separate staging project after Migration 017.
+Keep the environment, account allowlist, hostname, and production-domain gates
+unchanged.
+
+1. Use an allowlisted staging account and select **Advance To Next Day**.
+2. Restore through the normal Dashboard. Confirm one to three server-provided
+   choices appear; the standard catalog currently provides three per focus.
+3. Record each title and opaque choice ID from the RPC response. Refresh,
+   navigate across every center, and sign out/in. Confirm the same IDs and copy
+   return in the same order.
+4. Choose one option from Dashboard. Confirm one ready authoritative mission is
+   restored in both Dashboard and Mission Center.
+5. Confirm choice selection changes no XP, skill XP, streak, achievements,
+   history, Analytics, or replacement allowance.
+6. Refresh and sign out/in. Confirm the same mission instance restores and the
+   unselected choices are no longer actionable.
+7. Complete the selected mission. Confirm exactly 25 overall XP, 15 mapped skill
+   XP, normal history, achievements, streak, and Daily Complete behavior.
+8. Complete or skip it, request the one existing replacement, and confirm the
+   replacement remains server-selected and limited to one.
+9. Advance to the next logical day and confirm a new stable choice row is
+   produced through the same normal path. Repeat across multiple days to verify
+   recent-template variety.
+
+For concurrency, issue two different `select_daily_mission_choice` calls at the
+same instant. Exactly one option becomes the mission; the losing request must
+restore/reject against that winner and must not switch it. Repeat the winning
+choice ID to confirm idempotent restoration. Attempt arbitrary, another-owner,
+and previous-day IDs; all must fail offered membership. Direct authenticated
+insert/update/delete against `daily_mission_choice_state` must fail.
+
+On production, do not advance or mutate time. Wait for a natural new logical
+day, verify the normal stable choice flow, and leave all developer gates closed.

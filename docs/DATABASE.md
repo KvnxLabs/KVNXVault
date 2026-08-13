@@ -841,3 +841,41 @@ The function remains zero-argument, derives its owner exclusively from
 It performs no insert, update, delete, evaluation, or reward operation. Existing
 RLS and direct-write revocations remain unchanged. `migrations-pre-sprint18.sha256`
 records the immutable 001–016 baseline without changing earlier baselines.
+
+## Sprint 19 Daily Mission Choice Authority
+
+Migration `202608070018_sprint19_daily_mission_choice.sql` adds
+`daily_mission_choice_state`, keyed by `(user_id, daily_key)`. Its `choices`
+array contains one to three server-generated option snapshots plus internal
+template identity; selected identity and timestamp remain null until a choice
+is locked. RLS is enabled, no browser policy exists, and all direct privileges
+are revoked from `public`, `anon`, and `authenticated`.
+
+The replaced internal `request_daily_mission_at_sprint9(timestamptz)` retains
+the same authentication, onboarding, logical-day, rollover, advisory-lock, and
+existing-mission behavior. Only the no-current-mission branch changes: it now
+creates or restores a stable choice row. The public zero-argument wrapper from
+Sprint 11.1 still supplies `dev_effective_vault_now()`, so approved staging and
+real production time use the identical choice engine.
+
+`select_daily_mission_choice(p_choice_id uuid)` is the only new authenticated
+mutation contract. PostgreSQL derives `auth.uid()`, effective time, timezone,
+logical day, offered row, template snapshot, canonical skill, fixed 25 XP
+definition, ready lifecycle, replacement count, and mission UUID. Duplicate
+selection of the winning ID is idempotent. A conflicting ID cannot switch the
+mission after lock. Another owner, stale-day ID, arbitrary UUID, catalog key, or
+tampered mission object cannot satisfy offered membership.
+
+Only the public option projection crosses the read boundary; internal
+`templateKey` is removed. Selection inserts no mission history and updates no
+XP, skill XP, achievement, or streak table. Completion continues to award 25
+overall XP and 15 mapped skill XP through the existing action transaction.
+
+Apply after Migration 017:
+
+```text
+supabase/migrations/202608070018_sprint19_daily_mission_choice.sql
+```
+
+`migrations-pre-sprint19.sha256` records migrations 001–017 without changing
+any historical baseline.

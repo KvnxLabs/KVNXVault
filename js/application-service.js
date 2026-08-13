@@ -79,6 +79,7 @@
     let terminalAt = null;
     let terminalRecorded = false;
     let nextResetAt = null;
+    let dailyChoices = Object.freeze([]);
 
     const toPublicAchievement = (achievement) => {
       if (achievement?.hidden && !achievement?.unlocked) {
@@ -112,7 +113,11 @@
         nextOffset: historyNextOffset,
         pageSize: historyPageSize,
       }),
-      coordinator: coordinator.getSnapshot(),
+      coordinator: coordinator ? coordinator.getSnapshot() : null,
+      dailyChoice: Object.freeze({
+        required: !coordinator && dailyChoices.length > 0,
+        options: Object.freeze([...dailyChoices]),
+      }),
       dailySessionId,
       nextResetAt,
       persistenceBlocked,
@@ -263,6 +268,7 @@
 
       terminalAt = result.mission.lifecycle.terminalAt || null;
       terminalRecorded = Boolean(result.mission.lifecycle.terminalRecorded);
+      dailyChoices = Object.freeze([]);
       coordinator = await coordinatorEngine.createDailyMissionCoordinator(onboarding, {
         createLifecycle: lifecycleEngine.createMissionLifecycle,
         generateMission,
@@ -424,8 +430,12 @@
         }
 
         const dailyResult = await repository.requestDailyMission();
-        if (!dailyResult?.accepted || !dailyResult?.mission) {
-          const error = new Error("The server could not provide today's mission.");
+        const restoredMission = Boolean(dailyResult?.mission);
+        const restoredChoices = dailyResult?.choiceRequired === true
+          && Array.isArray(dailyResult.choices)
+          && dailyResult.choices.length > 0;
+        if (!dailyResult?.accepted || restoredMission === restoredChoices) {
+          const error = new Error("The server could not restore today's mission state.");
           error.code = dailyResult?.reason || "daily-mission-request-rejected";
           throw error;
         }
@@ -461,14 +471,17 @@
         loadedAchievementCatalog = achievementCatalogResult;
         loadedAchievements = achievementResult;
         loadedStreak = streakResult;
-        loadedDailyMission = {
+        dailyChoices = restoredChoices
+          ? Object.freeze(dailyResult.choices.map((choice) => Object.freeze({ ...choice })))
+          : Object.freeze([]);
+        loadedDailyMission = restoredMission ? {
           dailySessionId: dailyResult.dailyKey,
           definition: dailyResult.mission.definition,
           lifecycle: dailyResult.mission.lifecycle,
           replacementsUsed: dailyResult.dailyStatus.replacementsUsed,
           terminalAt: dailyResult.mission.lifecycle.terminalAt || null,
           terminalRecorded: Boolean(dailyResult.mission.lifecycle.terminalRecorded),
-        };
+        } : null;
       } else {
         [loadedProfile, loadedOnboarding, loadedProgression, loadedDailyMission, loadedHistory] = await Promise.all([
           repository.loadProfile(),
@@ -545,11 +558,13 @@
         replacementsUsed: loadedDailyMission.replacementsUsed,
       } : null;
 
-      coordinator = await coordinatorEngine.createDailyMissionCoordinator(onboarding, {
-        createLifecycle: lifecycleEngine.createMissionLifecycle,
-        generateMission,
-        restoreState,
-      });
+      coordinator = restoreState || !hasAuthoritativeDailyMission
+        ? await coordinatorEngine.createDailyMissionCoordinator(onboarding, {
+          createLifecycle: lifecycleEngine.createMissionLifecycle,
+          generateMission,
+          restoreState,
+        })
+        : null;
 
       if (!hasAuthoritativeDailyMission && (!loadedProgression || !loadedDailyMission)) {
         // Compatibility for the unchanged Sprint 7 test harness only. The real
@@ -574,6 +589,14 @@
       }
 
       if (transitionMode === "authoritative") {
+        if (!coordinator) {
+          return Object.freeze({
+            accepted: false,
+            reason: "daily-choice-required",
+            event: null,
+            snapshot: getPublicSnapshot(),
+          });
+        }
         if (action === "expire") {
           return Object.freeze({
             accepted: false,
@@ -622,6 +645,13 @@
         return Object.freeze({ accepted: false, reason: "persistence-blocked", snapshot: getPublicSnapshot() });
       }
       if (transitionMode === "authoritative") {
+        if (!coordinator) {
+          return Object.freeze({
+            accepted: false,
+            reason: "daily-choice-required",
+            snapshot: getPublicSnapshot(),
+          });
+        }
         if (typeof repository.requestDailyMissionReplacement === "function") {
           const persisted = await repository.requestDailyMissionReplacement();
           if (persisted?.mission) {
@@ -650,6 +680,34 @@
       if (result.accepted) {
         await persistPrototypeReplacement(result);
         await persistCoordinatorResult(result);
+      }
+      return Object.freeze({ ...result, snapshot: getPublicSnapshot() });
+    };
+
+    const selectDailyMission = async (choiceId) => {
+      if (persistenceBlocked) {
+        return Object.freeze({
+          accepted: false,
+          reason: "persistence-blocked",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+      if (transitionMode !== "authoritative"
+        || typeof repository.selectDailyMissionChoice !== "function") {
+        return Object.freeze({
+          accepted: false,
+          reason: "daily-choice-unavailable",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+
+      const result = await repository.selectDailyMissionChoice(choiceId);
+      if (result?.mission) {
+        await reconcileAuthoritativeResult({
+          ...result,
+          progression: result.progression
+            || { totalXP: progressionEngine.getCurrentXP(progression) },
+        });
       }
       return Object.freeze({ ...result, snapshot: getPublicSnapshot() });
     };
@@ -711,6 +769,7 @@
       loadAnalytics,
       loadMoreVaultHistory,
       requestReplacement,
+      selectDailyMission,
       signOut: () => authService.signOut(),
       skip: () => routeAction("skip"),
       start: () => routeAction("start"),

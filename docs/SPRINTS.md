@@ -683,3 +683,34 @@ contract. It changes no achievement eligibility, rewards, writes, RLS, mission
 rules, replacement rules, streak rules, or progression thresholds. Migrations
 001–016 remain byte-for-byte unchanged. No live Supabase, staging, production
 deployment, or live verification is claimed by this package.
+
+## Sprint 19 — Authoritative Daily Mission Choice
+
+Status: ✅ Code complete; migration, deployment, and live verification remain manual
+
+Goal: Give users controlled choice over the primary Daily Mission while keeping
+definitions, membership, rewards, skill mapping, ownership, logical time, and
+lifecycle authority inside PostgreSQL.
+
+Completed: Added one persisted owner/logical-day choice row with up to three
+active catalog options; stable focus-aware and recent-usage-aware ranking;
+opaque choice IDs; exact offered-membership validation; advisory-lock and row
+locking concurrency; duplicate-choice idempotency; conflicting-choice lockout;
+server-owned mission UUID/content/reward/skill creation; immutable Repository
+and Application Service choice snapshots; shared Dashboard and Mission Center
+choice cards; pending-state duplicate prevention; responsive/accessibility
+support; staging-clock reuse; focused security and regression coverage.
+
+Definition of Done: Viewing or restoring choices cannot reroll them. Selecting
+one option creates exactly one ready primary mission and awards nothing.
+Existing missions bypass choice. Completion remains 25 overall XP plus 15
+mapped skill XP. Replacement stays server-selected and limited to one. Choice
+views and selections create no history, Analytics activity, streak progress, or
+achievement evaluation.
+
+Notes: Migration 018 is required. Migrations 001–017 remain byte-for-byte
+unchanged. Sprint 19 intentionally adds no Side Missions, custom skills,
+multi-focus selection, Fitness-specific rule, AI Coach, or additional XP
+economy. Those remain future roadmap work built on this bounded choice-lock
+authority model. No live Supabase, staging, production deployment, or live
+verification is claimed by this package.

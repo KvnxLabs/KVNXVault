@@ -157,6 +157,19 @@
               <div class="xp-card__footer"><span data-xp-percent>75% complete</span><span data-xp-remaining>25 XP remaining</span></div>
             </section>
 
+            <section class="dashboard-card dashboard-card--missions app-card daily-choice" data-dashboard-daily-choice hidden aria-labelledby="dashboard-choice-title">
+              <div class="daily-choice__heading">
+                <div>
+                  <p class="app-card__label">Daily mission choice</p>
+                  <h2 id="dashboard-choice-title">Choose today’s path.</h2>
+                </div>
+                <span>One choice. Locked for today.</span>
+              </div>
+              <p class="daily-choice__intro">The Vault selected these paths from your saved focus. Choose the work that matters most today.</p>
+              <div class="daily-choice__grid" data-daily-choice-list="dashboard"></div>
+              <p class="daily-choice__error" data-daily-choice-error="dashboard" hidden role="alert">Your choice could not be secured. The offered paths remain unchanged; try again.</p>
+            </section>
+
             <section class="dashboard-card dashboard-card--missions app-card mission-card" aria-labelledby="missions-card-title" data-mission-card>
               <div class="dashboard-card__header">
                 <div>
@@ -271,6 +284,18 @@
               <h2 id="mission-center-error-title">Today’s mission could not be restored.</h2>
               <p>Your saved mission remains unchanged. Refresh when your connection is ready.</p>
               <button class="app-button" type="button" data-mission-center-retry>Retry restoration</button>
+            </section>
+            <section class="mission-center__choice app-card daily-choice" data-mission-center-daily-choice hidden aria-labelledby="mission-center-choice-title">
+              <div class="daily-choice__heading">
+                <div>
+                  <p class="app-card__label">Daily mission choice</p>
+                  <h2 id="mission-center-choice-title">Choose today’s path.</h2>
+                </div>
+                <span>Primary mission</span>
+              </div>
+              <p class="daily-choice__intro">Three server-approved directions, shaped by your saved focus. Your selection becomes today’s authoritative mission.</p>
+              <div class="daily-choice__grid" data-daily-choice-list="missions"></div>
+              <p class="daily-choice__error" data-daily-choice-error="missions" hidden role="alert">Your choice could not be secured. The offered paths remain unchanged; try again.</p>
             </section>
             <section class="mission-center__empty app-card" data-mission-center-empty hidden aria-labelledby="mission-center-empty-title">
               <p class="app-card__label">Mission unavailable</p>

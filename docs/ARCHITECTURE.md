@@ -933,3 +933,50 @@ accepted mission completion
 Hard refresh remains behind the Sprint 16.1 protected-content gate. Filters and
 progress bars operate only on restored data and submit no identity, XP, skill
 XP, streak, eligibility, or achievement state.
+
+## Sprint 19 Authoritative Daily Mission Choice
+
+Sprint 19 adds a persisted pre-lifecycle state without creating a second
+mission system. When no `daily_mission_state` exists for the authenticated
+logical day, the normal zero-argument daily RPC locks the existing owner/day
+advisory key and creates or restores one `daily_mission_choice_state` row. That
+row contains one to three exact server-built option snapshots from the active
+Sprint 15 catalog. Existing daily missions bypass this path and restore without
+modification.
+
+Choice ranking reuses saved onboarding focus, active canonical skill mappings,
+and authoritative recent template usage. Unused templates rank first, followed
+by least-recently-used templates, then a deterministic owner/day/template hash.
+The first three valid candidates are persisted. Because the row is written once
+under the daily lock, refresh, route changes, logout/login, and simultaneous
+daily requests cannot reroll the options.
+
+```text
+request_daily_mission()
+→ auth.uid() + effective server clock + saved timezone
+→ current logical day + saved onboarding focus
+→ existing mission? restore it
+→ existing choice set? restore it
+→ otherwise rank active catalog candidates and persist up to three
+
+selectDailyMission(choiceId)
+→ Repository sends one opaque UUID
+→ PostgreSQL locks the owner/day state
+→ validates exact offered membership
+→ creates one server-UUID mission from the trusted option snapshot
+→ existing lifecycle, replacement, completion, history, progression,
+  achievement, and streak authorities continue unchanged
+```
+
+The immutable Application Service snapshot represents either `dailyChoice`
+with no coordinator, or an existing coordinator mission. Dashboard and Mission
+Center render the same frozen option array and call the same Application Service
+method. They submit no title, description, template, reward, skill, focus,
+owner, daily key, date, timezone, or lifecycle state.
+
+Selection itself creates no history, awards no XP or skill XP, changes no
+streak, and evaluates no achievement. The existing single server-selected
+replacement remains the only post-selection change mechanism. This bounded
+offer → opaque selection → server lock contract is the reusable authority
+foundation for later Skill Paths, but Sprint 19 adds no multi-focus selection,
+Side Missions, Fitness-specific behavior, or additional XP economy.

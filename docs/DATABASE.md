@@ -1,6 +1,6 @@
 # KVNX Vault Database
 
-Version: Sprint 16
+Version: Sprint 23
 
 The authoritative schema and policies live in:
 
@@ -12,18 +12,27 @@ The authoritative schema and policies live in:
 - `supabase/migrations/202608070006_sprint9_daily_mission_authority.sql`
 - `supabase/migrations/202608070007_sprint9_2_daily_reset_countdown.sql`
 - `supabase/migrations/202608070008_sprint10_skill_progression.sql`
+- `supabase/migrations/202608070009_sprint10_1_uuid_function_hotfix.sql`
+- `supabase/migrations/202608070011_sprint11_achievements.sql`
+- `supabase/migrations/202608070012_sprint11_1_developer_test_panel.sql` (staging/development only)
+- `supabase/migrations/202608070013_sprint12_vault_history.sql`
+- `supabase/migrations/202608070014_sprint13_analytics_insights.sql`
+- `supabase/migrations/202608070015_sprint14_authoritative_streaks.sql`
+- `supabase/migrations/202608070016_sprint15_mission_catalog.sql`
+- `supabase/migrations/202608070017_sprint18_achievement_center.sql`
+- `supabase/migrations/202608070018_sprint19_daily_mission_choice.sql`
+- `supabase/migrations/202608070019_sprint20_skill_paths.sql`
+- `supabase/migrations/202608070020_sprint21_skill_path_mission_offers.sql`
+- `supabase/migrations/202608070021_sprint21_1_effective_clock_compatibility.sql`
+- `supabase/migrations/202608070022_sprint22_side_mission_lifecycle.sql`
+- `supabase/migrations/202608070023_sprint23_side_mission_observability.sql`
 
-Run all eight migrations in filename order for a new project. The Sprint 7.1
-correction secures an existing Sprint 7 database, and the Sprint 7.2 migration
-pair adds only narrow transitional completion and replacement persistence
-functions. Migration 005 revokes the prototype completion function from the
-authenticated role and installs the production action authority. Migration 006
-installs server-authoritative daily identity, generation, rollover, and
-replacement selection without editing migrations 001–005. Migration 007 adds
-the server-derived next-reset response contract without editing migrations
-001–006 or changing mission authority. Migration 008 adds the fixed skill
-catalog, user-owned skill totals, history attribution, and atomic dual-award
-contract without editing migrations 001–007.
+Apply production migrations in numeric order, skipping the intentional 010 gap
+and staging-only Migration 012. Migration 021 supplies production's real-clock
+compatibility helper without installing Migration 012's developer tables or
+simulated time. Staging may include 012; Migration 021 preserves its existing
+helper without replacement. Every later migration is additive and historical
+migration files remain immutable.
 
 ## Tables
 
@@ -37,6 +46,9 @@ contract without editing migrations 001–007.
 | `skill_catalog` | Fixed skill keys, names, ordering, and activation | Server managed; authenticated read |
 | `skill_progression` | Lifetime XP per user and skill | `(user_id, skill_key)` with `user_id → auth.users.id` |
 | `user_skill_paths` | Soft development intent per canonical skill | `(user_id, skill_key)`; owner derived by RPC from `auth.uid()` |
+| `skill_path_mission_offer_state` | Stable bounded practice offers and one planned selection per owner/day/skill | Server-owned; restored by authenticated RPC |
+| `side_mission_state` | One authoritative Side Mission slot per owner/logical day | `(user_id, daily_key)`; lifecycle RPCs derive `auth.uid()` |
+| `side_mission_event_ledger` | Append-only authoritative Side Mission lifecycle events | Server-written trigger; no direct browser privileges |
 
 Derived progression values—level, next threshold, remaining XP, and percentage—are not stored. `progression.js` recomputes them from `total_xp`, preserving one progression engine.
 
@@ -1027,3 +1039,54 @@ supabase/migrations/202608070022_sprint22_side_mission_lifecycle.sql
 
 `migrations-pre-sprint22.sha256` records migrations 001–021 without changing
 any historical baseline.
+
+## Sprint 23 Side Mission Observability Authority
+
+Migration `202608070023_sprint23_side_mission_observability.sql` adds
+`side_mission_event_ledger`. It is written only by an authoritative trigger on
+`side_mission_state`; RLS is enabled and all direct privileges are revoked from
+`public`, `anon`, and `authenticated`. Each mission can have at most one event
+of each type:
+
+| Event | Authoritative source | Reward recorded |
+|---|---|---:|
+| `promoted` | inserted Side Mission state | 0 / 0 |
+| `started` | lifecycle becomes `active` | 0 / 0 |
+| `completed` | lifecycle becomes `completed` | +10 / +10 |
+| `expired` | lifecycle becomes `expired` | 0 / 0 |
+
+The completed event reward columns are constrained to exactly +10 overall and
++10 skill XP; every other event is constrained to zero. These columns are audit
+evidence only. `progression_state`, `skill_progression`, and exact verified
+`mission_history` remain the economy sources of truth.
+
+Migration reconciliation creates events only from persisted authoritative
+state. A historical completion event requires a completed/rewarded state plus
+an exact matching Side history row with +10/+10 and the canonical skill. No
+missing mission or reward is fabricated. Duplicate pre-existing Side history
+causes an explicit migration failure rather than silent repair.
+
+Two partial unique indexes harden completion history:
+
+- one completed Side history record per `(user_id, daily_session_id)`;
+- one completed Side history record per `(user_id, mission_id)`.
+
+`get_side_mission_observability(p_period text)` is an authenticated read-only
+RPC. It derives ownership from `auth.uid()`, uses the established effective
+clock and logical day, accepts only `7d`, `30d`, or `all`, and returns lifecycle
+counts, promotion-cohort completion rate, verified Side reward totals, XP by
+canonical skill, and at most 20 recent lifecycle events.
+
+`audit_side_mission_invariants()` is fully revoked from browser roles. Database
+administrators may execute it in the SQL editor; zero rows means the checked
+state, history, reward, skill, and event relationships agree. It detects only
+and never mutates or repairs data.
+
+Apply after Migration 022:
+
+```text
+supabase/migrations/202608070023_sprint23_side_mission_observability.sql
+```
+
+`migrations-pre-sprint23.sha256` records migrations 001–022 without changing
+any historical fingerprint baseline.

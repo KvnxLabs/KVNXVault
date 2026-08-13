@@ -177,9 +177,16 @@ test("migrations 001 through 022 remain byte-for-byte unchanged", () => {
   });
 });
 
-test("Sprint 22.1 creates no Migration 023", () => {
+test("Sprint 22.1 remains frontend-only while Sprint 23 owns Migration 023", () => {
   const migrations = fs.readdirSync(path.join(root, "supabase/migrations"));
-  assert.equal(migrations.some((name) => /^202608070023_/.test(name)), false);
+  assert.deepEqual(
+    migrations.filter((name) => /^202608070023_/.test(name)),
+    ["202608070023_sprint23_side_mission_observability.sql"],
+  );
+  assert.equal(
+    crypto.createHash("sha256").update(migration22).digest("hex"),
+    "ad958272c69b4050779e5c028ed7fa6ad27b2765ba28a7fcd1705180052e7efc",
+  );
 });
 
 test("JavaScript syntax, reduced motion, and secret boundaries remain valid", () => {

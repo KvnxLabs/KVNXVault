@@ -831,3 +831,32 @@ Notes: Frontend only. Application Service, Repository, Migration 022, +10/+10
 economy, lifecycle, history, Analytics, streak exclusion, Daily Mission, and
 Daily Complete are unchanged. **NO DATABASE MIGRATION REQUIRED.** No production
 retest is claimed by this package.
+
+## Sprint 23 — Side Mission Operational Hardening + Economy Observability
+
+Status: ✅ Code complete; migration, deployment, and live verification remain manual
+
+Completed: Added a server-written append-only lifecycle ledger for promoted,
+started, completed, and expired Side Mission transitions; idempotent event
+capture inside the originating database transaction; trustworthy reconciliation
+of existing Side Mission state; unique history hardening; a bounded
+`auth.uid()`-owned read-only observability RPC; an administrator-only read-only
+invariant audit; and documented production/staging diagnostic procedures.
+
+Economy boundaries: Side Mission capacity remains one per authoritative
+logical day and completion remains exactly +10 overall/+10 canonical skill XP.
+Lifecycle events explain operations but do not replace progression or verified
+history as XP sources of truth. Daily Mission streak, Daily Complete,
+replacement, primary choice, achievement semantics, and Daily/Side Analytics
+separation remain unchanged.
+
+Security: Browser roles have no direct ledger privileges and cannot submit
+telemetry, owner, logical day, time, lifecycle, skill, or reward. Rejected
+request telemetry is intentionally left to server logs to avoid an abuse-driven
+event stream. No founder/admin browser surface or privileged credential is
+added.
+
+Notes: Migration 023 is required. Migrations 001–022 remain byte-for-byte
+unchanged. Migration 021 real-production/staging-simulation clock behavior is
+unchanged. No production deployment, production verification, staging
+verification, or live Supabase verification is claimed by this package.

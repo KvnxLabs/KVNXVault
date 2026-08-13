@@ -368,3 +368,78 @@ Threat tests must include arbitrary/other-owner offer IDs, malformed content,
 reward/skill/date/time tampering, unauthenticated calls, direct table writes,
 concurrent completion, and API replay. No live verification is claimed by the
 code package.
+
+## Sprint 23 Side Mission Operational Verification
+
+Migration 023 is database-only. Before applying it, back up production and run
+these read-only duplicate preflight checks; both must return zero rows:
+
+```sql
+select user_id, daily_session_id, count(*)
+from public.mission_history
+where mission_type = 'side' and final_state = 'completed'
+group by user_id, daily_session_id
+having count(*) > 1;
+
+select user_id, mission_id, count(*)
+from public.mission_history
+where mission_type = 'side' and final_state = 'completed'
+group by user_id, mission_id
+having count(*) > 1;
+```
+
+After applying Migration 023, the administrator-only invariant report must
+return zero rows:
+
+```sql
+select * from public.audit_side_mission_invariants();
+```
+
+Use these SQL-editor diagnostics for founder-level aggregate visibility. They
+require database-administrator access and are never exposed to the browser:
+
+```sql
+select event_type, count(*) as events
+from public.side_mission_event_ledger
+group by event_type
+order by event_type;
+
+select
+  count(*) as side_completions,
+  sum(xp_awarded) as overall_xp_awarded,
+  sum(skill_xp_awarded) as skill_xp_awarded
+from public.mission_history
+where mission_type = 'side' and final_state = 'completed';
+
+select skill_key, count(*) as completions,
+       sum(skill_xp_awarded) as skill_xp_awarded
+from public.mission_history
+where mission_type = 'side' and final_state = 'completed'
+group by skill_key
+order by skill_xp_awarded desc, skill_key;
+```
+
+For the already completed production `Restore Mobility` record, verify
+read-only that there is one `side_mission_state`, one exact +10/+10 Side
+`mission_history` row, and one each of the reconciled `promoted`, `started`, and
+`completed` events. Confirm Analytics still separates Daily and Side counts,
+the primary mission and Daily Complete remain unchanged, and the streak did not
+move. Do not reset capacity, recreate a mission, or modify production time.
+
+On approved staging, use only Migration 012's existing guarded clock controls:
+
+1. Race two promotions; exactly one owner/day state and one promoted event win.
+2. Race two starts; exactly one started event exists and no reward changes.
+3. Race two completions; exactly one +10/+10 award, Side history row, and
+   completed event exist.
+4. Retry completion, refresh, and sign out/in; no counts or rewards change.
+5. Leave a mission incomplete, advance one approved logical day, and restore;
+   exactly one expired event appears.
+6. Confirm the new logical day has one fresh capacity and the prior mission
+   cannot reward.
+7. Confirm paused-path, Daily Mission, replacement, Daily Complete, streak,
+   achievement, and Daily/Side Analytics semantics remain unchanged.
+
+Rejected/idempotent request counts are intentionally not written to the event
+ledger. Use bounded PostgREST/database logs when diagnosing those requests so a
+browser cannot manufacture durable telemetry volume.

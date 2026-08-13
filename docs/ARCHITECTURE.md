@@ -1112,3 +1112,35 @@ The immutable Application Service snapshot carries `sideMission` and
 Mission Center shows a subordinate summary. Vault labels Side versus Daily,
 and Analytics reports Side completion separately while total XP and skill XP
 remain sums of verified history.
+
+## Sprint 23 Side Mission Observability
+
+Sprint 23 adds an append-only operational projection without changing the Side
+Mission lifecycle or economy. An `AFTER INSERT OR UPDATE` trigger on
+`side_mission_state` records only authoritative `promoted`, `started`,
+`completed`, and `expired` transitions. The event insert participates in the
+same PostgreSQL transaction as the originating operation, so a failed
+promotion, start, completion, history insert, progression write, or achievement
+evaluation leaves no event behind. `(mission_id, event_type)` uniqueness makes
+transition capture idempotent across retries and concurrency.
+
+The event ledger explains lifecycle movement; it is deliberately not a second
+XP ledger. Current account totals remain in `progression_state` and
+`skill_progression`, while verified Side Mission reward history remains in
+`mission_history`. The read-only `get_side_mission_observability(period)` RPC
+combines lifecycle counts from events with exact +10/+10 economy totals from
+verified Side history for only `auth.uid()`. Periods are bounded to `7d`, `30d`,
+or `all`, and recent activity is capped at 20 rows.
+
+Rejected and idempotent browser requests are not persisted as lifecycle
+events. Persisting arbitrary retry traffic would create an attacker-controlled
+volume channel and could misrepresent the economy. PostgREST/database logs are
+the operational source for rejected request frequency; only resulting trusted
+state transitions enter the ledger.
+
+`audit_side_mission_invariants()` is a database-administrator-only, read-only
+detection function. It reports state/history/event disagreements and performs
+no repair. Additional unique partial indexes enforce at most one completed Side
+history record for an owner/logical day and mission instance. No frontend admin
+surface, mutation capability, service-role credential, new reward, extra daily
+capacity, Side streak, or Side achievement is introduced.

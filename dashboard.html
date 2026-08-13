@@ -26,10 +26,20 @@
     <script src="js/dev-tools-loader.js" defer></script>
     <title>Dashboard | KVNX Vault</title>
   </head>
-  <body class="app-page" data-protected-route="dashboard">
-    <a class="app-skip-link" href="#dashboard-content">Skip to dashboard</a>
+  <body class="app-page" data-protected-route="dashboard" data-protected-loading-page>
+    <main class="protected-restoration" data-protected-loading role="status" aria-live="polite" aria-atomic="true">
+      <div class="protected-restoration__content">
+        <img class="protected-restoration__mark" src="assets/icons/kvnx-mark.svg" alt="" />
+        <p class="app-eyebrow">Secure session</p>
+        <h1 data-protected-loading-title>Restoring your Vault</h1>
+        <p data-protected-loading-message>Verifying your session and loading your authoritative progress.</p>
+        <span class="protected-restoration__indicator" aria-hidden="true"></span>
+        <button class="app-button" type="button" data-protected-loading-retry hidden>Refresh and retry</button>
+      </div>
+    </main>
 
-    <div class="shell">
+    <div class="shell" data-protected-content hidden>
+      <a class="app-skip-link" href="#dashboard-content">Skip to dashboard</a>
       <aside class="sidebar" id="application-sidebar" data-sidebar aria-label="Application navigation">
         <div class="sidebar__header">
           <a class="app-brand" href="index.html" aria-label="KVNX Vault home">

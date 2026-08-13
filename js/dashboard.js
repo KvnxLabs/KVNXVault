@@ -384,6 +384,35 @@ const KVNXMissionCenterExperience = (() => {
   return Object.freeze({ STATE_LABELS, createViewModel });
 })();
 
+const KVNXProtectedContentGate = (() => {
+  const create = ({ loading, content, title, message, retry } = {}) => {
+    if (!loading || !content) {
+      throw new TypeError("Protected loading and content elements are required.");
+    }
+
+    const reveal = () => {
+      loading.hidden = true;
+      loading.classList.remove("is-error");
+      loading.setAttribute("role", "status");
+      content.hidden = false;
+    };
+
+    const fail = () => {
+      content.hidden = true;
+      loading.hidden = false;
+      loading.classList.add("is-error");
+      loading.setAttribute("role", "alert");
+      if (title) title.textContent = "We couldn't restore your Vault.";
+      if (message) message.textContent = "Check your connection, then refresh the page.";
+      if (retry) retry.hidden = false;
+    };
+
+    return Object.freeze({ fail, reveal });
+  };
+
+  return Object.freeze({ create });
+})();
+
 if (typeof module === "object" && module.exports) {
   module.exports = Object.freeze({
     ...KVNXReplacementRequestController,
@@ -393,6 +422,7 @@ if (typeof module === "object" && module.exports) {
     analytics: KVNXAnalyticsExperience,
     vaultHistory: KVNXVaultHistoryExperience,
     missionCenter: KVNXMissionCenterExperience,
+    protectedContent: KVNXProtectedContentGate,
   });
 }
 if (typeof window !== "undefined") {
@@ -403,11 +433,26 @@ if (typeof window !== "undefined") {
   window.KVNXAnalyticsExperience = KVNXAnalyticsExperience;
   window.KVNXVaultHistoryExperience = KVNXVaultHistoryExperience;
   window.KVNXMissionCenterExperience = KVNXMissionCenterExperience;
+  window.KVNXProtectedContentGate = KVNXProtectedContentGate;
 }
 
 if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", async () => {
   const protectedContext = await window.KVNXProtectedPage?.ready;
   if (!protectedContext) return;
+
+  const protectedLoading = document.querySelector("[data-protected-loading]");
+  const protectedContent = document.querySelector("[data-protected-content]");
+  const protectedLoadingTitle = document.querySelector("[data-protected-loading-title]");
+  const protectedLoadingMessage = document.querySelector("[data-protected-loading-message]");
+  const protectedLoadingRetry = document.querySelector("[data-protected-loading-retry]");
+  const protectedContentGate = window.KVNXProtectedContentGate.create({
+    loading: protectedLoading,
+    content: protectedContent,
+    title: protectedLoadingTitle,
+    message: protectedLoadingMessage,
+    retry: protectedLoadingRetry,
+  });
+  protectedLoadingRetry?.addEventListener("click", () => window.location.reload());
 
   const sidebar = document.querySelector("[data-sidebar]");
   const menuButton = document.querySelector("[data-sidebar-open]");
@@ -447,18 +492,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       window.location.replace("login.html");
       return;
     }
-    if (persistenceError) {
-      persistenceError.hidden = false;
-      persistenceError.textContent = "We couldn't restore your Vault. Check your connection, then refresh the page.";
-    }
-    if (window.location.hash === "#missions" && missionsView) {
-      dashboardHomeSections.forEach((section) => { section.hidden = true; });
-      missionsView.hidden = false;
-      const loading = missionsView.querySelector("[data-mission-center-loading]");
-      const restorationError = missionsView.querySelector("[data-mission-center-error]");
-      if (loading) loading.hidden = true;
-      if (restorationError) restorationError.hidden = false;
-    }
+    protectedContentGate.fail();
     return;
   }
 
@@ -1431,6 +1465,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderVault();
   renderMissionCenter(applicationSnapshot);
   renderApplicationView();
+  protectedContentGate.reveal();
   window.addEventListener("hashchange", renderApplicationView);
 
   analyticsPeriodButtons.forEach((button) => {

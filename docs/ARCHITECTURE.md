@@ -1056,3 +1056,31 @@ The offer catalog pool uses the canonical mission-to-skill mapping. Migration
 020 adds path-only templates for the three skills that previously lacked
 eligible templates; the `skill_path` focus is outside every Sprint 19 onboarding
 focus map, so primary Daily Mission selection remains unchanged.
+
+## Sprint 21.1 Production Effective-Clock Compatibility
+
+Production intentionally omits staging-only Migration 012, but later
+authoritative functions call its internal `dev_effective_vault_now()` boundary.
+Migration 021 closes that deployment-variant gap without installing any
+developer infrastructure.
+
+At migration time, PostgreSQL resolves the exact zero-argument signature with
+`to_regprocedure('public.dev_effective_vault_now()')`:
+
+- If it exists, the migration performs no operation. Staging retains Migration
+  012's environment gate, account allowlist, per-owner simulated state, and
+  real-clock fallback unchanged.
+- If it does not exist, production receives a zero-argument internal helper
+  whose complete result is `pg_catalog.clock_timestamp()`. The helper has no
+  environment switch, offset, simulated state, identity, or browser input.
+
+Direct execution is revoked from `public`, `anon`, and `authenticated`. Existing
+`SECURITY DEFINER` authorities continue to call the helper internally under the
+database owner. No frontend contract changes, and the browser remains unable to
+supply time, dates, daily keys, timezones, or owners.
+
+The compatibility boundary resolves the active production dependency in the
+Sprint 15 catalog mission builder, Sprint 19 Daily Mission Choice selection,
+and all three Sprint 21 Skill Path offer read/request/selection functions. It
+does not alter their mission, reward, lifecycle, progression, or logical-day
+logic.

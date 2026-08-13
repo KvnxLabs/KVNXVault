@@ -284,3 +284,56 @@ the frontend, verify same-day restoration and zero side effects, then wait for a
 natural logical-day rollover for the new-day stability/variety check. Do not
 alter production time. Sprint 15 and Sprint 19 pending natural-new-day checks
 remain separate acceptance items.
+
+## Sprint 21.1 Emergency Effective-Clock Verification
+
+Migration 021 is required on production before further Sprint 21 verification.
+Do not install Migration 012 and do not modify production time.
+
+1. Apply
+   `supabase/migrations/202608070021_sprint21_1_effective_clock_compatibility.sql`.
+2. Confirm the exact zero-argument signature exists:
+
+   ```sql
+   select pg_catalog.to_regprocedure('public.dev_effective_vault_now()');
+   ```
+
+3. As the database administrator, compare the helper with real database time:
+
+   ```sql
+   select
+     public.dev_effective_vault_now() as effective_now,
+     pg_catalog.clock_timestamp() as database_now,
+     abs(extract(epoch from (
+       public.dev_effective_vault_now() - pg_catalog.clock_timestamp()
+     ))) < 5 as approximately_current;
+   ```
+
+4. Confirm the production fallback created no developer tables:
+
+   ```sql
+   select pg_catalog.to_regclass('public.dev_environment_config'),
+          pg_catalog.to_regclass('public.dev_test_accounts'),
+          pg_catalog.to_regclass('public.dev_test_state');
+   ```
+
+   All three values must remain null on production.
+5. Confirm `anon` and `authenticated` have no direct execution privilege:
+
+   ```sql
+   select
+     has_function_privilege('anon', 'public.dev_effective_vault_now()', 'EXECUTE'),
+     has_function_privilege('authenticated', 'public.dev_effective_vault_now()', 'EXECUTE');
+   ```
+
+   Both values must be false.
+6. Hard-refresh production KVNX Vault and confirm protected restoration succeeds.
+7. Open `#skills`, request Skill Path offers, refresh, and verify stable restore.
+8. Confirm Daily Mission state, replacement, XP, skill XP, streak, achievements,
+   Vault, Analytics, and Daily Complete are unchanged by this hotfix.
+9. Keep production time untouched. At the natural next logical-day rollover,
+   perform the pending Sprint 15 and Sprint 19 verification.
+
+On staging, apply Migration 021 and confirm Migration 012's simulated-clock
+behavior still works for an approved account. Because the helper already exists,
+Migration 021 must not replace its definition or create a second clock path.

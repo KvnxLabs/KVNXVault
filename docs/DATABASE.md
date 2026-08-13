@@ -955,3 +955,43 @@ supabase/migrations/202608070020_sprint21_skill_path_mission_offers.sql
 
 `migrations-pre-sprint21.sha256` records migrations 001–019 without changing
 any historical fingerprint baseline.
+
+## Sprint 21.1 Effective-Clock Compatibility
+
+Migration `202608070021_sprint21_1_effective_clock_compatibility.sql` conditionally
+provides the zero-argument `public.dev_effective_vault_now()` dependency on
+production databases where staging-only Migration 012 was intentionally not
+installed.
+
+The migration uses the exact catalog lookup
+`pg_catalog.to_regprocedure('public.dev_effective_vault_now()')`. It deliberately
+uses `CREATE FUNCTION`, never `CREATE OR REPLACE FUNCTION`:
+
+- Existing staging function: no operation; Migration 012 remains untouched.
+- Missing production function: install a `VOLATILE`, `SECURITY DEFINER`, empty-
+  search-path SQL helper returning only `pg_catalog.clock_timestamp()`.
+
+The production branch immediately revokes all execution from `public`, `anon`,
+and `authenticated`. It creates no `dev_environment_config`,
+`dev_test_accounts`, `dev_test_state`, developer mutation function, allowlist,
+environment gate, offset, or simulated-clock capability. Internal authorities
+owned by the migration role retain their normal invocation path.
+
+Current references are:
+
+- Migration 012: the staging helper definition plus staging-only developer and
+  authoritative wrapper calls.
+- Migration 016: `build_vault_daily_mission(...)`.
+- Migration 018: `select_daily_mission_choice(uuid)`.
+- Migration 020: `get_skill_path_mission_offers()`,
+  `request_skill_path_mission_offers(text)`, and
+  `select_skill_path_mission_offer(uuid)`.
+
+Apply after Migration 020:
+
+```text
+supabase/migrations/202608070021_sprint21_1_effective_clock_compatibility.sql
+```
+
+`migrations-pre-sprint21.1.sha256` records migrations 001–020 without changing
+any historical fingerprint baseline.

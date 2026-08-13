@@ -692,6 +692,31 @@ recurrence, deadlines, capacity limits, AI Coach, custom skills, or Sprint 19
 mission-pool integration. No live Supabase, staging, production deployment, or
 live verification is claimed by this package.
 
+## Sprint 21.1 — Production Effective-Clock Compatibility Hotfix
+
+Status: ✅ Code complete; migration, emergency deployment, and live verification remain manual
+
+Root cause: Production intentionally omitted staging-only Migration 012, while
+the Sprint 15 catalog builder, Sprint 19 choice selection, and Sprint 21 offer
+functions referenced Migration 012's internal zero-argument effective-clock
+helper. PostgreSQL therefore raised `42883` when those paths executed.
+
+Completed: Added a conditional Migration 021 catalog check. Staging does
+nothing when its existing helper is present. Production receives only a revoked
+zero-argument real-database-time fallback returning `clock_timestamp()`. Added
+focused production/staging compatibility, privilege, dependency, reward,
+authority, immutability, and regression coverage.
+
+Definition of Done: Production restoration can resolve the effective-clock
+dependency without installing Migration 012 or gaining developer tables,
+allowlists, simulated state, mutation controls, or browser time authority.
+Staging's existing simulated-clock behavior remains unchanged.
+
+Notes: Migration 021 is required. Migrations 001–020 remain byte-for-byte
+unchanged. There are no frontend changes. No production deployment, production
+verification, staging verification, or live Supabase verification is claimed by
+this package.
+
 ## Sprint 17.1 — Skill Center Empty-State Polish
 
 Status: ✅ Code complete; deployment and live verification remain manual

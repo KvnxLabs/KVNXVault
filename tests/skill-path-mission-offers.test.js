@@ -173,8 +173,9 @@ test("migrations 001 through 019 remain byte-for-byte unchanged", () => {
     assert.equal(actual, digest, relativePath);
   });
 });
-test("Migration 020 is the only Sprint 21 migration", () => {
-  const files = fs.readdirSync(path.join(root, "supabase/migrations")).filter((name) => name.includes("sprint21"));
+test("Migration 020 remains the only Sprint 21 offer migration", () => {
+  const files = fs.readdirSync(path.join(root, "supabase/migrations"))
+    .filter((name) => /sprint21_skill_path_mission_offers/.test(name));
   assert.deepEqual(files, ["202608070020_sprint21_skill_path_mission_offers.sql"]);
 });
 test("JavaScript syntax, local references, hidden confidentiality, and secret scan pass", () => {

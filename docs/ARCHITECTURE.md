@@ -1144,3 +1144,43 @@ no repair. Additional unique partial indexes enforce at most one completed Side
 history record for an owner/logical day and mission instance. No frontend admin
 surface, mutation capability, service-role credential, new reward, extra daily
 capacity, Side streak, or Side achievement is introduced.
+
+## Sprint 24 Operational Hardening
+
+Sprint 24 wraps the existing authoritative economy with a disconnected,
+administrator-only monitoring plane. It adds no gameplay trigger and no
+frontend integration. Mission completion remains independent from monitoring:
+
+```text
+Authoritative mission/progression/history state
+  → read-only deterministic detector
+  → serialized monitoring run
+  → immutable per-run findings
+  → fingerprint-deduplicated operational alerts
+  → administrator health summary
+```
+
+`detect_vault_operational_anomalies()` reuses
+`audit_side_mission_invariants()` and adds deterministic checks for fixed reward
+snapshots, lifecycle event ordering, impossible Side event volume, Daily
++25/+15 history, and progression/history reconciliation. It reads only. The
+monitoring runner persists observational findings and alerts but cannot write
+mission, progression, skill, history, streak, achievement, or reset state.
+
+One global advisory lock serializes monitoring runs. Alert fingerprints are
+derived from source, category, and stable affected identity, then protected by
+a primary key. Repeated scans refresh one alert; conditions absent from a later
+complete scan resolve. No repair, XP correction, mission deletion, account
+action, or automatic gameplay mutation occurs.
+
+The health API, detector, runner, alert tables, and retention function are all
+revoked from browser roles. The repository has no operator-role abstraction,
+so access remains with the database owner/administrator rather than introducing
+a weak client admin role.
+
+Retention is explicit and administrator-invoked. It deletes only bounded old
+Sprint 24 monitoring runs/findings and resolved alerts. `mission_history`,
+mission state, progression, skills, and the Sprint 23 event ledger are never
+eligible. The event ledger is preserved because Sprint 23's `all` period
+contract depends on its lifecycle history. No scheduler dependency is assumed;
+an external database-owner scheduler may invoke the same function later.

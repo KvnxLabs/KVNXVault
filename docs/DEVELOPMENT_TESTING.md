@@ -443,3 +443,75 @@ On approved staging, use only Migration 012's existing guarded clock controls:
 Rejected/idempotent request counts are intentionally not written to the event
 ledger. Use bounded PostgREST/database logs when diagnosing those requests so a
 browser cannot manufacture durable telemetry volume.
+
+## Sprint 24 Operational Monitoring Procedure
+
+Migration 024 has no frontend deployment requirement. Back up production,
+verify Migration 023 is installed, apply Migration 024, and execute checks only
+from the database administrator/owner context.
+
+Run one scan:
+
+```sql
+select public.run_vault_operational_monitoring();
+```
+
+A clean response has `healthy: true`, `healthState: "healthy"`, zero invariant
+and anomaly counts, and an empty findings array. Any finding contains category,
+severity, source, optional affected references, and structured details. The
+function detects and records only; it performs no repair.
+
+Read the operator summary:
+
+```sql
+select public.get_vault_operational_health();
+```
+
+Inspect protected detail as database administrator when necessary:
+
+```sql
+select alert_type, severity, source, status, occurrence_count,
+       first_detected_at, last_detected_at,
+       affected_user_id, daily_key, mission_id, details
+from public.vault_operational_alerts
+order by status, severity, last_detected_at desc;
+```
+
+Before responding to an incident, rerun the scan and compare the protected
+finding with authoritative state/history. Sprint 24 never repairs data. Back up
+and investigate before any separately reviewed remediation.
+
+Retention defaults to 180 days and a 1000-row batch:
+
+```sql
+select public.prune_vault_operational_data();
+```
+
+Or use bounded administrator-selected controls:
+
+```sql
+select public.prune_vault_operational_data(365, 1000);
+```
+
+The response explicitly reports removed monitoring runs/findings/resolved
+alerts and zero removals for Side events, mission history/state, and
+progression. Run it repeatedly when more than one batch is eligible. Empty
+cleanup is successful and returns zero counts.
+
+No database scheduler is assumed or installed. Production automation may later
+use an externally managed database-owner schedule—for example, monitoring every
+15 minutes and bounded retention daily—but must call these exact revoked
+functions under approved administrator credentials. Never expose them through
+the browser or grant them to `authenticated`.
+
+Staging verification should create representative corrupt fixtures only in the
+isolated staging database: reward mismatch, missing Side history, inverted
+event time, Daily reward mismatch, and progression divergence. Confirm alerts
+deduplicate across concurrent/repeated scans, resolve after fixture repair, and
+that XP, skill XP, history, mission state, Daily Complete, replacements, streak,
+and achievements remain unchanged. Do not corrupt production to test alerts.
+
+If Migration 024 must be rolled back before production acceptance, remove only
+its four functions and three operational tables after backing up operational
+records. Do not touch migrations or objects from 001–023. Once accepted, use a
+new forward migration instead of editing 024.

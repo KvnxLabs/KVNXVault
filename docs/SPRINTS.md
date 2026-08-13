@@ -860,3 +860,34 @@ Notes: Migration 023 is required. Migrations 001–022 remain byte-for-byte
 unchanged. Migration 021 real-production/staging-simulation clock behavior is
 unchanged. No production deployment, production verification, staging
 verification, or live Supabase verification is claimed by this package.
+
+## Sprint 24 — Operational Hardening
+
+Status: ✅ Code complete; review, migration, scheduling, deployment, and live verification remain manual
+
+Completed: Added administrator-only monitoring runs, immutable per-run
+findings, deterministic deduplicated alerts, a read-only anomaly detector built
+on Sprint 23 invariants, a serialized monitoring runner, a privacy-restrained
+health summary, and bounded retention for old Sprint 24 operational data.
+
+Detection covers only architecture-proven conditions: Sprint 23 invariant
+violations, invalid Side +10/+10/canonical-skill snapshots, impossible lifecycle
+order or event volume, invalid Daily +25/+15 completion history, and overall or
+skill progression/history divergence. Detection and alerts never repair,
+reward, subtract, delete, reset, suspend, or mutate gameplay state.
+
+Security: All operational tables use RLS with no browser policies or grants.
+All operational functions are revoked from `public`, `anon`, and
+`authenticated`, use fixed empty search paths, and remain database-owner only.
+No frontend, admin role, service credential, scheduler, or external dependency
+is added.
+
+Retention removes only bounded old monitoring runs/findings and resolved
+alerts. Open alerts, Sprint 23 lifecycle events, authoritative mission history,
+state, progression, skills, streaks, achievements, and Daily systems are
+preserved. The Sprint 23 ledger remains intact to preserve its `all` contract.
+
+Notes: Migration 024 is required. Migrations 001–023 remain byte-for-byte
+unchanged. Sprint 24 does not implement Quick Actions or any user-facing
+feature. No commit, push, deployment, migration application, or live
+verification is claimed.

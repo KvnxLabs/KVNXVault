@@ -26,6 +26,7 @@ The authoritative schema and policies live in:
 - `supabase/migrations/202608070021_sprint21_1_effective_clock_compatibility.sql`
 - `supabase/migrations/202608070022_sprint22_side_mission_lifecycle.sql`
 - `supabase/migrations/202608070023_sprint23_side_mission_observability.sql`
+- `supabase/migrations/202608070024_sprint24_operational_hardening.sql`
 
 Apply production migrations in numeric order, skipping the intentional 010 gap
 and staging-only Migration 012. Migration 021 supplies production's real-clock
@@ -49,6 +50,9 @@ migration files remain immutable.
 | `skill_path_mission_offer_state` | Stable bounded practice offers and one planned selection per owner/day/skill | Server-owned; restored by authenticated RPC |
 | `side_mission_state` | One authoritative Side Mission slot per owner/logical day | `(user_id, daily_key)`; lifecycle RPCs derive `auth.uid()` |
 | `side_mission_event_ledger` | Append-only authoritative Side Mission lifecycle events | Server-written trigger; no direct browser privileges |
+| `vault_operational_monitoring_runs` | Administrator monitoring execution summaries | Database administrator only |
+| `vault_operational_findings` | Immutable findings for one monitoring run | Database administrator only; retention-eligible |
+| `vault_operational_alerts` | Deduplicated open/resolved anomaly alerts | Database administrator only; resolved records are retention-eligible |
 
 Derived progression values—level, next threshold, remaining XP, and percentage—are not stored. `progression.js` recomputes them from `total_xp`, preserving one progression engine.
 
@@ -1090,3 +1094,45 @@ supabase/migrations/202608070023_sprint23_side_mission_observability.sql
 
 `migrations-pre-sprint23.sha256` records migrations 001–022 without changing
 any historical fingerprint baseline.
+
+## Sprint 24 Operational Hardening Authority
+
+Migration `202608070024_sprint24_operational_hardening.sql` adds three
+observational tables with RLS enabled and no browser policies or privileges:
+
+- `vault_operational_monitoring_runs`: timestamps, health state, invariant and
+  anomaly counts, alert changes, and structured category/severity counts.
+- `vault_operational_findings`: one immutable structured finding per
+  `(run_id, fingerprint)` with optional affected owner/day/mission references.
+- `vault_operational_alerts`: one row per deterministic fingerprint with
+  severity, source, current details, occurrence count, and open/resolved state.
+
+The database-administrator-only functions are:
+
+- `detect_vault_operational_anomalies()` — internal read-only rule set.
+- `run_vault_operational_monitoring()` — serialized scan, finding persistence,
+  alert upsert/deduplication, automatic observational resolution, and structured
+  result.
+- `get_vault_operational_health()` — read-only latest health, unresolved
+  severity, recent category, volume, and retention summary without affected
+  user/mission identifiers.
+- `prune_vault_operational_data(integer, integer)` — bounded cleanup with 30–
+  3650 retention days and 1–5000 records per class per call.
+
+Every function uses `SECURITY DEFINER`, `SET search_path = ''`, and schema-
+qualified objects. Execute is revoked from `public`, `anon`, and
+`authenticated`; no browser or service-role credential is introduced.
+
+Monitoring may write only the three operational tables. Cleanup may delete only
+old monitoring runs (cascading their findings) and old resolved alerts. Open
+alerts, Sprint 23 events, mission history/state, progression, skills,
+achievements, streaks, and Daily state are never eligible.
+
+Apply after Migration 023:
+
+```text
+supabase/migrations/202608070024_sprint24_operational_hardening.sql
+```
+
+`migrations-pre-sprint24.sha256` records migrations 001–023 without changing
+historical baselines.

@@ -217,3 +217,32 @@ insert/update/delete against `daily_mission_choice_state` must fail.
 
 On production, do not advance or mutate time. Wait for a natural new logical
 day, verify the normal stable choice flow, and leave all developer gates closed.
+
+## Sprint 20 Skill Path Verification
+
+Install Migration 019 after Migration 018, without changing developer-clock
+gates or advancing production time.
+
+1. Sign in with an account whose onboarding focus is Programming and record
+   overall XP, skill XP, streak, achievements, history count, current mission,
+   and the current Sprint 19 mission/choice identity.
+2. Open `dashboard.html#skills`, activate Fitness, and confirm it displays
+   **Developing**, 0 XP if untouched, and no expandable progression/history.
+3. Refresh `#skills` and sign out/in. Confirm the protected restoration gate
+   appears first and Fitness remains Developing.
+4. Repeat activation. Confirm there is still one owner/Fitness row and no
+   duplicate or state change.
+5. Confirm every value recorded in step 1 is unchanged, especially today's
+   persisted Sprint 19 choice set or mission instance.
+6. Pause Fitness. Confirm its path state changes, while any lifetime Fitness XP
+   and Vault records remain unchanged. Repeat pause to confirm idempotency.
+7. Activate a positive-XP skill, then pause it. Confirm its lifetime level,
+   total XP, progress, recent gains, and disclosure remain available throughout.
+8. Attempt a noncanonical key, an inactive catalog key, unauthenticated calls,
+   and direct insert/update/delete on `user_skill_paths`; each must fail.
+9. Issue simultaneous activate/deactivate requests for the same skill. Confirm
+   mutations serialize and the final authoritative row is internally consistent.
+
+Production verification requires no clock operation. The pending Sprint 15 and
+Sprint 19 natural-new-day checks remain deferred until the next real logical-day
+rollover and should be performed separately from Skill Path state testing.

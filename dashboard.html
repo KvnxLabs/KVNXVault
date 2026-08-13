@@ -389,7 +389,7 @@
 
             <div data-skill-center-content>
               <dl class="skill-center__metrics" aria-label="Lifetime skill summary">
-                <div class="skill-center__metric app-card"><dt>Active skills</dt><dd data-skill-center-active>—</dd><span>With verified XP</span></div>
+                <div class="skill-center__metric app-card"><dt>Skills with progress</dt><dd data-skill-center-active>—</dd><span>With verified XP</span></div>
                 <div class="skill-center__metric app-card"><dt>Total skill XP</dt><dd data-skill-center-total-xp>—</dd><span>Lifetime persisted total</span></div>
                 <div class="skill-center__metric app-card"><dt>Highest skill</dt><dd data-skill-center-highest>—</dd><span data-skill-center-highest-context>No mastery recorded</span></div>
                 <div class="skill-center__metric app-card"><dt>Most recently developed</dt><dd data-skill-center-recent>—</dd><span data-skill-center-recent-context>No verified gain yet</span></div>
@@ -399,7 +399,8 @@
                 <fieldset class="skill-center__filters" aria-label="Filter skills">
                   <legend class="app-visually-hidden">Filter skills</legend>
                   <button type="button" data-skill-filter="all" aria-pressed="true">All Skills</button>
-                  <button type="button" data-skill-filter="active" aria-pressed="false">Active</button>
+                  <button type="button" data-skill-filter="active" aria-pressed="false">With Progress</button>
+                  <button type="button" data-skill-filter="developing" aria-pressed="false">Developing</button>
                   <button type="button" data-skill-filter="not-started" aria-pressed="false">Not Started</button>
                 </fieldset>
                 <label class="skill-center__sort"><span>Sort</span><select data-skill-sort><option value="highest-level">Highest Level</option><option value="most-xp">Most XP</option><option value="name">Name</option></select></label>
@@ -407,6 +408,7 @@
 
               <p class="skill-center__empty" data-skill-center-empty hidden><strong>No mastery recorded yet.</strong><span>Complete your first mission to begin developing skills.</span></p>
               <p class="skill-center__results" data-skill-center-results role="status" aria-live="polite"></p>
+              <p class="skill-center__path-status" data-skill-path-status role="status" aria-live="polite"></p>
               <div class="skill-center__groups" data-skill-center-groups></div>
             </div>
           </section>

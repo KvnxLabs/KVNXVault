@@ -643,6 +643,29 @@ Notes: No database migration is required. Migrations 001–016 remain unchanged.
 No live Supabase, staging, production deployment, or live verification is
 claimed by this package.
 
+## Sprint 20 — Server-Authoritative Skill Paths
+
+Status: ✅ Code complete; migration, deployment, and live verification remain manual
+
+Goal: Let users activate and pause canonical development paths while preserving
+the distinction between intentional development and verified lifetime progress.
+
+Completed: Added soft owner/skill path persistence, canonical active-skill
+validation, idempotent and concurrency-safe activation/deactivation, zero-
+argument restoration, strict frozen Repository/Application Service snapshots,
+Skill Center path controls, a separate Developing filter, and compact zero-XP
+path presentation. Fitness uses the same canonical flow for every account.
+
+Definition of Done: Path changes award nothing, create nothing in the mission
+or Vault domains, preserve XP/history on deactivation, and cannot reroll or
+alter Sprint 19 choices. Positive XP alone still enables skill detail. The
+protected loading gate waits for Skill Path restoration.
+
+Notes: Migration 019 is required. Migrations 001–018 remain byte-for-byte
+unchanged. Sprint 20 adds no Side Missions, skill-specific mission generation,
+new economy, custom skills, subcategories, or AI Coach. No production, staging,
+or live Supabase verification is claimed by this package.
+
 ## Sprint 17.1 — Skill Center Empty-State Polish
 
 Status: ✅ Code complete; deployment and live verification remain manual

@@ -980,3 +980,37 @@ replacement remains the only post-selection change mechanism. This bounded
 offer → opaque selection → server lock contract is the reusable authority
 foundation for later Skill Paths, but Sprint 19 adds no multi-focus selection,
 Side Missions, Fitness-specific behavior, or additional XP economy.
+
+## Sprint 20 Server-Authoritative Skill Paths
+
+Sprint 20 adds `user_skill_paths` as a separate preference domain. It does not
+reinterpret `skill_progression`: positive lifetime XP still means a skill has
+verified progress, while `pathActive` means only that the authenticated user
+currently intends to develop that canonical skill. Any combination is valid:
+inactive or active path, with zero or positive lifetime XP.
+
+```text
+Skill Center intent
+→ Application Service
+→ User Repository sends one canonical skill key
+→ authenticated SECURITY DEFINER RPC
+→ auth.uid() + active skill_catalog validation
+→ soft owner/skill path state
+→ validated frozen snapshot reconciliation
+```
+
+`get_skill_paths()` is a zero-argument restoration read. Activation and
+deactivation are idempotent, serialized for one owner/skill pair, and return
+the authoritative row. Deactivation is soft state; it cannot delete lifetime
+progression or Vault history. The browser cannot create skills or submit a
+display name, owner, XP, level, reward, mission, date, or timezone.
+
+Skill Center merges the path slice with the existing catalog/progression view.
+“With Progress” remains XP-based; “Developing” is path-based. An active path
+with zero XP stays a compact, non-expandable Not Started card. The restoration
+gate remains closed until path restoration succeeds.
+
+Sprint 19 is deliberately not integrated. Path mutations do not read or write
+Daily Mission Choice, reroll choices, create missions, alter onboarding focus,
+or affect today's mission. A later bounded mission layer may use active paths
+as server-owned eligibility input, but Sprint 20 implements no such economy.

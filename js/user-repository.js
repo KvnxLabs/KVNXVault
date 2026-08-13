@@ -25,6 +25,7 @@
   };
 
   const ANALYTICS_PERIODS = Object.freeze(["7d", "30d", "all"]);
+  const SKILL_KEY_PATTERN = /^[a-z][a-z0-9_]{1,63}$/;
 
   const isISOCalendarDate = (value) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -35,6 +36,43 @@
 
   const isUUID = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     .test(String(value || ""));
+
+  const mapSkillPath = (result) => {
+    if (!result || typeof result !== "object") {
+      throw createRepositoryError("skill-path-response-invalid");
+    }
+    const key = String(result.key || "");
+    const name = String(result.name || "");
+    const pathActive = result.pathActive;
+    const catalogActive = result.catalogActive;
+    const normalizeTimestamp = (value) => {
+      if (value === null || value === undefined) return null;
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+    };
+    const activatedAt = normalizeTimestamp(result.activatedAt);
+    const deactivatedAt = normalizeTimestamp(result.deactivatedAt);
+    const updatedAt = normalizeTimestamp(result.updatedAt);
+
+    if (!SKILL_KEY_PATTERN.test(key) || !name
+      || typeof pathActive !== "boolean" || typeof catalogActive !== "boolean"
+      || !updatedAt
+      || (result.activatedAt != null && !activatedAt)
+      || (result.deactivatedAt != null && !deactivatedAt)
+      || (pathActive && (!activatedAt || deactivatedAt))
+      || (!pathActive && !deactivatedAt)) {
+      throw createRepositoryError("skill-path-response-invalid");
+    }
+    return Object.freeze({
+      key,
+      name,
+      pathActive,
+      catalogActive,
+      activatedAt,
+      deactivatedAt,
+      updatedAt,
+    });
+  };
 
   const mapVaultStreak = (result) => {
     if (!result || typeof result !== "object") {
@@ -458,6 +496,45 @@
       return Object.freeze(catalog);
     };
 
+    // Sprint 20 path restoration is owner-derived and zero-argument. Path
+    // preference is independent from the authoritative lifetime XP snapshot.
+    const getSkillPaths = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_skill_paths"),
+        "skill-paths-load-failed",
+      );
+      if (!Array.isArray(result)) {
+        throw createRepositoryError("skill-paths-response-invalid");
+      }
+      const paths = result.map(mapSkillPath);
+      if (new Set(paths.map((path) => path.key)).size !== paths.length) {
+        throw createRepositoryError("skill-paths-response-invalid");
+      }
+      return Object.freeze(paths);
+    };
+
+    const requestSkillPathState = async (skillKey, pathActive) => {
+      await getAuthenticatedUser();
+      const normalizedSkillKey = String(skillKey || "").trim().toLowerCase();
+      if (!SKILL_KEY_PATTERN.test(normalizedSkillKey)) {
+        throw new TypeError("A canonical skill key is required.");
+      }
+      const rpcName = pathActive ? "activate_skill_path" : "deactivate_skill_path";
+      const result = await unwrap(
+        database.rpc(rpcName, { p_skill_key: normalizedSkillKey }),
+        pathActive ? "skill-path-activation-failed" : "skill-path-deactivation-failed",
+      );
+      const mapped = mapSkillPath(result);
+      if (mapped.key !== normalizedSkillKey || mapped.pathActive !== pathActive) {
+        throw createRepositoryError("skill-path-response-invalid");
+      }
+      return mapped;
+    };
+
+    const activateSkillPath = (skillKey) => requestSkillPathState(skillKey, true);
+    const deactivateSkillPath = (skillKey) => requestSkillPathState(skillKey, false);
+
     // Sprint 11 restoration remains read-only. Both RPCs derive identity and
     // ownership inside PostgreSQL and accept no browser-supplied arguments.
     const getAchievementCatalog = async () => {
@@ -746,8 +823,11 @@
     };
 
     return Object.freeze({
+      activateSkillPath,
+      deactivateSkillPath,
       getAchievementCatalog,
       getSkillCatalog,
+      getSkillPaths,
       getSkillProgression,
       getUserAchievements,
       getVaultAnalytics,

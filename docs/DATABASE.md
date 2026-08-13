@@ -36,6 +36,7 @@ contract without editing migrations 001–007.
 | `mission_history` | Terminal mission records | `user_id → auth.users.id` |
 | `skill_catalog` | Fixed skill keys, names, ordering, and activation | Server managed; authenticated read |
 | `skill_progression` | Lifetime XP per user and skill | `(user_id, skill_key)` with `user_id → auth.users.id` |
+| `user_skill_paths` | Soft development intent per canonical skill | `(user_id, skill_key)`; owner derived by RPC from `auth.uid()` |
 
 Derived progression values—level, next threshold, remaining XP, and percentage—are not stored. `progression.js` recomputes them from `total_xp`, preserving one progression engine.
 
@@ -879,3 +880,37 @@ supabase/migrations/202608070018_sprint19_daily_mission_choice.sql
 
 `migrations-pre-sprint19.sha256` records migrations 001–017 without changing
 any historical baseline.
+
+## Sprint 20 Skill Path Authority
+
+Migration `202608070019_sprint20_skill_paths.sql` adds `user_skill_paths` with
+one row per owner and canonical skill. `path_active`, activation/deactivation
+timestamps, and a state-consistency check preserve soft preference state.
+`skill_progression`, `mission_history`, onboarding, and Sprint 19 choice rows
+are neither migrated nor rewritten.
+
+The table has RLS enabled and intentionally has no browser policy. All direct
+privileges are revoked from `public`, `anon`, and `authenticated`. Three narrow
+contracts are executable only by `authenticated`:
+
+- `get_skill_paths()` accepts no arguments and returns only `auth.uid()` rows.
+- `activate_skill_path(p_skill_key text)` requires an active canonical catalog
+  key and idempotently activates it.
+- `deactivate_skill_path(p_skill_key text)` requires a canonical catalog key
+  and idempotently soft-deactivates it.
+
+All use `SECURITY DEFINER`, `SET search_path = ''`, schema-qualified objects,
+and owner/skill advisory locking for mutation convergence. The mutation bodies
+write only `user_skill_paths`: they award no XP or skill XP, create no mission
+or history, alter no streak or achievement, and do not touch Daily Mission
+Choice. Fitness is available through the same active canonical catalog
+validation as every other skill, regardless of onboarding focus.
+
+Apply after Migration 018 and before deploying the Sprint 20 frontend:
+
+```text
+supabase/migrations/202608070019_sprint20_skill_paths.sql
+```
+
+`migrations-pre-sprint20.sha256` records migrations 001–018 without changing
+any historical fingerprint baseline.

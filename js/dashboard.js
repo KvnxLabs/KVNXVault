@@ -143,11 +143,11 @@ const KVNXSkillsExperience = (() => {
   return Object.freeze({ createViewModel });
 })();
 
-// Sprint 17 is a read-only merge of the protected canonical catalog, persisted
-// skill totals, and bounded authoritative Vault history. Award amounts and
-// mission attribution are never inferred from current mission content.
+// Sprint 20 adds a separate authoritative development-path preference to the
+// Sprint 17 read-only catalog/progression/history merge. Positive XP still
+// controls progression disclosure; path activation never fabricates mastery.
 const KVNXSkillCenterExperience = (() => {
-  const FILTERS = Object.freeze(["all", "active", "not-started"]);
+  const FILTERS = Object.freeze(["all", "active", "developing", "not-started"]);
   const SORTS = Object.freeze(["highest-level", "most-xp", "name"]);
 
   const compareIdentity = (left, right) => (left.sortOrder - right.sortOrder)
@@ -169,12 +169,15 @@ const KVNXSkillCenterExperience = (() => {
 
     const catalog = Array.isArray(snapshot?.skillCatalog) ? snapshot.skillCatalog : [];
     const progression = Array.isArray(snapshot?.skills) ? snapshot.skills : [];
+    const skillPaths = Array.isArray(snapshot?.skillPaths) ? snapshot.skillPaths : [];
     const history = Array.isArray(snapshot?.history) ? snapshot.history : [];
     const progressionByKey = new Map(progression.map((skill) => [String(skill.key), skill]));
+    const pathsByKey = new Map(skillPaths.map((path) => [String(path.key), path]));
 
     const allSkills = catalog.map((catalogSkill, index) => {
       const key = String(catalogSkill.key || "");
       const persisted = progressionByKey.get(key);
+      const path = pathsByKey.get(key);
       const totalXPValue = Number(persisted?.totalXP || 0);
       const totalXP = Number.isFinite(totalXPValue) ? Math.max(0, Math.floor(totalXPValue)) : 0;
       const derived = progressionEngine.getSnapshot(
@@ -203,8 +206,10 @@ const KVNXSkillCenterExperience = (() => {
           : index,
         totalXP,
         active: totalXP > 0,
+        developmentPathActive: path?.pathActive === true,
         expandable: totalXP > 0,
-        stateLabel: totalXP > 0 ? "Active" : "Not Started",
+        stateLabel: totalXP > 0 ? "Progress recorded" : "Not Started",
+        pathStateLabel: path?.pathActive === true ? "Developing" : "Path inactive",
         level: derived.currentLevel,
         nextLevel: derived.nextLevel,
         currentLevelXP: derived.currentLevelXP,
@@ -236,7 +241,9 @@ const KVNXSkillCenterExperience = (() => {
     const filter = FILTERS.includes(options.filter) ? options.filter : "all";
     const sort = SORTS.includes(options.sort) ? options.sort : "highest-level";
     const filtered = identitySorted.filter((skill) => filter === "all"
-      || (filter === "active" ? skill.active : !skill.active));
+      || (filter === "active" && skill.active)
+      || (filter === "developing" && skill.developmentPathActive)
+      || (filter === "not-started" && !skill.active));
     filtered.sort((left, right) => {
       if (sort === "name") return left.name.localeCompare(right.name, "en-US") || compareIdentity(left, right);
       if (sort === "most-xp") return (right.totalXP - left.totalXP) || compareIdentity(left, right);
@@ -246,6 +253,7 @@ const KVNXSkillCenterExperience = (() => {
     return Object.freeze({
       empty: activeSkills.length === 0,
       activeCount: activeSkills.length,
+      developmentPathCount: identitySorted.filter((skill) => skill.developmentPathActive).length,
       totalSkillXP: identitySorted.reduce((total, skill) => total + skill.totalXP, 0),
       highestSkill,
       recentlyDeveloped,
@@ -880,6 +888,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const skillCenterEmpty = document.querySelector("[data-skill-center-empty]");
   const skillCenterResults = document.querySelector("[data-skill-center-results]");
   const skillCenterGroups = document.querySelector("[data-skill-center-groups]");
+  const skillPathStatus = document.querySelector("[data-skill-path-status]");
   const achievementList = document.querySelector("[data-achievement-list]");
   const achievementsCount = document.querySelector("[data-achievements-count]");
   const achievementCenterContent = document.querySelector("[data-achievement-center-content]");
@@ -1162,6 +1171,23 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
           state.className = "skill-center__state";
           state.textContent = skill.stateLabel;
           headingCopy.append(name, state);
+          if (skill.developmentPathActive) {
+            const pathState = document.createElement("span");
+            pathState.className = "skill-center__path-state";
+            pathState.textContent = skill.pathStateLabel;
+            headingCopy.append(pathState);
+          }
+
+          const pathControl = document.createElement("div");
+          pathControl.className = "skill-center__path-control";
+          const pathButton = document.createElement("button");
+          pathButton.type = "button";
+          pathButton.className = `skill-center__path-action${skill.developmentPathActive ? " is-secondary" : ""}`;
+          pathButton.dataset.skillPathKey = skill.key;
+          pathButton.dataset.skillPathAction = skill.developmentPathActive ? "deactivate" : "activate";
+          pathButton.textContent = skill.developmentPathActive ? "Pause Path" : "Activate Path";
+          pathButton.setAttribute("aria-label", `${pathButton.textContent} for ${skill.name}`);
+          pathControl.append(pathButton);
 
           if (!skill.expandable) {
             const total = document.createElement("span");
@@ -1169,6 +1195,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
             total.textContent = `${skill.totalXP.toLocaleString("en-US")} XP`;
             heading.append(headingCopy, total);
             card.append(heading);
+            card.append(pathControl);
             grid.append(card);
             return;
           }
@@ -1235,14 +1262,14 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
           vaultLink.href = "#vault";
           vaultLink.textContent = "View in Vault →";
           detail.append(detailHeading, gains, noGains, vaultLink);
-          card.append(heading, overview, detail);
+          card.append(heading, overview, detail, pathControl);
           grid.append(card);
         });
         section.append(heading, grid);
         skillCenterGroups.append(section);
       };
 
-      renderGroup("Active Skills", viewModel.activeSkills, "is-active");
+      renderGroup("Skills with Progress", viewModel.activeSkills, "is-active");
       renderGroup("Not Started", viewModel.notStartedSkills, "is-not-started");
     } catch {
       if (skillCenterContent) skillCenterContent.hidden = true;
@@ -2118,6 +2145,32 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     });
   });
   skillCenterSort?.addEventListener("change", () => renderSkillCenter(applicationSnapshot));
+
+  skillCenterGroups?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-skill-path-action]");
+    if (!button || !skillCenterGroups.contains(button) || button.disabled) return;
+    const skillKey = button.dataset.skillPathKey;
+    const activate = button.dataset.skillPathAction === "activate";
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    if (skillPathStatus) skillPathStatus.textContent = `${activate ? "Activating" : "Pausing"} development path…`;
+    try {
+      const result = activate
+        ? await vaultApplication.activateSkillPath(skillKey)
+        : await vaultApplication.deactivateSkillPath(skillKey);
+      if (!result?.accepted) throw new Error(result?.reason || "skill-path-rejected");
+      applicationSnapshot = result.snapshot;
+      renderSkillCenter(applicationSnapshot);
+      if (skillPathStatus) {
+        const skillName = result.path?.name || "Skill";
+        skillPathStatus.textContent = `${skillName} is ${activate ? "now a development path" : "no longer an active development path"}.`;
+      }
+    } catch {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      if (skillPathStatus) skillPathStatus.textContent = "The Vault could not update that development path. Try again.";
+    }
+  });
 
   achievementCenterFilterButtons.forEach((button) => {
     button.addEventListener("click", () => {

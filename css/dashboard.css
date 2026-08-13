@@ -2843,6 +2843,61 @@
   text-transform: uppercase;
 }
 
+.skill-center__path-state {
+  width: fit-content;
+  padding: 4px 7px;
+  border: 1px solid rgba(214, 181, 89, 0.28);
+  border-radius: 999px;
+  color: #d6b559;
+  font-size: 0.52rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.skill-center__path-control {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 22px 18px;
+}
+
+.skill-center__path-action {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(223, 50, 72, 0.32);
+  border-radius: 7px;
+  color: var(--app-text);
+  background: rgba(183, 32, 52, 0.12);
+  font: inherit;
+  font-size: 0.61rem;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.skill-center__path-action.is-secondary {
+  border-color: var(--app-line);
+  color: var(--app-muted);
+  background: transparent;
+}
+
+.skill-center__path-action:hover:not(:disabled),
+.skill-center__path-action:focus-visible {
+  border-color: rgba(223, 50, 72, 0.58);
+  color: var(--app-text);
+}
+
+.skill-center__path-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.skill-center__path-status {
+  min-height: 18px;
+  margin: -7px 0 14px;
+  color: var(--app-muted);
+  font-size: 0.62rem;
+}
+
 .skill-center__level {
   display: grid;
   grid-column: 2;
@@ -3330,7 +3385,7 @@
 
   .skill-center__filters {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .skill-center__filters button { padding: 0 8px; }

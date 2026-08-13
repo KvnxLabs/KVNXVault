@@ -65,6 +65,7 @@
     let progression;
     let skillProgression = [];
     let skillCatalog = [];
+    let skillPaths = [];
     let achievements = [];
     let streak = Object.freeze({ currentStreak: 0, longestStreak: 0, lastCompletedDailyKey: null });
     let analytics = null;
@@ -104,6 +105,7 @@
       progression: progressionEngine.getSnapshot(progression),
       skills: Object.freeze([...skillProgression]),
       skillCatalog: Object.freeze([...skillCatalog]),
+      skillPaths: Object.freeze([...skillPaths]),
       achievements: Object.freeze(achievements.map(toPublicAchievement)),
       streak,
       analytics,
@@ -194,6 +196,21 @@
         skills.map(createSkillSnapshot),
       );
       return skillProgression;
+    };
+
+    const restoreSkillPaths = (paths = []) => {
+      skillPaths = Object.freeze(paths.map((path) => Object.freeze({ ...path })));
+      return skillPaths;
+    };
+
+    const reconcileSkillPath = (updatedPath) => {
+      if (!updatedPath?.key) return null;
+      const nextPath = Object.freeze({ ...updatedPath });
+      skillPaths = Object.freeze([
+        nextPath,
+        ...skillPaths.filter((path) => path.key !== nextPath.key),
+      ]);
+      return nextPath;
     };
 
     const reconcileUpdatedSkill = (updatedSkill) => {
@@ -413,6 +430,7 @@
       let loadedHistory;
       let loadedSkills = [];
       let loadedSkillCatalog = [];
+      let loadedSkillPaths = [];
       let loadedAchievementCatalog = [];
       let loadedAchievements = [];
       let loadedStreak = null;
@@ -440,7 +458,7 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult, skillCatalogResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
           repository.loadProgression(),
           typeof repository.getVaultHistory === "function"
             ? repository.getVaultHistory()
@@ -450,6 +468,9 @@
             : Promise.resolve([]),
           typeof repository.getSkillCatalog === "function"
             ? repository.getSkillCatalog()
+            : Promise.resolve([]),
+          typeof repository.getSkillPaths === "function"
+            ? repository.getSkillPaths()
             : Promise.resolve([]),
           typeof repository.getAchievementCatalog === "function"
             ? repository.getAchievementCatalog()
@@ -468,6 +489,7 @@
         loadedHistory = historyResult;
         loadedSkills = skillResult;
         loadedSkillCatalog = skillCatalogResult;
+        loadedSkillPaths = skillPathsResult;
         loadedAchievementCatalog = achievementCatalogResult;
         loadedAchievements = achievementResult;
         loadedStreak = streakResult;
@@ -537,6 +559,7 @@
         (Array.isArray(loadedSkillCatalog) ? loadedSkillCatalog : [])
           .map((entry) => Object.freeze({ ...entry })),
       );
+      restoreSkillPaths(Array.isArray(loadedSkillPaths) ? loadedSkillPaths : []);
       restoreAchievements(
         Array.isArray(loadedAchievementCatalog) ? loadedAchievementCatalog : [],
         Array.isArray(loadedAchievements) ? loadedAchievements : [],
@@ -712,6 +735,31 @@
       return Object.freeze({ ...result, snapshot: getPublicSnapshot() });
     };
 
+    const setSkillPathActive = async (skillKey, pathActive) => {
+      if (persistenceBlocked) {
+        return Object.freeze({
+          accepted: false,
+          reason: "persistence-blocked",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+      const method = pathActive ? repository.activateSkillPath : repository.deactivateSkillPath;
+      if (typeof method !== "function") {
+        return Object.freeze({
+          accepted: false,
+          reason: "skill-path-unavailable",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+      const path = await method.call(repository, skillKey);
+      const reconciled = reconcileSkillPath(path);
+      return Object.freeze({
+        accepted: true,
+        path: reconciled,
+        snapshot: getPublicSnapshot(),
+      });
+    };
+
     const loadMoreVaultHistory = async () => {
       if (!historyHasMore || typeof repository.getVaultHistory !== "function") {
         return getPublicSnapshot();
@@ -762,7 +810,9 @@
     };
 
     return Object.freeze({
+      activateSkillPath: (skillKey) => setSkillPathActive(skillKey, true),
       complete: () => routeAction("complete"),
+      deactivateSkillPath: (skillKey) => setSkillPathActive(skillKey, false),
       expire: () => routeAction("expire"),
       getSnapshot: getPublicSnapshot,
       initialize,

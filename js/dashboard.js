@@ -483,6 +483,10 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const vaultSort = document.querySelector("[data-vault-sort]");
   const vaultLoadMore = document.querySelector("[data-vault-load-more]");
   const openVaultButton = document.querySelector("[data-open-vault]");
+  const currentStreak = document.querySelector("[data-current-streak]");
+  const longestStreak = document.querySelector("[data-longest-streak]");
+  const streakLastDay = document.querySelector("[data-streak-last-day]");
+  const streakGuidance = document.querySelector("[data-streak-guidance]");
   const analyticsPeriodButtons = document.querySelectorAll("[data-analytics-period]");
   const analyticsLoading = document.querySelector("[data-analytics-loading]");
   const analyticsError = document.querySelector("[data-analytics-error]");
@@ -500,6 +504,8 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const analyticsActiveValue = document.querySelector("[data-analytics-active-value]");
   const analyticsActiveCopy = document.querySelector("[data-analytics-active-copy]");
   const analyticsAchievements = document.querySelector("[data-analytics-achievements]");
+  const analyticsCurrentStreak = document.querySelector("[data-analytics-current-streak]");
+  const analyticsLongestStreak = document.querySelector("[data-analytics-longest-streak]");
   const analyticsXPTotal = document.querySelector("[data-analytics-xp-total]");
   const analyticsMissionChart = document.querySelector("[data-analytics-mission-chart]");
   const analyticsXPChart = document.querySelector("[data-analytics-xp-chart]");
@@ -537,6 +543,35 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
     [startMissionButton, completeMissionButton, skipMissionButton, requestMissionButton]
       .forEach((button) => { if (button) button.disabled = true; });
+  };
+
+  const formatStreakDays = (value) => `${value} ${value === 1 ? "day" : "days"}`;
+
+  // Streak values are formatted only. Logical-day and consecutive-day rules
+  // remain entirely inside PostgreSQL.
+  const renderStreak = (snapshot) => {
+    const value = snapshot || { currentStreak: 0, longestStreak: 0, lastCompletedDailyKey: null };
+    if (currentStreak) {
+      currentStreak.textContent = value.currentStreak > 0
+        ? `${formatStreakDays(value.currentStreak)} strong`
+        : "No active streak yet";
+    }
+    if (longestStreak) longestStreak.textContent = formatStreakDays(value.longestStreak);
+    if (streakGuidance) {
+      streakGuidance.textContent = value.currentStreak > 0
+        ? "Keep moving. One verified day at a time."
+        : "Complete today's mission to begin building consistency.";
+    }
+    if (streakLastDay) {
+      const timestamp = value.lastCompletedDailyKey
+        ? Date.parse(`${value.lastCompletedDailyKey}T00:00:00.000Z`)
+        : NaN;
+      streakLastDay.textContent = Number.isFinite(timestamp)
+        ? new Intl.DateTimeFormat("en-US", {
+          timeZone: "UTC", month: "short", day: "numeric", year: "numeric",
+        }).format(new Date(timestamp))
+        : "Not started";
+    }
   };
 
   // Mission content is rendered only from the coordinator's public snapshot.
@@ -909,6 +944,14 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         hour: "numeric", minute: "2-digit",
       }).format(generatedAt)}`;
     }
+    const authoritativeStreak = applicationSnapshot.streak
+      || { currentStreak: 0, longestStreak: 0 };
+    if (analyticsCurrentStreak) {
+      analyticsCurrentStreak.textContent = formatStreakDays(authoritativeStreak.currentStreak);
+    }
+    if (analyticsLongestStreak) {
+      analyticsLongestStreak.textContent = formatStreakDays(authoritativeStreak.longestStreak);
+    }
     if (viewModel.empty) return;
 
     if (analyticsMissions) analyticsMissions.textContent = viewModel.missionsCompleted.toLocaleString("en-US");
@@ -1172,6 +1215,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderCoordinator(coordinatorSnapshot);
   renderProgression(applicationSnapshot.progression);
   renderSkills(applicationSnapshot.skills);
+  renderStreak(applicationSnapshot.streak);
   renderAchievements(applicationSnapshot.achievements);
   renderVault();
   renderApplicationView();
@@ -1247,6 +1291,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       renderCoordinator(applicationResult.snapshot.coordinator);
       renderProgression(applicationResult.snapshot.progression);
       renderSkills(applicationResult.snapshot.skills);
+      renderStreak(applicationResult.snapshot.streak);
       showProgressAward(applicationResult);
       return;
     }

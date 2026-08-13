@@ -731,3 +731,39 @@ recoverable error offers retry without destroying the rest of the dashboard.
 Charts use native semantic DOM/CSS, expose concise text labels plus hidden data
 tables, work without color, stack responsively, and stop decorative motion when
 reduced motion is requested.
+
+## Sprint 14 Authoritative Consistency Streaks
+
+Streaks are persisted progression derived from the same authoritative logical
+day already attached to daily missions. They are not derived from browser time,
+login activity, Analytics windows, or the currently loaded Vault page.
+
+```text
+Accepted mission completion
+→ locked daily mission and canonical daily_session_id
+→ authoritative completed mission_history insert
+→ atomic streak trigger and owner-row lock
+→ existing achievement evaluator
+→ immutable completion response and restoration snapshot
+```
+
+`user_streak_state` stores one row per authenticated owner: current streak,
+longest streak, and last completed logical day. The first completed day creates
+`1 / 1`. An equal or earlier day is idempotent. Exactly one following calendar
+day increments the current streak. Any later day resets current to one while
+preserving the maximum. The trigger runs only for completed history inserts,
+so skipped, expired, rejected, and duplicate transitions cannot advance it.
+Two completed missions with the same authoritative daily key still count once.
+
+The completion RPC remains the Sprint 11.1 authority behind an internal name.
+A narrow wrapper preserves its two intent arguments and appends a streak
+snapshot only after an accepted `mission.completed` event. Because migration
+012's function still chooses `dev_effective_vault_now()`, approved staging
+accounts exercise the exact same streak trigger with simulated logical days.
+
+`get_vault_streak()` accepts no arguments, derives identity from `auth.uid()`,
+and returns global progression independent of an Analytics period. The
+repository validates calendar dates and numerical invariants, freezes the
+response, and the application service restores it on every authenticated
+initialization. Dashboard and Analytics surfaces only format those values;
+Active Days remains its separate Sprint 13 period metric.

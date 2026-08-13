@@ -425,6 +425,69 @@
   grid-column: span 5;
 }
 
+.streak-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.streak-card__mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(223, 50, 72, 0.24);
+  border-radius: 14px;
+  color: var(--app-red-bright);
+  background: rgba(183, 32, 52, 0.08);
+  box-shadow: 0 0 30px rgba(183, 32, 52, 0.05);
+}
+
+.streak-card__primary {
+  display: grid;
+  gap: 6px;
+}
+
+.streak-card__primary strong {
+  font-size: clamp(1.25rem, 2.1vw, 1.75rem);
+  font-weight: 480;
+  letter-spacing: -0.035em;
+}
+
+.streak-card__primary span {
+  color: var(--app-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.streak-card__summary {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 0;
+}
+
+.streak-card__summary > div {
+  padding: 12px 13px;
+  border: 1px solid var(--app-line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.streak-card__summary dt {
+  color: var(--app-subtle);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.streak-card__summary dd {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+}
+
 .dashboard-card__header {
   display: flex;
   align-items: center;

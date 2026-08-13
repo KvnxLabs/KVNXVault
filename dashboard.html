@@ -213,16 +213,22 @@
               <p class="skill-list__empty" data-skills-empty>Complete a mission to begin building mastery.</p>
             </section>
 
-            <section class="dashboard-card dashboard-card--activity app-card" aria-labelledby="activity-card-title">
+            <section class="dashboard-card dashboard-card--activity dashboard-card--streak app-card" aria-labelledby="consistency-card-title">
               <div class="dashboard-card__header">
-                <h2 class="dashboard-card__title" id="activity-card-title">Recent Activity</h2>
-                <span class="dashboard-card__meta">This week</span>
+                <h2 class="dashboard-card__title" id="consistency-card-title">Consistency</h2>
+                <span class="dashboard-card__meta">Authoritative</span>
               </div>
-              <ul class="activity-list">
-                <li class="activity-item"><span class="activity-item__icon" aria-hidden="true">✓</span><span class="activity-item__copy"><strong>Mission completed</strong><span>Reviewed weekly priorities</span></span><span class="activity-item__time">2h ago</span></li>
-                <li class="activity-item"><span class="activity-item__icon" aria-hidden="true">↗</span><span class="activity-item__copy"><strong>Skill updated</strong><span>Front-End Engineering</span></span><span class="activity-item__time">Yesterday</span></li>
-                <li class="activity-item"><span class="activity-item__icon" aria-hidden="true">◇</span><span class="activity-item__copy"><strong>Milestone captured</strong><span>Shipped Landing Page v1.0</span></span><span class="activity-item__time">2 days ago</span></li>
-              </ul>
+              <div class="streak-card" data-streak-card>
+                <span class="streak-card__mark" aria-hidden="true">◆</span>
+                <div class="streak-card__primary">
+                  <strong data-current-streak>No active streak yet</strong>
+                  <span data-streak-guidance>Complete today's mission to begin building consistency.</span>
+                </div>
+                <dl class="streak-card__summary">
+                  <div><dt>Longest streak</dt><dd data-longest-streak>0 days</dd></div>
+                  <div><dt>Last completed day</dt><dd data-streak-last-day>Not started</dd></div>
+                </dl>
+              </div>
             </section>
 
             <section class="dashboard-card dashboard-card--actions app-card" aria-labelledby="actions-card-title">
@@ -365,6 +371,8 @@
                   <strong class="analytics-consistency__value" data-analytics-active-value>0</strong>
                   <p data-analytics-active-copy>Days with at least one completed mission.</p>
                   <dl class="analytics-consistency__facts">
+                    <div><dt>Current streak</dt><dd data-analytics-current-streak>0 days</dd></div>
+                    <div><dt>Longest streak</dt><dd data-analytics-longest-streak>0 days</dd></div>
                     <div><dt>Achievements unlocked</dt><dd data-analytics-achievements>0</dd></div>
                     <div><dt>Definition</dt><dd>1+ completed mission</dd></div>
                   </dl>

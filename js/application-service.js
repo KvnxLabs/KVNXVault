@@ -59,6 +59,7 @@
     let progression;
     let skillProgression = [];
     let achievements = [];
+    let streak = Object.freeze({ currentStreak: 0, longestStreak: 0, lastCompletedDailyKey: null });
     let analytics = null;
     const analyticsRequests = new Map();
     let coordinator;
@@ -78,6 +79,7 @@
       progression: progressionEngine.getSnapshot(progression),
       skills: Object.freeze([...skillProgression]),
       achievements: Object.freeze([...achievements]),
+      streak,
       analytics,
       history: Object.freeze([...vaultHistory]),
       historyPagination: Object.freeze({
@@ -228,6 +230,7 @@
       } : null);
       const skillProgressionResult = reconcileUpdatedSkill(result.updatedSkill);
       const newAchievements = reconcileNewAchievements(result.newAchievements);
+      if (result.streak) streak = result.streak;
       if (result.event?.eventType === "mission.completed") analytics = null;
 
       terminalAt = result.mission.lifecycle.terminalAt || null;
@@ -377,6 +380,7 @@
       let loadedSkills = [];
       let loadedAchievementCatalog = [];
       let loadedAchievements = [];
+      let loadedStreak = null;
 
       if (hasAuthoritativeDailyMission) {
         [loadedProfile, loadedOnboarding] = await Promise.all([
@@ -397,7 +401,7 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult, achievementCatalogResult, achievementResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
           repository.loadProgression(),
           typeof repository.getVaultHistory === "function"
             ? repository.getVaultHistory()
@@ -411,6 +415,9 @@
           typeof repository.getUserAchievements === "function"
             ? repository.getUserAchievements()
             : Promise.resolve([]),
+          typeof repository.getVaultStreak === "function"
+            ? repository.getVaultStreak()
+            : Promise.resolve(null),
         ]);
 
         dailySessionId = dailyResult.dailyKey;
@@ -420,6 +427,7 @@
         loadedSkills = skillResult;
         loadedAchievementCatalog = achievementCatalogResult;
         loadedAchievements = achievementResult;
+        loadedStreak = streakResult;
         loadedDailyMission = {
           dailySessionId: dailyResult.dailyKey,
           definition: dailyResult.mission.definition,
@@ -483,6 +491,7 @@
         Array.isArray(loadedAchievementCatalog) ? loadedAchievementCatalog : [],
         Array.isArray(loadedAchievements) ? loadedAchievements : [],
       );
+      if (loadedStreak) streak = loadedStreak;
       progression = progressionEngine.createProgression(
         loadedProgression?.totalXP ?? DEFAULT_INITIAL_XP,
       );

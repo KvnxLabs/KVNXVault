@@ -26,6 +26,33 @@
 
   const ANALYTICS_PERIODS = Object.freeze(["7d", "30d", "all"]);
 
+  const isISOCalendarDate = (value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+    return Number.isFinite(timestamp)
+      && new Date(timestamp).toISOString().slice(0, 10) === value;
+  };
+
+  const mapVaultStreak = (result) => {
+    if (!result || typeof result !== "object") {
+      throw createRepositoryError("vault-streak-response-invalid");
+    }
+    const currentStreak = Number(result.currentStreak);
+    const longestStreak = Number(result.longestStreak);
+    const lastCompletedDailyKey = result.lastCompletedDailyKey === null
+      || result.lastCompletedDailyKey === undefined
+      ? null
+      : String(result.lastCompletedDailyKey);
+    if (!Number.isInteger(currentStreak) || currentStreak < 0
+      || !Number.isInteger(longestStreak) || longestStreak < currentStreak
+      || (lastCompletedDailyKey !== null && !isISOCalendarDate(lastCompletedDailyKey))
+      || (currentStreak === 0 && (longestStreak !== 0 || lastCompletedDailyKey !== null))
+      || (currentStreak > 0 && lastCompletedDailyKey === null)) {
+      throw createRepositoryError("vault-streak-response-invalid");
+    }
+    return Object.freeze({ currentStreak, longestStreak, lastCompletedDailyKey });
+  };
+
   const mapVaultAnalytics = (result, requestedPeriod) => {
     if (!result || typeof result !== "object" || result.period !== requestedPeriod
       || !Number.isFinite(Date.parse(result.generatedAt))
@@ -129,6 +156,7 @@
           unlockedAt: String(achievement?.unlockedAt || ""),
         }))
         : [],
+      streak: result.streak ? mapVaultStreak(result.streak) : null,
       dailyStatus: result.dailyStatus ? { ...result.dailyStatus } : null,
       historyRecord: result.historyRecord ? { ...result.historyRecord } : null,
     };
@@ -492,6 +520,17 @@
       return mapVaultAnalytics(result, normalizedPeriod);
     };
 
+    // Sprint 14 restoration is exact zero-argument. PostgreSQL derives the
+    // owner and returns only server-maintained logical-day streak state.
+    const getVaultStreak = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_vault_streak"),
+        "vault-streak-load-failed",
+      );
+      return mapVaultStreak(result);
+    };
+
     // Creates missing baseline rows without accepting an XP total. The database
     // owns the initial XP value. Mission rewards are not trusted by this call.
     const initializeVaultSession = async ({ dailySessionId, definition } = {}) => {
@@ -635,6 +674,7 @@
       getUserAchievements,
       getVaultAnalytics,
       getVaultHistory,
+      getVaultStreak,
       initializeVaultSession,
       loadDailyMissionState,
       loadMissionHistory,

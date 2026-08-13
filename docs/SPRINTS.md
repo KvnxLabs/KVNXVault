@@ -512,3 +512,34 @@ skill attribution remain honest: they contribute mission and overall XP totals
 but not invented skill analytics. Migrations 001–013 and both established
 fingerprint baselines remain unchanged. Database verification is contract/static
 because no live Supabase project is connected.
+
+## Sprint 14 — Authoritative Streak Tracking + Streak Achievements
+
+Status: ✅ Code complete; database and deployment verification remain manual
+
+Goal: Add a durable consistency signal for consecutive authoritative logical
+days with at least one completed mission, without giving the browser date,
+timezone, streak, history, or achievement authority.
+
+Completed: Added one RLS-protected per-user streak state; atomic completed
+history trigger evaluation; same-day idempotency; next-day increment and gap
+reset rules; longest-streak preservation; safe reconstruction from canonical
+completed history days; activation of the existing `THREE_DAY_STREAK` and
+`SEVEN_DAY_STREAK` catalog keys; zero-argument restoration; strict immutable
+repository mapping; application snapshot reconciliation; a restrained
+Consistency card; global current/longest streak values in Analytics; and
+focused regression coverage for concurrency, replacement, restoration,
+security, developer-clock compatibility, and migration immutability.
+
+Definition of Done: Only an accepted authoritative completion can add a streak
+day. Multiple missions on one day count once. Skipped, expired, rejected, and
+duplicate transitions do nothing. Current and longest values restore after
+refresh and later login. Active Days remains a period activity count and never
+defines streak progression. Overall XP remains 25, mapped skill XP remains 15,
+and one replacement remains available per daily session.
+
+Result: Consistency and its achievements now use the same trusted logical-day
+identity as daily missions and the staging simulated clock. No existing
+migration was edited. Migration 015 and a new pre-Sprint-14 fingerprint
+baseline are included. Live Supabase, staging, and production deployment tests
+are intentionally not claimed.

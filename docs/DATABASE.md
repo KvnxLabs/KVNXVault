@@ -678,3 +678,63 @@ Migration 012 remains staging-only and is not required for production
 Analytics. Migration 014 is production-safe and must be installed before the
 Sprint 13 frontend is tested. Verification in this package is contract/static;
 it does not claim a live Supabase execution.
+
+## Sprint 14 — Authoritative Consistency Streaks
+
+Migration `202608070015_sprint14_authoritative_streaks.sql` adds
+`public.user_streak_state` with one primary-keyed row per `auth.users` owner:
+
+- `current_streak integer`
+- `longest_streak integer`
+- `last_completed_daily_key date`
+- `updated_at timestamptz`
+
+Checks require nonnegative values, `longest_streak >= current_streak`, and a
+consistent zero state. RLS is enabled. Authenticated users may select only
+their own row; insert, update, and delete are revoked. Internal mutation and
+trigger helpers are `SECURITY DEFINER`, pin `search_path` to empty, and are not
+executable by browser roles.
+
+The `mission_history_capture_streak` trigger runs after an authoritative
+history insert. It ignores every state except `completed`, parses the saved
+canonical `daily_session_id`, and serializes the owner state row. The state
+algorithm is idempotent for the same or an earlier logical day, increments for
+exactly the next day, and otherwise resets current to one while preserving
+longest. The mission transaction therefore commits XP, skill XP, history,
+streak, and achievement evaluation together.
+
+Migration reconciliation considers only completed history with a valid ISO
+calendar `daily_session_id`. It collapses multiple missions on one day, groups
+consecutive days, and derives the current run at the latest trustworthy day
+and the longest proven run. Legacy browser-shaped or malformed session IDs are
+ignored. No historical timestamp or mission record is changed. Proven existing
+three- and seven-day runs unlock the already-cataloged keys at migration time;
+no earlier unlock timestamp is invented.
+
+The read contract is:
+
+```text
+get_vault_streak() → {
+  currentStreak,
+  longestStreak,
+  lastCompletedDailyKey
+}
+```
+
+It takes zero arguments, derives the owner from `auth.uid()`, returns an
+intentional zero state for an owner without history, and is executable only by
+`authenticated`. The achievement evaluator now includes the existing
+`THREE_DAY_STREAK` at current streak 3 and `SEVEN_DAY_STREAK` at current streak
+7. Existing conflict handling keeps all unlocks duplicate-safe.
+
+### Installation
+
+After migration 014, apply:
+
+```text
+supabase/migrations/202608070015_sprint14_authoritative_streaks.sql
+```
+
+Migration 012 remains staging-only under its existing gates. Migration 015 is
+required before the Sprint 14 frontend is released. Package verification is
+static/contract-based and does not claim live Supabase execution.

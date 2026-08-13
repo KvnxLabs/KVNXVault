@@ -119,3 +119,33 @@ reset accounts, grant XP, grant skill XP, unlock achievements, or change the
 replacement limit. The only development mutations advance or clear the
 current allowlisted staging user's isolated test clock. All product progress
 still comes from the existing authoritative mission flow.
+
+## Sprint 14 Seven-Day Streak Verification
+
+Install migration 015 on the separate staging project after migration 014.
+Keep every existing server and hostname gate above intact.
+
+1. Sign in as an allowlisted staging account and clear its test clock.
+2. Complete the Day 1 authoritative mission. Verify current and longest are 1.
+3. If testing replacement idempotency, request and complete the one replacement
+   on Day 1. Verify current and longest remain 1.
+4. Select **Advance To Next Day**, restore the normal server mission, and
+   complete it. Verify Day 2 reports current 2.
+5. Repeat once for Day 3. Verify current 3 and one persisted Three-Day Streak
+   notification/unlock.
+6. Continue the same advance, restore, complete sequence through Day 7. Verify
+   current 7, longest 7, and one Seven-Day Streak notification/unlock.
+7. Refresh, then sign out and back in. Verify the same streak and achievements
+   restore through their zero-argument RPCs.
+
+For gap behavior, use a fresh approved staging account or advance a tested
+account beyond its latest completed day: complete one day, select **Advance To
+Next Day** twice without completing the intervening day, then complete the new
+mission. Current must reset to 1 and longest must retain the earlier maximum.
+
+For concurrency, issue two simultaneous `complete` requests for the same
+active mission from separate clients. Exactly one must return accepted and
+award 25 overall XP, 15 mapped skill XP, one history row, one streak-day
+evaluation, and eligible achievements. The other must be a terminal duplicate
+rejection. Confirm direct authenticated insert/update/delete against
+`user_streak_state` fails and `get_vault_streak` accepts no parameters.

@@ -280,7 +280,8 @@ test("skill bars are explicitly period-relative analytics", () => {
 
 test("active days are never presented as streaks", () => {
   assert.match(dashboardHTML, /Active days are not a current or longest streak/i);
-  assert.doesNotMatch(dashboardHTML, />\s*(?:Current Streak|Longest Streak)\s*</i);
+  assert.match(dashboardSource, /analyticsActiveValue\.textContent = viewModel\.activeDaysLabel/i);
+  assert.doesNotMatch(dashboardSource, /currentStreak\s*=\s*viewModel\.activeDays|longestStreak\s*=\s*viewModel\.activeDays/i);
   assert.doesNotMatch(migration, /THREE_DAY_STREAK|SEVEN_DAY_STREAK/i);
 });
 

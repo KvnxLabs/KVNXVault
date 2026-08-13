@@ -525,6 +525,8 @@ const KVNXAnalyticsExperience = (() => {
       empty: missionsCompleted === 0,
       generatedAt: analytics?.generatedAt || null,
       missionsCompleted,
+      dailyMissionsCompleted: Number(summary.dailyMissionsCompleted) || 0,
+      sideMissionsCompleted: Number(summary.sideMissionsCompleted) || 0,
       overallXPEarned,
       skillXPEarned: Number(summary.skillXPEarned) || 0,
       activeDays,
@@ -645,6 +647,44 @@ const KVNXDailyMissionChoiceExperience = (() => {
   return Object.freeze({ createViewModel });
 })();
 
+// Side Mission presentation consumes one immutable server-owned mission slot.
+// It formats lifecycle and reward values but never decides eligibility or XP.
+const KVNXSideMissionExperience = (() => {
+  const STATE_LABELS = Object.freeze({
+    ready: "Planned",
+    active: "In Progress",
+    completed: "Completed",
+    expired: "Expired",
+  });
+
+  const createViewModel = (snapshot) => {
+    const mission = snapshot?.sideMission;
+    if (!mission?.definition || !mission?.lifecycle) {
+      return Object.freeze({ available: false });
+    }
+    const state = String(mission.lifecycle.state || "").toLowerCase();
+    return Object.freeze({
+      available: true,
+      id: String(mission.id || ""),
+      sourceOfferId: String(mission.sourceOfferId || ""),
+      title: String(mission.definition.title || ""),
+      description: String(mission.definition.description || ""),
+      duration: String(mission.definition.estimatedDuration || ""),
+      skillKey: String(mission.definition.primarySkill || ""),
+      skillName: String(mission.definition.skillName || ""),
+      overallXPReward: Number(mission.definition.overallXPReward),
+      skillXPReward: Number(mission.definition.skillXPReward),
+      state,
+      stateLabel: STATE_LABELS[state] || "Unavailable",
+      canStart: state === "ready",
+      canComplete: state === "active",
+      rewardAwarded: mission.lifecycle.rewardAwarded === true,
+    });
+  };
+
+  return Object.freeze({ STATE_LABELS, createViewModel });
+})();
+
 const KVNXProtectedContentGate = (() => {
   const create = ({ loading, content, title, message, retry } = {}) => {
     if (!loading || !content) {
@@ -685,6 +725,7 @@ if (typeof module === "object" && module.exports) {
     vaultHistory: KVNXVaultHistoryExperience,
     missionCenter: KVNXMissionCenterExperience,
     dailyMissionChoice: KVNXDailyMissionChoiceExperience,
+    sideMission: KVNXSideMissionExperience,
     protectedContent: KVNXProtectedContentGate,
   });
 }
@@ -698,6 +739,7 @@ if (typeof window !== "undefined") {
   window.KVNXVaultHistoryExperience = KVNXVaultHistoryExperience;
   window.KVNXMissionCenterExperience = KVNXMissionCenterExperience;
   window.KVNXDailyMissionChoiceExperience = KVNXDailyMissionChoiceExperience;
+  window.KVNXSideMissionExperience = KVNXSideMissionExperience;
   window.KVNXProtectedContentGate = KVNXProtectedContentGate;
 }
 
@@ -859,6 +901,13 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const missionCenterReset = document.querySelector("[data-mission-center-reset]");
   const missionCenterRecent = document.querySelector("[data-mission-center-recent]");
   const missionCenterRecentEmpty = document.querySelector("[data-mission-center-recent-empty]");
+  const missionCenterSide = document.querySelector("[data-mission-center-side]");
+  const missionCenterSideTitle = document.querySelector("[data-mission-center-side-title]");
+  const missionCenterSideState = document.querySelector("[data-mission-center-side-state]");
+  const missionCenterSideDescription = document.querySelector("[data-mission-center-side-description]");
+  const missionCenterSideSkill = document.querySelector("[data-mission-center-side-skill]");
+  const missionCenterSideDuration = document.querySelector("[data-mission-center-side-duration]");
+  const missionCenterSideReward = document.querySelector("[data-mission-center-side-reward]");
   const dailyComplete = document.querySelector("[data-daily-complete]");
   const dailyCompleteXP = document.querySelector("[data-daily-complete-xp]");
   const dailyCompleteResetLabel = document.querySelector("[data-daily-complete-reset-label]");
@@ -895,6 +944,16 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const skillPathOffersEmpty = document.querySelector("[data-skill-path-offers-empty]");
   const skillPathOffersStatus = document.querySelector("[data-skill-path-offers-status]");
   const skillPathOffersClose = document.querySelector("[data-skill-path-offers-close]");
+  const skillSideMission = document.querySelector("[data-skill-side-mission]");
+  const skillSideMissionTitle = document.querySelector("[data-skill-side-mission-title]");
+  const skillSideMissionState = document.querySelector("[data-skill-side-mission-state]");
+  const skillSideMissionDescription = document.querySelector("[data-skill-side-mission-description]");
+  const skillSideMissionSkill = document.querySelector("[data-skill-side-mission-skill]");
+  const skillSideMissionDuration = document.querySelector("[data-skill-side-mission-duration]");
+  const skillSideMissionReward = document.querySelector("[data-skill-side-mission-reward]");
+  const sideMissionStatus = document.querySelector("[data-side-mission-status]");
+  const sideMissionStartButtons = document.querySelectorAll("[data-side-mission-start]");
+  const sideMissionCompleteButtons = document.querySelectorAll("[data-side-mission-complete]");
   const achievementList = document.querySelector("[data-achievement-list]");
   const achievementsCount = document.querySelector("[data-achievements-count]");
   const achievementCenterContent = document.querySelector("[data-achievement-center-content]");
@@ -934,6 +993,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const analyticsContent = document.querySelector("[data-analytics-content]");
   const analyticsGenerated = document.querySelector("[data-analytics-generated]");
   const analyticsMissions = document.querySelector("[data-analytics-missions]");
+  const analyticsSideMissions = document.querySelector("[data-analytics-side-missions]");
   const analyticsXP = document.querySelector("[data-analytics-xp]");
   const analyticsSkillXP = document.querySelector("[data-analytics-skill-xp]");
   const analyticsTopSkill = document.querySelector("[data-analytics-top-skill]");
@@ -1315,9 +1375,21 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       button.className = "app-button skill-path-offers__select";
       button.dataset.skillPathOfferSelect = offer.offerId;
       const selected = state.selectedOfferId === offer.offerId;
-      button.textContent = selected ? "Planned" : "Select Practice";
-      button.disabled = state.status === "planned";
-      button.setAttribute("aria-label", `${selected ? "Planned practice" : "Select practice"}: ${offer.title}`);
+      const currentSideMission = applicationSnapshot?.sideMission;
+      const isCurrentSideMission = currentSideMission?.sourceOfferId === offer.offerId;
+      const canPromote = selected && state.status === "planned"
+        && !currentSideMission && applicationSnapshot?.sideMissionCapacity?.slotAvailable === true;
+      if (canPromote) {
+        delete button.dataset.skillPathOfferSelect;
+        button.dataset.skillPathOfferPromote = offer.offerId;
+        button.textContent = "Make Side Mission";
+        button.disabled = false;
+        button.setAttribute("aria-label", `Make ${offer.title} today’s Side Mission`);
+      } else {
+        button.textContent = isCurrentSideMission ? "Side Mission" : selected ? "Planned" : "Select Practice";
+        button.disabled = state.status === "planned";
+        button.setAttribute("aria-label", `${selected ? "Planned practice" : "Select practice"}: ${offer.title}`);
+      }
       card.classList.toggle("is-selected", selected);
       card.append(copy, button);
       skillPathOffersList.append(card);
@@ -1330,6 +1402,45 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
     skillPathOffersPanel.hidden = false;
     skillPathOffersPanel.scrollIntoView?.({ block: "nearest" });
+  };
+
+  const renderSideMission = (snapshot) => {
+    const viewModel = KVNXSideMissionExperience.createViewModel(snapshot);
+    [skillSideMission, missionCenterSide].forEach((panel) => {
+      if (panel) panel.hidden = !viewModel.available;
+    });
+    if (!viewModel.available) return;
+    [skillSideMissionTitle, missionCenterSideTitle].forEach((element) => {
+      if (element) element.textContent = viewModel.title;
+    });
+    [skillSideMissionState, missionCenterSideState].forEach((element) => {
+      if (element) {
+        element.textContent = viewModel.stateLabel;
+        element.dataset.state = viewModel.state;
+      }
+    });
+    [skillSideMissionDescription, missionCenterSideDescription].forEach((element) => {
+      if (element) element.textContent = viewModel.description;
+    });
+    [skillSideMissionSkill, missionCenterSideSkill].forEach((element) => {
+      if (element) element.textContent = viewModel.skillName;
+    });
+    [skillSideMissionDuration, missionCenterSideDuration].forEach((element) => {
+      if (element) element.textContent = viewModel.duration;
+    });
+    const reward = `+${viewModel.overallXPReward} XP · +${viewModel.skillXPReward} ${viewModel.skillName} XP`;
+    [skillSideMissionReward, missionCenterSideReward].forEach((element) => {
+      if (element) element.textContent = reward;
+    });
+    sideMissionStartButtons.forEach((button) => { button.hidden = !viewModel.canStart; });
+    sideMissionCompleteButtons.forEach((button) => { button.hidden = !viewModel.canComplete; });
+    if (sideMissionStatus) {
+      sideMissionStatus.textContent = viewModel.state === "completed"
+        ? `${reward} secured. This does not change Daily Complete or the daily streak.`
+        : viewModel.state === "expired"
+          ? "This Side Mission belongs to an earlier Vault day and can no longer earn a reward."
+          : "One rewarded Side Mission is available per Vault day.";
+    }
   };
 
   const renderAchievements = (snapshot) => {
@@ -1544,7 +1655,11 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
         const title = document.createElement("strong");
         title.textContent = entry.title;
         const meta = document.createElement("span");
-        meta.textContent = [entry.category, entry.primarySkill].filter(Boolean).join(" · ");
+        meta.textContent = [
+          entry.missionType === "side" ? "Side Mission" : "Daily Mission",
+          entry.category,
+          entry.primarySkill,
+        ].filter(Boolean).join(" · ");
         const xp = document.createElement("span");
         xp.className = "vault-entry__xp";
         xp.textContent = `+${entry.overallXPEarned} XP`;
@@ -1702,6 +1817,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     if (viewModel.empty) return;
 
     if (analyticsMissions) analyticsMissions.textContent = viewModel.missionsCompleted.toLocaleString("en-US");
+    if (analyticsSideMissions) analyticsSideMissions.textContent = viewModel.sideMissionsCompleted.toLocaleString("en-US");
     if (analyticsXP) analyticsXP.textContent = viewModel.overallXPEarned.toLocaleString("en-US");
     if (analyticsSkillXP) analyticsSkillXP.textContent = viewModel.skillXPEarned.toLocaleString("en-US");
     if (analyticsPeriodLabel) analyticsPeriodLabel.textContent = viewModel.periodLabel;
@@ -1937,6 +2053,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
           title.textContent = entry.title;
           context.textContent = [
             formatRecentMissionDate(entry.completedAt),
+            entry.missionType === "side" ? "Side Mission" : "Daily Mission",
             entry.category,
             entry.primarySkill,
           ].filter(Boolean).join(" · ");
@@ -1951,6 +2068,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       if (missionCenterRecentEmpty) {
         missionCenterRecentEmpty.hidden = viewModel.recentMissions.length > 0;
       }
+      renderSideMission(snapshot);
     } catch {
       if (missionCenterContent) missionCenterContent.hidden = true;
       if (missionCenterEmpty) missionCenterEmpty.hidden = true;
@@ -1990,8 +2108,11 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
   const showProgressAward = (result) => {
     const updatedSkill = result?.updatedSkill;
-    const overallAward = Number(result?.event?.xpAwarded);
-    const skillAward = Number(result?.event?.skillXPAwarded);
+    const sideCompleted = result?.reason === "completed" && result?.sideMission?.lifecycle?.rewardAwarded;
+    const overallAward = Number(result?.event?.xpAwarded
+      ?? (sideCompleted ? result.sideMission.definition.overallXPReward : 0));
+    const skillAward = Number(result?.event?.skillXPAwarded
+      ?? (sideCompleted ? result.sideMission.definition.skillXPReward : 0));
     if (!progressAward || !updatedSkill?.name
       || !(overallAward > 0) || !(skillAward > 0)) return;
 
@@ -2135,6 +2256,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderProgression(applicationSnapshot.progression);
   renderSkills(applicationSnapshot.skills);
   renderSkillCenter(applicationSnapshot);
+  renderSideMission(applicationSnapshot);
   renderStreak(applicationSnapshot.streak);
   renderAchievements(applicationSnapshot);
   renderVault();
@@ -2251,6 +2373,30 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   });
 
   skillPathOffersList?.addEventListener("click", async (event) => {
+    const promoteButton = event.target.closest("[data-skill-path-offer-promote]");
+    if (promoteButton && !promoteButton.disabled) {
+      promoteButton.disabled = true;
+      promoteButton.setAttribute("aria-busy", "true");
+      if (skillPathOffersStatus) skillPathOffersStatus.textContent = "Securing today’s Side Mission…";
+      try {
+        const result = await vaultApplication.promoteSideMission(
+          promoteButton.dataset.skillPathOfferPromote,
+        );
+        if (!result?.accepted || !result?.sideMission) throw new Error(result?.reason || "promotion-rejected");
+        applicationSnapshot = result.snapshot;
+        renderSideMission(result.snapshot);
+        const offerState = result.snapshot.skillPathMissionOffers.find((state) => (
+          state.selectedOfferId === result.sideMission.sourceOfferId
+        ));
+        if (offerState) renderSkillPathOffers(offerState);
+        if (sideMissionStatus) sideMissionStatus.textContent = "Side Mission planned. Start it when you are ready.";
+      } catch {
+        promoteButton.disabled = false;
+        promoteButton.removeAttribute("aria-busy");
+        if (skillPathOffersStatus) skillPathOffersStatus.textContent = "That planned practice could not be promoted. Restore the path and try again.";
+      }
+      return;
+    }
     const button = event.target.closest("[data-skill-path-offer-select]");
     if (!button || button.disabled) return;
     button.disabled = true;
@@ -2272,6 +2418,59 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
   skillPathOffersClose?.addEventListener("click", () => {
     if (skillPathOffersPanel) skillPathOffersPanel.hidden = true;
+  });
+
+  let sideMissionActionInFlight = false;
+  const runSideMissionAction = async (action) => {
+    if (sideMissionActionInFlight) return;
+    sideMissionActionInFlight = true;
+    [...sideMissionStartButtons, ...sideMissionCompleteButtons].forEach((button) => {
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+    });
+    if (sideMissionStatus) sideMissionStatus.textContent = action === "start"
+      ? "Starting Side Mission…" : "Securing verified Side Mission completion…";
+    try {
+      const result = action === "start"
+        ? await vaultApplication.startSideMission()
+        : await vaultApplication.completeSideMission();
+      if (!result?.accepted) throw new Error(result?.reason || "side-mission-rejected");
+      applicationSnapshot = result.snapshot;
+      progressionSnapshot = result.snapshot.progression;
+      vaultEntries = result.snapshot.history || vaultEntries;
+      vaultPagination = result.snapshot.historyPagination || vaultPagination;
+      if (action === "complete") analyticsLoadedPeriod = null;
+      renderSideMission(result.snapshot);
+      renderProgression(result.snapshot.progression);
+      renderSkills(result.snapshot.skills);
+      renderSkillCenter(result.snapshot);
+      renderAchievements(result.snapshot);
+      renderVault();
+      renderMissionCenter(result.snapshot);
+      showProgressAward(result);
+      showAchievementUnlocks(result.newAchievements);
+    } catch (error) {
+      if (sideMissionStatus) sideMissionStatus.textContent = "The Side Mission could not be updated. Your saved state remains unchanged.";
+    } finally {
+      sideMissionActionInFlight = false;
+      const viewModel = KVNXSideMissionExperience.createViewModel(applicationSnapshot);
+      sideMissionStartButtons.forEach((button) => {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.hidden = !viewModel.canStart;
+      });
+      sideMissionCompleteButtons.forEach((button) => {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.hidden = !viewModel.canComplete;
+      });
+    }
+  };
+  sideMissionStartButtons.forEach((button) => {
+    button.addEventListener("click", () => runSideMissionAction("start"));
+  });
+  sideMissionCompleteButtons.forEach((button) => {
+    button.addEventListener("click", () => runSideMissionAction("complete"));
   });
 
   achievementCenterFilterButtons.forEach((button) => {

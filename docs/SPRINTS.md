@@ -788,3 +788,25 @@ multi-focus selection, Fitness-specific rule, AI Coach, or additional XP
 economy. Those remain future roadmap work built on this bounded choice-lock
 authority model. No live Supabase, staging, production deployment, or live
 verification is claimed by this package.
+
+## Sprint 22 — Server-Authoritative Side Mission Lifecycle
+
+Status: ✅ Code complete; migration, deployment, and live verification remain manual
+
+Completed: Promotes one current planned Skill Path offer into a separate
+account-wide Side Mission slot; adds READY/ACTIVE/COMPLETED and next-day
+expiration; atomically awards exactly +10 overall and +10 canonical skill XP;
+persists one typed Side completion; reconciles Skill Center, Vault, Analytics,
+progression, and eligible progression achievements; and presents the same
+authoritative slot in Skill Center and Mission Center.
+
+Definition of Done: One rewarded/completable Side Mission per authenticated
+owner per authoritative logical day. Retries and concurrency cannot double
+award. Side work never changes the Daily Mission streak, Daily Complete,
+replacement, primary choice, onboarding focus, or reset. Pausing prevents new
+promotion but cannot destroy an already committed mission.
+
+Notes: Migration 022 is required. Migrations 001–021 remain byte-for-byte
+unchanged. Production continues using Migration 021 real database time;
+staging retains Migration 012 simulation. No production deployment, production
+verification, staging verification, or live Supabase verification is claimed.

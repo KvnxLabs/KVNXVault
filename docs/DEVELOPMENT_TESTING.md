@@ -337,3 +337,34 @@ Do not install Migration 012 and do not modify production time.
 On staging, apply Migration 021 and confirm Migration 012's simulated-clock
 behavior still works for an approved account. Because the helper already exists,
 Migration 021 must not replace its definition or create a second clock path.
+
+## Sprint 22 Side Mission Verification
+
+1. Apply Migration 022 after Migration 021. Record primary mission/choice,
+   replacement, Daily Complete, streak, overall XP, skill XP, history, and
+   Analytics.
+2. In Skill Center, activate a path, restore offers, select one practice, and
+   choose **Make Side Mission**. Confirm the separate slot is Planned and all
+   recorded progression values are unchanged.
+3. Start it. Confirm only its lifecycle becomes In Progress and no completion
+   history exists.
+4. Complete it. Confirm exactly +10 overall XP, +10 mapped skill XP, one Side
+   Vault entry, and one Side completion in Analytics. Confirm the Daily Mission,
+   replacement, Daily Complete, and daily streak are unchanged.
+5. Retry completion, refresh, sign out/in, and repeat from a second tab. Confirm
+   no second reward or history row. Race two different planned-path promotions;
+   only one owner/day slot may win.
+6. Pause the source path after promotion and confirm the committed mission can
+   finish. Confirm a paused path cannot create a new slot.
+7. On approved staging only, leave a Side Mission incomplete, advance one
+   logical day, and confirm it is expired and cannot reward. Confirm the new day
+   restores one new account-wide capacity through Migration 012's existing
+   simulated clock.
+8. On production, never change time. Migration 021 continues to provide real
+   database time. Perform new-day expiration/cap verification only at a natural
+   logical-day rollover.
+
+Threat tests must include arbitrary/other-owner offer IDs, malformed content,
+reward/skill/date/time tampering, unauthenticated calls, direct table writes,
+concurrent completion, and API replay. No live verification is claimed by the
+code package.

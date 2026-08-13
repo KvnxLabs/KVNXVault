@@ -139,8 +139,8 @@ test("auth and routing remain unchanged while approved read-boundary modules ret
   const expected = {
     "js/auth-service.js": "3b0b2ac7b341528ac946000ea5eb8e72860b1f1ffefc0542f0f3eb48c3db95d5",
     "js/route-guard.js": "17ca3c71023d603f951cb8b593d57e09a1e3dac3e802cda32a4344b0897d71ad",
-    "js/application-service.js": "11c0109e187e09967ed6c3c5beae4f7e7ff397e50146027f3e2e56be61f954e0",
-    "js/user-repository.js": "70a39141a787b739243a713d464313ecb687e15360d4b189c987c3a82f0b7885",
+    "js/application-service.js": "a231d71b5da5e28ea5c1ff53ced7b79d782c95d647799b103852850e9f6e0932",
+    "js/user-repository.js": "967b012508d0c12832349d02057bc056b594a99b41af69b8282d8067d51917ef",
   };
   Object.entries(expected).forEach(([file, digest]) => assert.equal(hash(file), digest, file));
   assert.doesNotMatch(gateSource, /supabase|repository|vaultApplication|\.rpc\(|\.from\(/i);

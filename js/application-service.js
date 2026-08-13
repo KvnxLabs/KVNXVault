@@ -67,6 +67,13 @@
     let skillCatalog = [];
     let skillPaths = [];
     let skillPathMissionOffers = [];
+    let sideMission = null;
+    let sideMissionCapacity = Object.freeze({
+      limit: 1,
+      slotAvailable: true,
+      rewardedUsed: 0,
+      rewardedRemaining: 1,
+    });
     let achievements = [];
     let streak = Object.freeze({ currentStreak: 0, longestStreak: 0, lastCompletedDailyKey: null });
     let analytics = null;
@@ -108,6 +115,8 @@
       skillCatalog: Object.freeze([...skillCatalog]),
       skillPaths: Object.freeze([...skillPaths]),
       skillPathMissionOffers: Object.freeze([...skillPathMissionOffers]),
+      sideMission,
+      sideMissionCapacity,
       achievements: Object.freeze(achievements.map(toPublicAchievement)),
       streak,
       analytics,
@@ -249,6 +258,34 @@
         previousSnapshot: previousSkill,
         didLevelUp: Boolean(previousSkill && nextSkill.level > previousSkill.level),
       });
+    };
+
+    const restoreSideMission = (result) => {
+      sideMission = result?.sideMission || null;
+      sideMissionCapacity = result?.capacity || sideMissionCapacity;
+      return sideMission;
+    };
+
+    const reconcileSideMissionResult = (result) => {
+      restoreSideMission(result);
+      const previousSnapshot = progressionEngine.getSnapshot(progression);
+      let progressionResult = null;
+      if (result?.overallProgression) {
+        progression = progressionEngine.createProgression(result.overallProgression.totalXP);
+        const snapshot = progressionEngine.getSnapshot(progression);
+        progressionResult = Object.freeze({
+          progression,
+          snapshot,
+          previousSnapshot,
+          didLevelUp: snapshot.currentLevel > previousSnapshot.currentLevel,
+          levelsGained: snapshot.currentLevel - previousSnapshot.currentLevel,
+        });
+      }
+      const skillProgressionResult = reconcileUpdatedSkill(result?.updatedSkill);
+      const newAchievements = reconcileNewAchievements(result?.newAchievements);
+      if (result?.historyRecord) appendAuthoritativeHistory(result.historyRecord);
+      if (result?.reason === "completed") analytics = null;
+      return Object.freeze({ progressionResult, skillProgressionResult, newAchievements });
     };
 
     const restoreAchievements = (catalog = [], unlocked = []) => {
@@ -455,6 +492,7 @@
       let loadedSkillCatalog = [];
       let loadedSkillPaths = [];
       let loadedSkillPathMissionOffers = [];
+      let loadedSideMission = null;
       let loadedAchievementCatalog = [];
       let loadedAchievements = [];
       let loadedStreak = null;
@@ -482,7 +520,7 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, skillPathMissionOffersResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, skillPathMissionOffersResult, sideMissionResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
           repository.loadProgression(),
           typeof repository.getVaultHistory === "function"
             ? repository.getVaultHistory()
@@ -499,6 +537,9 @@
           typeof repository.getSkillPathMissionOffers === "function"
             ? repository.getSkillPathMissionOffers()
             : Promise.resolve([]),
+          typeof repository.getSideMission === "function"
+            ? repository.getSideMission()
+            : Promise.resolve(null),
           typeof repository.getAchievementCatalog === "function"
             ? repository.getAchievementCatalog()
             : Promise.resolve([]),
@@ -518,6 +559,7 @@
         loadedSkillCatalog = skillCatalogResult;
         loadedSkillPaths = skillPathsResult;
         loadedSkillPathMissionOffers = skillPathMissionOffersResult;
+        loadedSideMission = sideMissionResult;
         loadedAchievementCatalog = achievementCatalogResult;
         loadedAchievements = achievementResult;
         loadedStreak = streakResult;
@@ -591,6 +633,7 @@
       restoreSkillPathMissionOffers(
         Array.isArray(loadedSkillPathMissionOffers) ? loadedSkillPathMissionOffers : [],
       );
+      if (loadedSideMission) restoreSideMission(loadedSideMission);
       restoreAchievements(
         Array.isArray(loadedAchievementCatalog) ? loadedAchievementCatalog : [],
         Array.isArray(loadedAchievements) ? loadedAchievements : [],
@@ -823,6 +866,21 @@
       return Object.freeze({ ...result, offerState: reconciled, snapshot: getPublicSnapshot() });
     };
 
+    const runSideMissionAction = async (methodName, argument) => {
+      if (persistenceBlocked || typeof repository[methodName] !== "function") {
+        return Object.freeze({
+          accepted: false,
+          reason: persistenceBlocked ? "persistence-blocked" : "side-mission-unavailable",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+      const result = argument === undefined
+        ? await repository[methodName]()
+        : await repository[methodName](argument);
+      const reconciliation = reconcileSideMissionResult(result);
+      return Object.freeze({ ...result, ...reconciliation, snapshot: getPublicSnapshot() });
+    };
+
     const loadMoreVaultHistory = async () => {
       if (!historyHasMore || typeof repository.getVaultHistory !== "function") {
         return getPublicSnapshot();
@@ -881,13 +939,16 @@
       initialize,
       loadAnalytics,
       loadMoreVaultHistory,
+      promoteSideMission: (offerId) => runSideMissionAction("promoteSideMission", offerId),
       requestReplacement,
       requestSkillPathMissionOffers,
       selectDailyMission,
       selectSkillPathMissionOffer,
       signOut: () => authService.signOut(),
       skip: () => routeAction("skip"),
+      startSideMission: () => runSideMissionAction("startSideMission"),
       start: () => routeAction("start"),
+      completeSideMission: () => runSideMissionAction("completeSideMission"),
     });
   };
 

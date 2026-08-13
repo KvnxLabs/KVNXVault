@@ -3077,6 +3077,74 @@
 .skill-path-offers__empty[hidden] { display: none; }
 .skill-path-offers__status { min-height: 18px; margin: 14px 0 0; }
 
+/* Sprint 22: one subordinate, server-owned Side Mission slot. */
+.side-mission-panel {
+  margin-top: 18px;
+  padding: clamp(22px, 3vw, 30px);
+  border-color: rgba(214, 181, 89, 0.2);
+  background: radial-gradient(circle at 92% 8%, rgba(214, 181, 89, 0.07), transparent 32%),
+    var(--app-surface);
+}
+
+.side-mission-panel[hidden] { display: none; }
+
+.side-mission-panel--mission-center {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.side-mission-panel__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.side-mission-panel__heading h2 {
+  margin: 8px 0 0;
+  font-size: clamp(1.15rem, 2.4vw, 1.6rem);
+  font-weight: 450;
+  letter-spacing: -0.025em;
+}
+
+.side-mission-panel__state {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid var(--app-line);
+  border-radius: 99px;
+  color: var(--app-muted);
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.side-mission-panel > p:not(.side-mission-panel__status) {
+  max-width: 720px;
+  margin: 16px 0 20px;
+  color: var(--app-muted);
+  font-size: 0.74rem;
+  line-height: 1.7;
+}
+
+.side-mission-panel__details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.side-mission-panel__details > div {
+  padding: 13px 14px;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+}
+
+.side-mission-panel__details dt { color: var(--app-subtle); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; }
+.side-mission-panel__details dd { margin: 6px 0 0; color: var(--app-text); font-size: 0.7rem; }
+.side-mission-panel__actions { display: flex; gap: 10px; margin-top: 20px; }
+.side-mission-panel__status { min-height: 18px; margin: 14px 0 0; color: var(--app-subtle); font-size: 0.65rem; line-height: 1.6; }
+
 @media (max-width: 1100px) {
   .mission-center {
     grid-template-columns: minmax(0, 1fr);
@@ -3467,6 +3535,10 @@
   .skill-center__gains li { grid-template-columns: minmax(0, 1fr) auto; }
   .skill-center__gains time { grid-column: 1 / -1; }
   .skill-path-offers__grid { grid-template-columns: minmax(0, 1fr); }
+  .side-mission-panel__heading { flex-direction: column; }
+  .side-mission-panel__details { grid-template-columns: minmax(0, 1fr); }
+  .side-mission-panel__actions { display: grid; }
+  .side-mission-panel__actions .app-button { width: 100%; min-height: 44px; }
 
   .missions-view__heading {
     align-items: flex-start;

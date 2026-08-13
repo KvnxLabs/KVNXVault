@@ -357,6 +357,23 @@
                 </dl>
               </aside>
 
+              <section class="side-mission-panel side-mission-panel--mission-center app-card" data-mission-center-side hidden aria-labelledby="mission-center-side-title">
+                <div class="side-mission-panel__heading">
+                  <div><p class="app-card__label">Side mission</p><h2 id="mission-center-side-title" data-mission-center-side-title>—</h2></div>
+                  <span class="side-mission-panel__state" data-mission-center-side-state>—</span>
+                </div>
+                <p data-mission-center-side-description>—</p>
+                <dl class="side-mission-panel__details">
+                  <div><dt>Builds</dt><dd data-mission-center-side-skill>—</dd></div>
+                  <div><dt>Duration</dt><dd data-mission-center-side-duration>—</dd></div>
+                  <div><dt>Reward</dt><dd data-mission-center-side-reward>+10 XP · +10 Skill XP</dd></div>
+                </dl>
+                <div class="side-mission-panel__actions">
+                  <button class="app-button" type="button" data-side-mission-start>Start Side Mission</button>
+                  <button class="app-button app-button--primary" type="button" data-side-mission-complete>Complete Side Mission</button>
+                </div>
+              </section>
+
               <section class="mission-center__recent app-card" aria-labelledby="mission-center-recent-title">
                 <div class="mission-center__recent-heading">
                   <div>
@@ -422,6 +439,24 @@
                 <div class="skill-path-offers__grid" data-skill-path-offers-list></div>
                 <p class="skill-path-offers__empty" data-skill-path-offers-empty hidden>No focused practices are available for this path yet.</p>
                 <p class="skill-path-offers__status" data-skill-path-offers-status role="status" aria-live="polite"></p>
+              </section>
+
+              <section class="side-mission-panel app-card" data-skill-side-mission hidden aria-labelledby="skill-side-mission-title">
+                <div class="side-mission-panel__heading">
+                  <div><p class="app-card__label">Side mission</p><h2 id="skill-side-mission-title" data-skill-side-mission-title>—</h2></div>
+                  <span class="side-mission-panel__state" data-skill-side-mission-state>—</span>
+                </div>
+                <p data-skill-side-mission-description>—</p>
+                <dl class="side-mission-panel__details">
+                  <div><dt>Builds</dt><dd data-skill-side-mission-skill>—</dd></div>
+                  <div><dt>Duration</dt><dd data-skill-side-mission-duration>—</dd></div>
+                  <div><dt>Reward</dt><dd data-skill-side-mission-reward>+10 XP · +10 Skill XP</dd></div>
+                </dl>
+                <div class="side-mission-panel__actions">
+                  <button class="app-button" type="button" data-side-mission-start>Start Side Mission</button>
+                  <button class="app-button app-button--primary" type="button" data-side-mission-complete>Complete Side Mission</button>
+                </div>
+                <p class="side-mission-panel__status" data-side-mission-status role="status" aria-live="polite"></p>
               </section>
             </div>
           </section>
@@ -549,6 +584,7 @@
             <div class="analytics-content" data-analytics-content hidden>
               <dl class="analytics-metrics" aria-label="Analytics overview">
                 <div class="analytics-metric app-card"><dt>Missions completed</dt><dd data-analytics-missions>—</dd><span data-analytics-period-label>Selected period</span></div>
+                <div class="analytics-metric app-card"><dt>Side missions completed</dt><dd data-analytics-side-missions>—</dd><span>Verified supplemental practice</span></div>
                 <div class="analytics-metric app-card"><dt>XP earned</dt><dd data-analytics-xp>—</dd><span>From completed missions</span></div>
                 <div class="analytics-metric app-card"><dt>Skill XP earned</dt><dd data-analytics-skill-xp>—</dd><span>Mapped skill growth</span></div>
                 <div class="analytics-metric app-card"><dt>Most developed skill</dt><dd class="analytics-metric__skill" data-analytics-top-skill>—</dd><span data-analytics-top-skill-xp>No skill XP in this period</span></div>

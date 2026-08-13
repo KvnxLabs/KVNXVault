@@ -1084,3 +1084,31 @@ Sprint 15 catalog mission builder, Sprint 19 Daily Mission Choice selection,
 and all three Sprint 21 Skill Path offer read/request/selection functions. It
 does not alter their mission, reward, lifecycle, progression, or logical-day
 logic.
+
+## Sprint 22 Server-Authoritative Side Missions
+
+Sprint 22 promotes one proven Sprint 21 planned offer into a separate
+owner/logical-day Side Mission slot. The browser submits only its opaque offer
+UUID. PostgreSQL proves exact selected membership, active path and canonical
+catalog state, then creates the server UUID, immutable definition, canonical
+skill, and fixed +10 overall/+10 skill reward snapshot.
+
+The lifecycle is `READY → ACTIVE → COMPLETED`; previous-day incomplete rows are
+expired and cannot earn. Owner/day advisory locking plus row locking and the
+`(user_id, daily_key)` primary key make promotion and completion converge across
+retries, tabs, and devices. Completion atomically updates both progression
+stores, the reward flag, timestamp, one typed Side history row, and eligible
+progression-based achievements.
+
+Side Missions do not read or write Daily Mission state, Daily Mission Choice,
+replacement allowance, Daily Complete, next reset, or the streak. The history
+trigger explicitly applies streak days only to `mission_type = 'daily'`, and
+Daily mission-count achievements retain that same domain boundary. Pausing a
+path prevents new promotion; a mission already committed to today's slot may
+finish safely.
+
+The immutable Application Service snapshot carries `sideMission` and
+`sideMissionCapacity`. Skill Center is the primary plan/start/complete surface;
+Mission Center shows a subordinate summary. Vault labels Side versus Daily,
+and Analytics reports Side completion separately while total XP and skill XP
+remain sums of verified history.

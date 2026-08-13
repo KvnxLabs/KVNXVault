@@ -995,3 +995,35 @@ supabase/migrations/202608070021_sprint21_1_effective_clock_compatibility.sql
 
 `migrations-pre-sprint21.1.sha256` records migrations 001–020 without changing
 any historical fingerprint baseline.
+
+## Sprint 22 Side Mission Authority
+
+Migration `202608070022_sprint22_side_mission_lifecycle.sql` adds
+`side_mission_state`, uniquely keyed by `(user_id, daily_key)`. Direct table
+writes are revoked and RLS is enabled. The only authenticated contracts are:
+
+- `get_side_mission()` — zero-argument current-day restoration and safe stale
+  expiration.
+- `promote_skill_path_offer_to_side_mission(uuid)` — proves a current selected
+  Sprint 21 offer and creates today's single slot.
+- `start_side_mission()` — zero-argument idempotent READY-to-ACTIVE transition.
+- `complete_side_mission()` — zero-argument atomic ACTIVE completion with exact
+  +10 overall XP, +10 mapped skill XP, and one Side history record.
+
+All use `auth.uid()`, the established effective server clock and logical-day
+functions, `SECURITY DEFINER`, empty search paths, schema qualification, and
+owner/day locking. Internal helpers are fully revoked. Migration 022 also adds
+`mission_history.mission_type` with a legacy-safe `daily` default, restores the
+history RPC with that field, and extends Analytics with Daily/Side counts.
+Streak capture and first-Daily-mission evaluation are narrowed to Daily rows;
+total-XP and skill-progression achievements remain driven by authoritative
+persisted totals.
+
+Apply after Migration 021 and before the Sprint 22 frontend:
+
+```text
+supabase/migrations/202608070022_sprint22_side_mission_lifecycle.sql
+```
+
+`migrations-pre-sprint22.sha256` records migrations 001–021 without changing
+any historical baseline.

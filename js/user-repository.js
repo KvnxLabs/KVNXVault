@@ -139,6 +139,166 @@
     });
   };
 
+  const mapSideMissionResult = (result) => {
+    const responseKeys = new Set([
+      "accepted", "reason", "dailyKey", "capacity", "sideMission",
+      "overallProgression", "updatedSkill", "newAchievements", "historyRecord",
+    ]);
+    const capacityKeys = new Set(["limit", "slotAvailable", "rewardedUsed", "rewardedRemaining"]);
+    const missionKeys = new Set(["id", "sourceOfferId", "definition", "lifecycle"]);
+    const definitionKeys = new Set([
+      "title", "description", "estimatedDuration", "primarySkill", "skillName",
+      "overallXPReward", "skillXPReward",
+    ]);
+    const lifecycleKeys = new Set(["state", "startedAt", "completedAt", "rewardAwarded"]);
+    if (!result || typeof result !== "object" || typeof result.accepted !== "boolean"
+      || typeof result.reason !== "string" || !result.reason
+      || Object.keys(result).some((key) => !responseKeys.has(key))) {
+      throw createRepositoryError("side-mission-response-invalid");
+    }
+    if (result.sideMission === undefined && result.dailyKey === undefined
+      && result.capacity === undefined && result.accepted === false) {
+      return deepFreeze({ accepted: false, reason: result.reason });
+    }
+
+    const dailyKey = String(result.dailyKey || "");
+    const capacity = result.capacity && typeof result.capacity === "object" ? {
+      limit: Number(result.capacity.limit),
+      slotAvailable: result.capacity.slotAvailable,
+      rewardedUsed: Number(result.capacity.rewardedUsed),
+      rewardedRemaining: Number(result.capacity.rewardedRemaining),
+    } : null;
+    const rawMission = result.sideMission;
+    const rawDefinition = rawMission?.definition;
+    const rawLifecycle = rawMission?.lifecycle;
+    let sideMission = null;
+    if (rawMission !== null) {
+      sideMission = {
+        id: String(rawMission?.id || "").toLowerCase(),
+        sourceOfferId: String(rawMission?.sourceOfferId || "").toLowerCase(),
+        definition: {
+          title: String(rawDefinition?.title || ""),
+          description: String(rawDefinition?.description || ""),
+          estimatedDuration: String(rawDefinition?.estimatedDuration || ""),
+          primarySkill: String(rawDefinition?.primarySkill || ""),
+          skillName: String(rawDefinition?.skillName || ""),
+          overallXPReward: Number(rawDefinition?.overallXPReward),
+          skillXPReward: Number(rawDefinition?.skillXPReward),
+        },
+        lifecycle: {
+          state: String(rawLifecycle?.state || ""),
+          startedAt: rawLifecycle?.startedAt == null ? null : String(rawLifecycle.startedAt),
+          completedAt: rawLifecycle?.completedAt == null ? null : String(rawLifecycle.completedAt),
+          rewardAwarded: rawLifecycle?.rewardAwarded,
+        },
+      };
+    }
+
+    const progression = result.overallProgression == null ? null : {
+      totalXP: Number(result.overallProgression.totalXP),
+    };
+    const updatedSkill = result.updatedSkill == null ? null : {
+      key: String(result.updatedSkill.key || ""),
+      name: String(result.updatedSkill.name || ""),
+      totalXP: Number(result.updatedSkill.totalXP),
+      todayGain: Number(result.updatedSkill.todayGain || 0),
+    };
+    const achievementKeys = new Set([
+      "key", "name", "description", "icon", "category", "hidden", "displayOrder", "unlockedAt",
+    ]);
+    const newAchievements = Array.isArray(result.newAchievements)
+      ? result.newAchievements.map((achievement) => ({
+        key: String(achievement?.key || ""),
+        name: String(achievement?.name || ""),
+        description: String(achievement?.description || ""),
+        icon: String(achievement?.icon || ""),
+        category: String(achievement?.category || ""),
+        hidden: Boolean(achievement?.hidden),
+        displayOrder: Number(achievement?.displayOrder),
+        unlockedAt: String(achievement?.unlockedAt || ""),
+      })) : null;
+    const historyKeys = new Set([
+      "historyId", "missionType", "missionId", "title", "category", "primarySkillKey",
+      "primarySkill", "overallXPEarned", "skillXPEarned", "status", "completedAt",
+      "description", "originalMissionState", "achievements",
+    ]);
+    const historyRecord = result.historyRecord == null ? null : { ...result.historyRecord };
+
+    if (!isISOCalendarDate(dailyKey) || !capacity
+      || Object.keys(result.capacity).some((key) => !capacityKeys.has(key))
+      || capacity.limit !== 1 || typeof capacity.slotAvailable !== "boolean"
+      || ![0, 1].includes(capacity.rewardedUsed)
+      || ![0, 1].includes(capacity.rewardedRemaining)
+      || capacity.rewardedUsed + capacity.rewardedRemaining !== 1
+      || !newAchievements
+      || (sideMission === null && !capacity.slotAvailable)
+      || (sideMission !== null && (
+        Object.keys(rawMission).some((key) => !missionKeys.has(key))
+        || !rawDefinition || typeof rawDefinition !== "object"
+        || Object.keys(rawDefinition).some((key) => !definitionKeys.has(key))
+        || !rawLifecycle || typeof rawLifecycle !== "object"
+        || Object.keys(rawLifecycle).some((key) => !lifecycleKeys.has(key))
+        ||
+        !isUUID(sideMission.id) || !isUUID(sideMission.sourceOfferId)
+        || !sideMission.definition.title || !sideMission.definition.description
+        || !sideMission.definition.estimatedDuration
+        || !SKILL_KEY_PATTERN.test(sideMission.definition.primarySkill)
+        || !sideMission.definition.skillName
+        || sideMission.definition.overallXPReward !== 10
+        || sideMission.definition.skillXPReward !== 10
+        || !["ready", "active", "completed", "expired"].includes(sideMission.lifecycle.state)
+        || typeof sideMission.lifecycle.rewardAwarded !== "boolean"
+        || (sideMission.lifecycle.startedAt !== null
+          && !Number.isFinite(Date.parse(sideMission.lifecycle.startedAt)))
+        || (sideMission.lifecycle.completedAt !== null
+          && !Number.isFinite(Date.parse(sideMission.lifecycle.completedAt)))
+        || (sideMission.lifecycle.state === "ready" && sideMission.lifecycle.startedAt !== null)
+        || (["active", "completed"].includes(sideMission.lifecycle.state)
+          && sideMission.lifecycle.startedAt === null)
+        || (sideMission.lifecycle.state === "completed") !== sideMission.lifecycle.rewardAwarded
+        || (sideMission.lifecycle.state === "completed") !== (sideMission.lifecycle.completedAt !== null)
+        || capacity.slotAvailable
+        || capacity.rewardedUsed !== (sideMission.lifecycle.rewardAwarded ? 1 : 0)
+      ))
+      || (progression && (!Number.isInteger(progression.totalXP) || progression.totalXP < 0))
+      || (progression && Object.keys(result.overallProgression).some((key) => key !== "totalXP"))
+      || (updatedSkill && (!SKILL_KEY_PATTERN.test(updatedSkill.key) || !updatedSkill.name
+        || !Number.isInteger(updatedSkill.totalXP) || updatedSkill.totalXP < 0
+        || !Number.isInteger(updatedSkill.todayGain) || updatedSkill.todayGain < 0))
+      || (updatedSkill && Object.keys(result.updatedSkill)
+        .some((key) => !["key", "name", "totalXP", "todayGain"].includes(key)))
+      || (newAchievements && (result.newAchievements.some((achievement) => !achievement
+        || typeof achievement !== "object"
+        || Object.keys(achievement).some((key) => !achievementKeys.has(key)))
+        || newAchievements.some((achievement) => !achievement.key || !achievement.name
+          || !achievement.description || !achievement.icon || !achievement.category
+          || !Number.isInteger(achievement.displayOrder)
+          || !Number.isFinite(Date.parse(achievement.unlockedAt)))))
+      || (historyRecord && (historyRecord.missionType !== "side"
+        || Object.keys(historyRecord).some((key) => !historyKeys.has(key))
+        || !isUUID(historyRecord.historyId) || !isUUID(historyRecord.missionId)
+        || !historyRecord.title || !historyRecord.category
+        || !SKILL_KEY_PATTERN.test(String(historyRecord.primarySkillKey || ""))
+        || !historyRecord.primarySkill || historyRecord.status !== "completed"
+        || !Number.isFinite(Date.parse(historyRecord.completedAt))
+        || Number(historyRecord.overallXPEarned) !== 10
+        || Number(historyRecord.skillXPEarned) !== 10))) {
+      throw createRepositoryError("side-mission-response-invalid");
+    }
+
+    return deepFreeze({
+      accepted: result.accepted,
+      reason: result.reason,
+      dailyKey,
+      capacity,
+      sideMission,
+      overallProgression: progression,
+      updatedSkill,
+      newAchievements,
+      historyRecord,
+    });
+  };
+
   const mapVaultStreak = (result) => {
     if (!result || typeof result !== "object") {
       throw createRepositoryError("vault-streak-response-invalid");
@@ -175,6 +335,10 @@
     };
     const summary = {
       missionsCompleted: toNonnegativeInteger(result.summary.missionsCompleted),
+      dailyMissionsCompleted: toNonnegativeInteger(
+        result.summary.dailyMissionsCompleted ?? result.summary.missionsCompleted,
+      ),
+      sideMissionsCompleted: toNonnegativeInteger(result.summary.sideMissionsCompleted ?? 0),
       overallXPEarned: toNonnegativeInteger(result.summary.overallXPEarned),
       skillXPEarned: toNonnegativeInteger(result.summary.skillXPEarned),
       activeDays: toNonnegativeInteger(result.summary.activeDays),
@@ -183,6 +347,8 @@
     const missionActivity = result.missionActivity.map((entry) => ({
       date: String(entry?.date || ""),
       completedCount: toNonnegativeInteger(entry?.completedCount),
+      dailyCompletedCount: toNonnegativeInteger(entry?.dailyCompletedCount ?? entry?.completedCount),
+      sideCompletedCount: toNonnegativeInteger(entry?.sideCompletedCount ?? 0),
     }));
     const xpActivity = result.xpActivity.map((entry) => ({
       date: String(entry?.date || ""),
@@ -202,7 +368,10 @@
 
     if (Object.values(summary).some((value) => !Number.isInteger(value))
       || missionActivity.some((entry) => !validDate(entry.date)
-        || !Number.isInteger(entry.completedCount))
+        || !Number.isInteger(entry.completedCount)
+        || !Number.isInteger(entry.dailyCompletedCount)
+        || !Number.isInteger(entry.sideCompletedCount)
+        || entry.dailyCompletedCount + entry.sideCompletedCount !== entry.completedCount)
       || xpActivity.some((entry) => !validDate(entry.date)
         || !Number.isInteger(entry.xpEarned))
       || skillActivity.some((entry) => !entry.key || !entry.name
@@ -416,6 +585,7 @@
     const mapVaultHistoryEntry = (row) => Object.freeze({
       historyId: String(row?.historyId || ""),
       missionId: String(row?.missionId || ""),
+      missionType: String(row?.missionType || "daily"),
       title: String(row?.title || ""),
       category: String(row?.category || ""),
       primarySkillKey: row?.primarySkillKey ? String(row.primarySkillKey) : null,
@@ -654,6 +824,48 @@
       return mapSkillPathMissionOffers(result);
     };
 
+    const getSideMission = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_side_mission"),
+        "side-mission-load-failed",
+      );
+      return mapSideMissionResult(result);
+    };
+
+    const promoteSideMission = async (offerId) => {
+      await getAuthenticatedUser();
+      const normalizedOfferId = String(offerId || "").trim().toLowerCase();
+      if (!isUUID(normalizedOfferId)) {
+        throw new TypeError("An authoritative planned offer id is required.");
+      }
+      const result = await unwrap(
+        database.rpc("promote_skill_path_offer_to_side_mission", {
+          p_offer_id: normalizedOfferId,
+        }),
+        "side-mission-promotion-failed",
+      );
+      return mapSideMissionResult(result);
+    };
+
+    const startSideMission = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("start_side_mission"),
+        "side-mission-start-failed",
+      );
+      return mapSideMissionResult(result);
+    };
+
+    const completeSideMission = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("complete_side_mission"),
+        "side-mission-completion-failed",
+      );
+      return mapSideMissionResult(result);
+    };
+
     // Sprint 11 restoration remains read-only. Both RPCs derive identity and
     // ownership inside PostgreSQL and accept no browser-supplied arguments.
     const getAchievementCatalog = async () => {
@@ -741,6 +953,7 @@
       const hasMore = rows.length > normalizedPageSize;
       const entries = rows.slice(0, normalizedPageSize).map(mapVaultHistoryEntry);
       if (entries.some((entry) => !entry.historyId || !entry.missionId || !entry.title
+        || !["daily", "side"].includes(entry.missionType)
         || !entry.category || entry.status !== "completed"
         || !Number.isInteger(entry.overallXPEarned) || entry.overallXPEarned < 0
         || !Number.isInteger(entry.skillXPEarned) || entry.skillXPEarned < 0
@@ -944,8 +1157,10 @@
     return Object.freeze({
       activateSkillPath,
       deactivateSkillPath,
+      completeSideMission,
       getAchievementCatalog,
       getSkillCatalog,
+      getSideMission,
       getSkillPathMissionOffers,
       getSkillPaths,
       getSkillProgression,
@@ -966,8 +1181,10 @@
       requestDailyMissionReplacement,
       requestMissionAction,
       requestSkillPathMissionOffers,
+      promoteSideMission,
       selectDailyMissionChoice,
       selectSkillPathMissionOffer,
+      startSideMission,
       saveOnboarding,
       saveProfile,
     });

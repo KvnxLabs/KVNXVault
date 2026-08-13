@@ -937,3 +937,17 @@ Notes: Migration 026 is required. Migrations 001–025 remain byte-for-byte
 unchanged. No alert is manually deleted; normal monitoring manages deterministic
 alert lifecycle. No commit, push, deployment, production mutation, or live
 verification is claimed.
+
+## Sprint 24.3 — Monitoring Helper Compatibility Hotfix
+
+Status: ✅ Code complete; review, production migration, and live verification remain manual
+
+Completed: Replaced Migration 026's historical-helper delegation with a single
+self-contained detector containing every Sprint 24 non-overall rule and the
+reviewed Sprint 24.2 reconciliation rules. The obsolete helper is dropped, so
+callable monitoring contains no reference to the removed `boundary_key`.
+
+Notes: Migration 027 is required. Migrations 001–026 remain byte-for-byte
+unchanged. Monitoring alert resolution remains deterministic and normal; no
+gameplay or alert state is manually changed. No commit, push, deployment, or
+production verification is claimed.

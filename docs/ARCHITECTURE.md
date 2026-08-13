@@ -1252,3 +1252,18 @@ reads progression, computes completed-history XP, records the database
 principal and timestamp, and never writes gameplay state. Monitoring continues
 to open, refresh, and resolve alerts through its normal deterministic run; the
 remediation does not delete or rewrite alerts.
+
+## Sprint 24.3 Monitoring Helper Compatibility
+
+Migration 026 originally delegated non-overall anomaly rules to the detector
+definition it renamed. Production's early Migration 025 definition still
+contained `baseline.boundary_key`, which SQL function execution resolved only
+at runtime after Migration 026 had removed that column.
+
+Migration 027 replaces the public detector with one self-contained definition:
+the original Sprint 24 Side Mission, Daily reward, lifecycle, event-volume,
+invariant, and skill reconciliation rules plus Sprint 24.2's explicit-
+attestation overall-XP rules. It then drops the obsolete helper. Monitoring no
+longer depends on a historical function body or the removed boundary column.
+The runner, alert lifecycle, gameplay state, and authority boundaries are
+unchanged.

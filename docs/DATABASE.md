@@ -1228,3 +1228,25 @@ supabase/migrations/202608070026_sprint24_2_baseline_remediation.sql
 
 `migrations-pre-sprint24.2.sha256` records migrations 001–025 without changing
 any historical fingerprint baseline.
+
+## Sprint 24.3 Monitoring Helper Compatibility
+
+Migration `202608070027_sprint24_3_monitoring_helper_compatibility.sql` creates
+a direct, schema-compatible `detect_vault_operational_anomalies()` and removes
+`detect_vault_operational_anomalies_pre_sprint24_2()`.
+
+The final detector includes all Sprint 24 non-overall rules and the Sprint 24.2
+attestation-aware reconciliation rules. It contains no `boundary_key`
+reference. `run_vault_operational_monitoring()` is unchanged and naturally
+resolves obsolete alerts after a successful complete scan. Detector,
+monitoring, and attestation execution remain revoked from `public`, `anon`, and
+`authenticated`; no gameplay or alert rows are directly changed by Migration
+027.
+
+Apply after Migration 026:
+
+```text
+supabase/migrations/202608070027_sprint24_3_monitoring_helper_compatibility.sql
+```
+
+`migrations-pre-sprint24.3.sha256` records migrations 001–026 unchanged.

@@ -692,3 +692,37 @@ Expect that account's captured legacy gap to become warning-only. Every other
 unattested mismatch remains critical, and every later unexplained change to an
 attested account is critical. Do not delete alerts manually; complete scans
 resolve or reopen deterministic fingerprints normally.
+
+## Sprint 24.3 Production Monitoring Verification
+
+After backing up production, apply Migration 027 after Migration 026. Confirm
+the obsolete helper is gone and callable monitoring definitions contain no
+removed column reference:
+
+```sql
+select to_regprocedure(
+  'public.detect_vault_operational_anomalies_pre_sprint24_2()'
+) as obsolete_helper;
+
+select position(
+  'boundary_key' in pg_get_functiondef(
+    'public.detect_vault_operational_anomalies()'::regprocedure
+  )
+) as detector_boundary_reference;
+```
+
+Expected results are `NULL` and `0`. Then run monitoring normally:
+
+```sql
+select public.run_vault_operational_monitoring();
+
+select alert_type, severity, status, affected_user_id, details
+from public.vault_operational_alerts
+where alert_type like 'overall-progression-%'
+order by affected_user_id, alert_type;
+```
+
+Account A's unattested `235` versus `75 + 110` remains critical. Account B's
+`125 = 75 + 50` remains healthy and unattested. Obsolete alert fingerprints
+resolve through the complete scan; do not delete them manually. Do not attest
+any account until its provenance investigation is complete.

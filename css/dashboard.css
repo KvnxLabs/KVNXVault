@@ -425,6 +425,12 @@
   grid-column: span 5;
 }
 
+.dashboard-card--coach {
+  grid-column: span 12;
+  border-color: rgba(255, 255, 255, 0.075);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.018), rgba(221, 32, 56, 0.018));
+}
+
 .streak-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -800,6 +806,109 @@
   font-size: 0.52rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+.coach-card__header {
+  align-items: flex-start;
+}
+
+.coach-card__content {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px 28px;
+}
+
+.coach-card__content[hidden],
+.coach-card__unavailable[hidden] {
+  display: none;
+}
+
+.coach-card__summary,
+.coach-card__insight,
+.coach-card__unavailable p,
+.coach-card__disclosure {
+  margin: 0;
+}
+
+.coach-card__summary {
+  color: var(--app-text);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.coach-card__insight {
+  color: var(--app-muted);
+  font-size: 0.76rem;
+  line-height: 1.7;
+}
+
+.coach-card__direction {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-line);
+}
+
+.coach-card__direction div {
+  padding: 13px 15px;
+  background: rgba(10, 10, 12, 0.95);
+}
+
+.coach-card__direction dt {
+  color: var(--app-subtle);
+  font-size: 0.53rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.coach-card__direction dd {
+  margin: 7px 0 0;
+  color: var(--app-text);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.coach-card__disclosure,
+.coach-card__unavailable p {
+  grid-column: 1 / -1;
+  color: var(--app-subtle);
+  font-size: 0.59rem;
+  line-height: 1.55;
+}
+
+.dashboard-card__text-button {
+  width: max-content;
+  min-height: 36px;
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-muted);
+  font: inherit;
+  font-size: 0.63rem;
+  cursor: pointer;
+}
+
+.dashboard-card__text-button:hover,
+.dashboard-card__text-button:focus-visible {
+  color: var(--app-text);
+}
+
+.dashboard-card__text-button:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid rgba(221, 32, 56, 0.5);
+  outline-offset: 4px;
+}
+
+.dashboard-card__text-button[aria-busy="true"] {
+  color: var(--app-subtle);
+  cursor: wait;
 }
 
 /* Sprint 3 mission card, extended by Sprint 5 lifecycle states. */
@@ -3440,6 +3549,11 @@
 }
 
 @media (max-width: 620px) {
+  .coach-card__content,
+  .coach-card__direction { grid-template-columns: minmax(0, 1fr); }
+
+  .coach-card__direction { gap: 1px; }
+
   .topbar {
     min-height: 68px;
     gap: 10px;

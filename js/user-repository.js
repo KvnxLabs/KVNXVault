@@ -25,6 +25,7 @@
   };
 
   const ANALYTICS_PERIODS = Object.freeze(["7d", "30d", "all"]);
+  const COACH_MODES = Object.freeze(["overview", "next_step", "skill_focus", "consistency"]);
   const SKILL_KEY_PATTERN = /^[a-z][a-z0-9_]{1,63}$/;
   const MISSION_FOCUS_KEYS = Object.freeze([
     "career", "business", "programming", "fitness", "health", "learning",
@@ -77,6 +78,124 @@
       onboardingFocusName,
       effectiveTiming,
       options,
+    });
+  };
+
+  const mapCoachContext = (result, requestedMode) => {
+    const topKeys = new Set([
+      "accepted", "contextVersion", "mode", "generatedAt", "progression", "skills",
+      "dailyMission", "customization", "sideMission", "skillPaths", "recent", "streak",
+      "achievements",
+    ]);
+    const hasExactKeys = (value, keys) => value && typeof value === "object"
+      && !Array.isArray(value)
+      && Object.keys(value).length === keys.size
+      && Object.keys(value).every((key) => keys.has(key));
+    const nonnegativeInteger = (value) => Number.isInteger(value) && value >= 0;
+    const skillKeys = new Set(["key", "name", "totalXP"]);
+    const pathKeys = new Set(["key", "name"]);
+    const distributionKeys = new Set(["key", "name", "skillXP"]);
+    const progressionKeys = new Set(["totalXP"]);
+    const skillsKeys = new Set(["activeCount", "totalSkillXP", "top"]);
+    const dailyKeys = new Set([
+      "availability", "lifecycleState", "title", "focusKey", "focusName", "primarySkillName",
+    ]);
+    const customizationKeys = new Set([
+      "effectiveFocusKey", "effectiveFocusName", "onboardingFocusKey", "onboardingFocusName",
+    ]);
+    const sideKeys = new Set(["lifecycleState", "title", "skillName"]);
+    const pathsKeys = new Set(["activeCount", "active"]);
+    const recentKeys = new Set([
+      "completedCount", "dailyCompleted", "sideCompleted", "skillDistribution",
+    ]);
+    const streakKeys = new Set(["current", "longest"]);
+    const achievementKeys = new Set(["unlockedCount", "totalCount"]);
+
+    if (!hasExactKeys(result, topKeys) || result.accepted !== true
+      || result.contextVersion !== 1 || result.mode !== requestedMode
+      || !Number.isFinite(Date.parse(result.generatedAt))
+      || !hasExactKeys(result.progression, progressionKeys)
+      || !hasExactKeys(result.skills, skillsKeys)
+      || !hasExactKeys(result.dailyMission, dailyKeys)
+      || !hasExactKeys(result.customization, customizationKeys)
+      || (result.sideMission !== null && !hasExactKeys(result.sideMission, sideKeys))
+      || !hasExactKeys(result.skillPaths, pathsKeys)
+      || !hasExactKeys(result.recent, recentKeys)
+      || !hasExactKeys(result.streak, streakKeys)
+      || !hasExactKeys(result.achievements, achievementKeys)) {
+      throw createRepositoryError("coach-context-response-invalid");
+    }
+
+    const top = Array.isArray(result.skills.top) ? result.skills.top : null;
+    const activePaths = Array.isArray(result.skillPaths.active) ? result.skillPaths.active : null;
+    const skillDistribution = Array.isArray(result.recent.skillDistribution)
+      ? result.recent.skillDistribution : null;
+    const daily = result.dailyMission;
+    const side = result.sideMission;
+    const focusKeys = [
+      result.customization.effectiveFocusKey,
+      result.customization.onboardingFocusKey,
+      daily.focusKey,
+    ];
+
+    if (!nonnegativeInteger(result.progression.totalXP)
+      || !nonnegativeInteger(result.skills.activeCount)
+      || !nonnegativeInteger(result.skills.totalSkillXP)
+      || !top || top.length > 5
+      || top.some((skill) => !hasExactKeys(skill, skillKeys)
+        || !SKILL_KEY_PATTERN.test(skill.key) || !String(skill.name || "").trim()
+        || !nonnegativeInteger(skill.totalXP) || skill.totalXP <= 0)
+      || !["mission", "choice_required", "unavailable"].includes(daily.availability)
+      || focusKeys.some((key) => !MISSION_FOCUS_KEYS.includes(key))
+      || !String(daily.focusName || "").trim()
+      || !String(result.customization.effectiveFocusName || "").trim()
+      || !String(result.customization.onboardingFocusName || "").trim()
+      || (daily.availability === "mission" && (
+        !["ready", "active", "completed", "skipped", "expired"].includes(daily.lifecycleState)
+        || !String(daily.title || "").trim() || !String(daily.primarySkillName || "").trim()
+      ))
+      || (daily.availability !== "mission" && (
+        daily.lifecycleState !== null || daily.title !== null || daily.primarySkillName !== null
+      ))
+      || (side && (!["ready", "active", "completed", "expired"].includes(side.lifecycleState)
+        || !String(side.title || "").trim() || !String(side.skillName || "").trim()))
+      || !nonnegativeInteger(result.skillPaths.activeCount)
+      || !activePaths || activePaths.length > 12
+      || activePaths.some((path) => !hasExactKeys(path, pathKeys)
+        || !SKILL_KEY_PATTERN.test(path.key) || !String(path.name || "").trim())
+      || !nonnegativeInteger(result.recent.completedCount)
+      || !nonnegativeInteger(result.recent.dailyCompleted)
+      || !nonnegativeInteger(result.recent.sideCompleted)
+      || result.recent.completedCount !== result.recent.dailyCompleted + result.recent.sideCompleted
+      || result.recent.completedCount > 20
+      || !skillDistribution || skillDistribution.length > 5
+      || skillDistribution.some((skill) => !hasExactKeys(skill, distributionKeys)
+        || !SKILL_KEY_PATTERN.test(skill.key) || !String(skill.name || "").trim()
+        || !nonnegativeInteger(skill.skillXP) || skill.skillXP <= 0)
+      || !nonnegativeInteger(result.streak.current)
+      || !nonnegativeInteger(result.streak.longest)
+      || result.streak.longest < result.streak.current
+      || !nonnegativeInteger(result.achievements.unlockedCount)
+      || !nonnegativeInteger(result.achievements.totalCount)
+      || result.achievements.unlockedCount > result.achievements.totalCount) {
+      throw createRepositoryError("coach-context-response-invalid");
+    }
+
+    return deepFreeze({
+      ...result,
+      generatedAt: new Date(Date.parse(result.generatedAt)).toISOString(),
+      skills: { ...result.skills, top: top.map((skill) => ({ ...skill })) },
+      skillPaths: { ...result.skillPaths, active: activePaths.map((path) => ({ ...path })) },
+      recent: {
+        ...result.recent,
+        skillDistribution: skillDistribution.map((skill) => ({ ...skill })),
+      },
+      dailyMission: { ...daily },
+      customization: { ...result.customization },
+      sideMission: side ? { ...side } : null,
+      progression: { ...result.progression },
+      streak: { ...result.streak },
+      achievements: { ...result.achievements },
     });
   };
 
@@ -1067,6 +1186,22 @@
       return mapVaultAnalytics(result, normalizedPeriod);
     };
 
+    // Sprint 27 Coach restoration submits presentation intent only. PostgreSQL
+    // derives owner identity and every advisory context value from authoritative
+    // state; no gameplay snapshot or user identifier is accepted here.
+    const getVaultCoachContext = async (mode = "overview") => {
+      await getAuthenticatedUser();
+      const normalizedMode = String(mode || "").trim().toLowerCase();
+      if (!COACH_MODES.includes(normalizedMode)) {
+        throw new TypeError("A supported Coach mode is required.");
+      }
+      const result = await unwrap(
+        database.rpc("get_vault_coach_context", { p_mode: normalizedMode }),
+        "coach-context-load-failed",
+      );
+      return mapCoachContext(result, normalizedMode);
+    };
+
     // Sprint 14 restoration is exact zero-argument. PostgreSQL derives the
     // owner and returns only server-maintained logical-day streak state.
     const getVaultStreak = async () => {
@@ -1246,6 +1381,7 @@
       getSkillProgression,
       getUserAchievements,
       getVaultAnalytics,
+      getVaultCoachContext,
       getVaultHistory,
       getVaultStreak,
       initializeVaultSession,

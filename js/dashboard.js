@@ -729,6 +729,31 @@ const KVNXQuickActionsExperience = (() => {
   return Object.freeze({ createViewModel });
 })();
 
+// Sprint 27 Coach preview renders validated advisory copy only. It exposes no
+// action payload and never routes advice into a mission or progression method.
+const KVNXCoachExperience = (() => {
+  const createViewModel = (snapshot) => {
+    const coach = snapshot?.coach;
+    const advice = coach?.advice;
+    if (coach?.available !== true || coach.status !== "ready" || !advice) {
+      return Object.freeze({ available: false });
+    }
+    return Object.freeze({
+      available: true,
+      summary: String(advice.summary || ""),
+      insight: String(advice.insight || ""),
+      recommendedFocus: String(advice.recommendedFocus || ""),
+      nextStep: String(advice.nextStep || ""),
+      sourceLabel: advice.source === "ai" ? "AI-generated guidance" : "Vault guidance",
+      disclosure: advice.source === "ai"
+        ? "AI-generated advisory guidance. KVNX Vault remains authoritative for every mission and reward."
+        : "Deterministic guidance from your authoritative Vault state—not AI-generated.",
+    });
+  };
+
+  return Object.freeze({ createViewModel });
+})();
+
 const KVNXMissionCustomizationExperience = (() => {
   const createViewModel = (snapshot) => {
     const customization = snapshot?.missionCustomization;
@@ -801,6 +826,7 @@ if (typeof module === "object" && module.exports) {
     dailyMissionChoice: KVNXDailyMissionChoiceExperience,
     sideMission: KVNXSideMissionExperience,
     quickActions: KVNXQuickActionsExperience,
+    coach: KVNXCoachExperience,
     missionCustomization: KVNXMissionCustomizationExperience,
     protectedContent: KVNXProtectedContentGate,
   });
@@ -817,6 +843,7 @@ if (typeof window !== "undefined") {
   window.KVNXDailyMissionChoiceExperience = KVNXDailyMissionChoiceExperience;
   window.KVNXSideMissionExperience = KVNXSideMissionExperience;
   window.KVNXQuickActionsExperience = KVNXQuickActionsExperience;
+  window.KVNXCoachExperience = KVNXCoachExperience;
   window.KVNXMissionCustomizationExperience = KVNXMissionCustomizationExperience;
   window.KVNXProtectedContentGate = KVNXProtectedContentGate;
 }
@@ -860,6 +887,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     lifecycleEngine: window.KVNXMissionLifecycle,
     coordinatorEngine: window.KVNXMissionCoordinator,
     progressionEngine: window.KVNXProgression,
+    coachService: window.KVNXAICoach?.createCoachService(),
     // Sprint 8 sends only mission intent. PostgreSQL returns the authoritative
     // lifecycle, XP total, history, and daily-status snapshot for rendering.
     transitionMode: "authoritative",
@@ -1041,6 +1069,15 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const sideMissionQuickActionTitle = document.querySelector("[data-quick-action-title=\"side-mission\"]");
   const sideMissionQuickActionDetail = document.querySelector("[data-quick-action-detail=\"side-mission\"]");
   const sideMissionQuickActionState = document.querySelector("[data-quick-action-state=\"side-mission\"]");
+  const coachContent = document.querySelector("[data-coach-content]");
+  const coachUnavailable = document.querySelector("[data-coach-unavailable]");
+  const coachSource = document.querySelector("[data-coach-source]");
+  const coachSummary = document.querySelector("[data-coach-summary]");
+  const coachInsight = document.querySelector("[data-coach-insight]");
+  const coachFocus = document.querySelector("[data-coach-focus]");
+  const coachNextStep = document.querySelector("[data-coach-next-step]");
+  const coachDisclosure = document.querySelector("[data-coach-disclosure]");
+  const coachRefresh = document.querySelector("[data-coach-refresh]");
   const sideMissionStartButtons = document.querySelectorAll("[data-side-mission-start]");
   const sideMissionCompleteButtons = document.querySelectorAll("[data-side-mission-complete]");
   const achievementList = document.querySelector("[data-achievement-list]");
@@ -1506,6 +1543,22 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       // Static links remain valid and secondary if contextual presentation is
       // unavailable. Daily Mission rendering and actions are never blocked.
     }
+  };
+
+  const renderCoach = (snapshot) => {
+    const viewModel = KVNXCoachExperience.createViewModel(snapshot);
+    if (coachContent) coachContent.hidden = !viewModel.available;
+    if (coachUnavailable) coachUnavailable.hidden = viewModel.available;
+    if (!viewModel.available) {
+      if (coachSource) coachSource.textContent = "Advisory only";
+      return;
+    }
+    if (coachSource) coachSource.textContent = viewModel.sourceLabel;
+    if (coachSummary) coachSummary.textContent = viewModel.summary;
+    if (coachInsight) coachInsight.textContent = viewModel.insight;
+    if (coachFocus) coachFocus.textContent = viewModel.recommendedFocus;
+    if (coachNextStep) coachNextStep.textContent = viewModel.nextStep;
+    if (coachDisclosure) coachDisclosure.textContent = viewModel.disclosure;
   };
 
   const renderSideMission = (snapshot) => {
@@ -2396,6 +2449,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderSkills(applicationSnapshot.skills);
   renderSkillCenter(applicationSnapshot);
   renderSideMission(applicationSnapshot);
+  renderCoach(applicationSnapshot);
   renderStreak(applicationSnapshot.streak);
   renderAchievements(applicationSnapshot);
   renderVault();
@@ -2404,6 +2458,22 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderApplicationView();
   protectedContentGate.reveal();
   window.addEventListener("hashchange", renderApplicationView);
+
+  let coachRefreshInFlight = false;
+  coachRefresh?.addEventListener("click", async () => {
+    if (coachRefreshInFlight) return;
+    coachRefreshInFlight = true;
+    coachRefresh.disabled = true;
+    coachRefresh.setAttribute("aria-busy", "true");
+    try {
+      applicationSnapshot = await vaultApplication.loadCoach("overview");
+      renderCoach(applicationSnapshot);
+    } finally {
+      coachRefreshInFlight = false;
+      coachRefresh.disabled = false;
+      coachRefresh.removeAttribute("aria-busy");
+    }
+  });
 
   let dailyChoiceSelectionInFlight = false;
   const selectDailyChoice = async (choiceId) => {

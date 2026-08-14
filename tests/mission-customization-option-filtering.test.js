@@ -130,9 +130,9 @@ test("setter accepts no user identity, reward, mission, or time argument", () =>
   assert.match(setter, /v_user_id uuid := auth\.uid\(\)/);
 });
 test("frontend strict contract remains unchanged", () => {
-  assert.equal(hash("js/user-repository.js"), "59324fcd601fc615ebdd5b6de2a6f84fb921e93fa12ff2b16d6b101e2ccd5ea5");
-  assert.equal(hash("js/application-service.js"), "4c050ea004b477105e086f6c32f6ab6506be2c7b5cf64b9c9ad0abfac355837d");
-  assert.equal(hash("js/dashboard.js"), "4f2c9e72f24b83cb98cf90ce9a28867dcdcd6cbf4c9a195e3e2bbdc7141a00ee");
+  assert.equal(hash("js/user-repository.js"), "920453f0339e5f8f196c3dca4aeba476ef32e313634ab93ebeaa3f4bcbaa96e7");
+  assert.equal(hash("js/application-service.js"), "6fabdcb94545c643a6a310463a80881987f6f9c7ad9f093763774f0034d90131");
+  assert.equal(hash("js/dashboard.js"), "124c11577987ee4f5569a4643607e2877c5d6ec1109332ef3da9568635da3210");
 });
 test("Migration 028 remains byte-for-byte unchanged", () => {
   assert.equal(crypto.createHash("sha256").update(migration28).digest("hex"), "06aa906946db961669aad2aa32fa89850b11498b392f50de7a3d04f8cbf2bf3c");

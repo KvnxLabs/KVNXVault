@@ -993,3 +993,27 @@ and Sprint 24 operations remain unchanged.
 Notes: Migration 028 is required. Migrations 001–027 remain byte-for-byte
 unchanged. No commit, push, deployment, production mutation, clock change, or
 live verification is claimed.
+
+## Sprint 27 — AI Coach Foundation
+
+Status: ✅ Code complete; review, migration, deployment, provider infrastructure,
+and live verification remain manual
+
+Completed: Added a versioned, owner-derived Coach context RPC; strict repository
+normalization; an immutable Application Service Coach snapshot; an advisory
+provider interface with prompt-data separation and output validation; and a
+restrained secondary Dashboard preview with refresh and unavailable states.
+
+Provider: No real AI provider integration is present. The static application
+has no secure Edge/API runtime for secrets, rate limiting, or paid-call abuse
+control. Production uses explicitly labeled deterministic guidance. A future
+provider must be server-hosted and return the same strict advisory schema.
+
+Authority: Coach input is server-built and bounded. Coach output cannot start,
+complete, replace, or create missions; change customization; consume capacity;
+award +25/+15 or +10/+10; alter streaks, achievements, history, Analytics, or
+operator state. No transcript or response persistence is added.
+
+Notes: Migration 030 is required. Migrations 001–029 remain byte-for-byte
+unchanged. No commit, push, deployment, production mutation, provider secret,
+or live verification is claimed.

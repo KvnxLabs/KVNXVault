@@ -50,8 +50,8 @@ test("zero state and singular-plural grammar remain unchanged", () => {
 });
 
 test("server-authoritative streak restoration remains unchanged", () => {
-  assert.equal(hash("js/user-repository.js"), "59324fcd601fc615ebdd5b6de2a6f84fb921e93fa12ff2b16d6b101e2ccd5ea5");
-  assert.equal(hash("js/application-service.js"), "4c050ea004b477105e086f6c32f6ab6506be2c7b5cf64b9c9ad0abfac355837d");
+  assert.equal(hash("js/user-repository.js"), "920453f0339e5f8f196c3dca4aeba476ef32e313634ab93ebeaa3f4bcbaa96e7");
+  assert.equal(hash("js/application-service.js"), "6fabdcb94545c643a6a310463a80881987f6f9c7ad9f093763774f0034d90131");
   assert.match(repositorySource, /database\.rpc\("get_vault_streak"\)/);
   assert.match(serviceSource, /typeof repository\.getVaultStreak === "function"/);
 });
@@ -78,8 +78,8 @@ test("Sprint 20 Skill Paths remain unchanged", () => {
 });
 
 test("approved current Dashboard files retain the Consistency presentation", () => {
-  assert.equal(hash("css/dashboard.css"), "e9da735783da7081b7374f38702ce96663a5c800f8ac334314bd343fc878d102");
-  assert.equal(hash("js/dashboard.js"), "4f2c9e72f24b83cb98cf90ce9a28867dcdcd6cbf4c9a195e3e2bbdc7141a00ee");
+  assert.equal(hash("css/dashboard.css"), "105e2453f16fe9841196a9d9d51fcd0dce367104aeb7c17d450d58dd9c11e8e8");
+  assert.equal(hash("js/dashboard.js"), "124c11577987ee4f5569a4643607e2877c5d6ec1109332ef3da9568635da3210");
   assert.match(dashboardSource, /const renderStreak = \(snapshot\) =>/);
 });
 

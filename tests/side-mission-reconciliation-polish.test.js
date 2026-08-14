@@ -163,8 +163,8 @@ test("history, streak exclusion, and Daily Complete isolation are unchanged", ()
 });
 
 test("Application Service and Repository contracts are unchanged", () => {
-  assert.equal(crypto.createHash("sha256").update(service).digest("hex"), "4c050ea004b477105e086f6c32f6ab6506be2c7b5cf64b9c9ad0abfac355837d");
-  assert.equal(crypto.createHash("sha256").update(repository).digest("hex"), "59324fcd601fc615ebdd5b6de2a6f84fb921e93fa12ff2b16d6b101e2ccd5ea5");
+  assert.equal(crypto.createHash("sha256").update(service).digest("hex"), "6fabdcb94545c643a6a310463a80881987f6f9c7ad9f093763774f0034d90131");
+  assert.equal(crypto.createHash("sha256").update(repository).digest("hex"), "920453f0339e5f8f196c3dca4aeba476ef32e313634ab93ebeaa3f4bcbaa96e7");
 });
 
 test("migrations 001 through 022 remain byte-for-byte unchanged", () => {

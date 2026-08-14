@@ -37,6 +37,7 @@
       lifecycleEngine,
       coordinatorEngine,
       progressionEngine,
+      coachService = null,
     } = dependencies;
 
     const transitionMode = dependencies.transitionMode
@@ -88,6 +89,8 @@
     let streak = Object.freeze({ currentStreak: 0, longestStreak: 0, lastCompletedDailyKey: null });
     let analytics = null;
     const analyticsRequests = new Map();
+    let coach = Object.freeze({ available: false, status: "unavailable", advice: null });
+    let coachRequest = null;
     let coordinator;
     let missionHistory = [];
     let vaultHistory = [];
@@ -131,6 +134,7 @@
       achievements: Object.freeze(achievements.map(toPublicAchievement)),
       streak,
       analytics,
+      coach,
       history: Object.freeze([...vaultHistory]),
       historyPagination: Object.freeze({
         hasMore: historyHasMore,
@@ -508,6 +512,7 @@
       let loadedAchievementCatalog = [];
       let loadedAchievements = [];
       let loadedStreak = null;
+      let loadedCoachContext = null;
 
       if (hasAuthoritativeDailyMission) {
         [loadedProfile, loadedOnboarding] = await Promise.all([
@@ -532,7 +537,7 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, skillPathMissionOffersResult, sideMissionResult, achievementCatalogResult, achievementResult, streakResult, missionCustomizationResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, skillPathMissionOffersResult, sideMissionResult, achievementCatalogResult, achievementResult, streakResult, missionCustomizationResult, coachContextResult] = await Promise.all([
           repository.loadProgression(),
           typeof repository.getVaultHistory === "function"
             ? repository.getVaultHistory()
@@ -564,6 +569,9 @@
           typeof repository.getMissionCustomization === "function"
             ? repository.getMissionCustomization().catch(() => null)
             : Promise.resolve(null),
+          typeof repository.getVaultCoachContext === "function"
+            ? repository.getVaultCoachContext("overview").catch(() => null)
+            : Promise.resolve(null),
         ]);
 
         dailySessionId = dailyResult.dailyKey;
@@ -579,6 +587,7 @@
         loadedAchievements = achievementResult;
         loadedStreak = streakResult;
         loadedMissionCustomization = missionCustomizationResult;
+        loadedCoachContext = coachContextResult;
         dailyChoices = restoredChoices
           ? Object.freeze(dailyResult.choices.map((choice) => Object.freeze({ ...choice })))
           : Object.freeze([]);
@@ -663,6 +672,14 @@
         Array.isArray(loadedAchievements) ? loadedAchievements : [],
       );
       if (loadedStreak) streak = loadedStreak;
+      if (loadedCoachContext && typeof coachService?.getAdvice === "function") {
+        try {
+          const advice = await coachService.getAdvice(loadedCoachContext);
+          coach = Object.freeze({ available: true, status: "ready", advice });
+        } catch {
+          coach = Object.freeze({ available: false, status: "unavailable", advice: null });
+        }
+      }
       progression = progressionEngine.createProgression(
         loadedProgression?.totalXP ?? DEFAULT_INITIAL_XP,
       );
@@ -970,6 +987,30 @@
       }
     };
 
+    const loadCoach = async (mode = "overview") => {
+      if (typeof repository.getVaultCoachContext !== "function"
+        || typeof coachService?.getAdvice !== "function") {
+        coach = Object.freeze({ available: false, status: "unavailable", advice: null });
+        return getPublicSnapshot();
+      }
+      if (coachRequest) return coachRequest;
+      coachRequest = (async () => {
+        try {
+          const context = await repository.getVaultCoachContext(mode);
+          const advice = await coachService.getAdvice(context);
+          coach = Object.freeze({ available: true, status: "ready", advice });
+        } catch {
+          coach = Object.freeze({ available: false, status: "unavailable", advice: null });
+        }
+        return getPublicSnapshot();
+      })();
+      try {
+        return await coachRequest;
+      } finally {
+        coachRequest = null;
+      }
+    };
+
     return Object.freeze({
       activateSkillPath: (skillKey) => setSkillPathActive(skillKey, true),
       complete: () => routeAction("complete"),
@@ -978,6 +1019,7 @@
       getSnapshot: getPublicSnapshot,
       initialize,
       loadAnalytics,
+      loadCoach,
       loadMoreVaultHistory,
       promoteSideMission: (offerId) => runSideMissionAction("promoteSideMission", offerId),
       requestReplacement,

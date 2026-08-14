@@ -1254,6 +1254,35 @@ supabase/migrations/202608070027_sprint24_3_monitoring_helper_compatibility.sql
 ```
 
 `migrations-pre-sprint24.3.sha256` records migrations 001–026 unchanged.
+
+## Sprint 27 Advisory Coach Context
+
+Migration `202608070030_sprint27_ai_coach_foundation.sql` adds one function and
+no tables, policies, triggers, views, or persisted AI responses:
+
+- `get_vault_coach_context(text)` accepts only `overview`, `next_step`,
+  `skill_focus`, or `consistency` and derives identity from `auth.uid()`.
+
+The function is `SECURITY DEFINER` with `SET search_path = ''`, schema-qualified
+reads, and bounded result sets. Execution is revoked from `public` and `anon`
+and granted only to `authenticated`. It contains no DML and cannot update XP,
+skills, mission state, capacity, history, streaks, achievements, preferences,
+or operational data.
+
+The returned versioned JSON context contains summarized authoritative values
+only. Mission and offer UUIDs, user IDs, email, raw profile/onboarding text,
+hidden catalog content, operational alerts, and reward/action fields are not
+part of the contract. Migration 030 does not add provider networking or secret
+storage; external AI transport requires a future server runtime.
+
+Apply after Migration 029:
+
+```text
+supabase/migrations/202608070030_sprint27_ai_coach_foundation.sql
+```
+
+`migrations-pre-sprint27.sha256` records migrations 001–029 without modifying
+any historical migration.
 ## Sprint 26 Mission Customization
 
 Migration `202608070028_sprint26_mission_customization.sql` adds

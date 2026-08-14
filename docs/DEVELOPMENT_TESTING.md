@@ -771,3 +771,24 @@ syntax checks, local HTML reference checks, the secret/authority scan, migration
 fingerprint verification, `git diff --check`, and PostgreSQL-compatible
 Migration 028 execution before review. Customization-load failure must leave
 mission restoration usable and show only the restrained unavailable state.
+
+## Sprint 27 Coach Foundation verification
+
+Apply Migration 030 after 029 in local/staging validation. Execute
+`get_vault_coach_context(text)` as an authenticated account for `overview`,
+`next_step`, `skill_focus`, and `consistency`; reject unknown modes and an
+unauthenticated caller. Compare gameplay rows before and after every call to
+prove the RPC is read-only. Confirm routine grants expose only this read RPC to
+`authenticated` and expose nothing to `anon` or `public`.
+
+Run `node tests/ai-coach.test.js`, the complete `tests/*.test.js` suite, JS
+syntax checks, local HTML references, the secret/privileged-operation/gameplay-
+authority scans, historical migration fingerprints, `git diff --check`, and a
+real PostgreSQL-compatible Migration 030 execution. Test provider exceptions,
+malformed output, forbidden authoritative output, prompt-like stored text,
+deduplicated concurrent refresh, and deterministic fallback labeling.
+
+There is no production AI transport in Sprint 27. Do not add an API key to
+`config.js`, the browser bundle, Supabase SQL, tests, or documentation. Provider
+failure testing uses an injected test adapter; deterministic guidance must keep
+the dashboard and all mission actions usable.

@@ -1322,3 +1322,40 @@ unchanged.
 Customization restoration is failure-isolated. If the optional preference RPC
 cannot load, the Mission Center shows an unavailable state while Daily Mission,
 Side Mission, and completion flows continue from their authoritative snapshot.
+
+## Sprint 27 AI Coach Foundation
+
+The Coach is an advisory projection, not a gameplay engine:
+
+```text
+authoritative owner state
+  → get_vault_coach_context(mode)
+  → strict Repository normalization
+  → advisory provider boundary
+  → validated immutable advice
+  → secondary Dashboard preview
+```
+
+`get_vault_coach_context(text)` is the only Coach data source. It derives the
+owner from `auth.uid()`, validates one of four presentation modes, and returns
+bounded summaries of overall XP, developed skills, current Daily/Side state,
+Mission Customization direction, active Skill Paths, the latest 20 verified
+completions, streaks, and achievement counts. It exposes no email, UUID,
+authentication material, hidden achievement definitions, operational alerts,
+raw onboarding text, reward controls, or mutation payload.
+
+This repository has no Edge Function or secret-bearing application server.
+Sprint 27 therefore does not connect the browser to an external AI provider.
+`js/ai-coach.js` defines the future provider seam, separates fixed policy from
+untrusted descriptive context, validates a closed advisory response schema,
+and uses clearly labeled deterministic guidance in production. A future real
+provider adapter must run behind a separately reviewed server boundary with
+secrets, timeouts, rate limits, and abuse controls; it cannot be added to the
+browser adapter.
+
+Coach restoration is optional and failure-isolated. Context/provider failure
+produces a restrained unavailable state without blocking protected restoration,
+Daily or Side Mission actions, Skill Paths, or progression. Refresh requests
+are deduplicated and reread the bounded server context. No Coach output is
+stored, and no transcript, prompt, cache, mission, progression, or analytics
+table is introduced.

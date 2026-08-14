@@ -21,6 +21,7 @@
     <script src="js/mission-lifecycle.js" defer></script>
     <script src="js/mission-coordinator.js" defer></script>
     <script src="js/progression.js" defer></script>
+    <script src="js/ai-coach.js" defer></script>
     <script src="js/application-service.js" defer></script>
     <script src="js/dashboard.js" defer></script>
     <script src="js/dev-tools-loader.js" defer></script>
@@ -284,6 +285,29 @@
                   <span class="quick-actions__copy"><strong>View Achievements</strong><small>Review milestones earned and ahead.</small></span>
                 </a>
               </nav>
+            </section>
+
+            <section class="dashboard-card dashboard-card--coach app-card" aria-labelledby="coach-card-title" data-coach-card>
+              <div class="dashboard-card__header coach-card__header">
+                <div>
+                  <p class="app-card__label">Coach preview</p>
+                  <h2 class="dashboard-card__title" id="coach-card-title">Your current trajectory</h2>
+                </div>
+                <span class="dashboard-card__meta" data-coach-source>Vault guidance</span>
+              </div>
+              <div class="coach-card__content" data-coach-content hidden>
+                <p class="coach-card__summary" data-coach-summary></p>
+                <p class="coach-card__insight" data-coach-insight></p>
+                <dl class="coach-card__direction">
+                  <div><dt>Recommended focus</dt><dd data-coach-focus>—</dd></div>
+                  <div><dt>Next step</dt><dd data-coach-next-step>—</dd></div>
+                </dl>
+                <p class="coach-card__disclosure" data-coach-disclosure>Deterministic guidance from your authoritative Vault state—not AI-generated.</p>
+              </div>
+              <div class="coach-card__unavailable" data-coach-unavailable>
+                <p>Guidance is temporarily unavailable. Your missions and progression remain fully available.</p>
+              </div>
+              <button class="dashboard-card__text-button" type="button" data-coach-refresh aria-label="Refresh advisory Coach guidance">Refresh guidance <span aria-hidden="true">↻</span></button>
             </section>
           </div>
 

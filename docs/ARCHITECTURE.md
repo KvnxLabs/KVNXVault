@@ -1292,3 +1292,33 @@ Context rendering is failure-isolated. If contextual formatting fails, the
 static, valid Skill Center link remains available and Daily Mission rendering
 continues unaffected. Quick Actions cannot submit rewards, progression,
 identity, dates, lifecycle, capacity, or operational-monitoring requests.
+
+## Sprint 26 Mission Customization
+
+Mission Customization is a secondary Mission Center preference surface. It
+allows one closed, catalog-backed Daily Mission focus: career, business,
+programming, fitness, health, learning, creativity, finance, relationships,
+mindset, or general. Style, intensity, free-form mission copy, skill mapping,
+and rewards are intentionally outside this contract.
+
+The preference crosses the existing authority boundary:
+
+UI → Application Service → Repository → `set_mission_customization(text)`
+
+The RPC derives ownership from `auth.uid()`, validates an active mission catalog
+focus backed by an active canonical skill, and persists preference state only.
+It cannot create choices, create or replace missions, award progression, consume
+capacity, or change lifecycle/history. The immutable application snapshot
+contains the normalized read model returned by `get_mission_customization()`.
+
+Timing is future-only. `request_daily_mission_at_sprint9(timestamptz)` restores
+an existing Daily Mission or persisted owner/day choice set before it consults
+the preference. Only when both are absent does it build the next stable choice
+set from the preferred focus, retaining Sprint 19 persistence, deterministic
+anti-repetition, and opaque selection proof. A retired preference safely falls
+back to the historical onboarding focus. Side Mission/Skill Path selection is
+unchanged.
+
+Customization restoration is failure-isolated. If the optional preference RPC
+cannot load, the Mission Center shows an unavailable state while Daily Mission,
+Side Mission, and completion flows continue from their authoritative snapshot.

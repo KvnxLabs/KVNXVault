@@ -729,6 +729,36 @@ const KVNXQuickActionsExperience = (() => {
   return Object.freeze({ createViewModel });
 })();
 
+const KVNXMissionCustomizationExperience = (() => {
+  const createViewModel = (snapshot) => {
+    const customization = snapshot?.missionCustomization;
+    if (customization?.available !== true || !Array.isArray(customization.options)
+      || customization.options.length === 0) {
+      return Object.freeze({ available: false, options: Object.freeze([]) });
+    }
+    const preferredIsAvailable = customization.options.some(
+      (option) => option.key === customization.preferredFocusKey,
+    );
+    const selectedKey = preferredIsAvailable
+      ? customization.preferredFocusKey
+      : customization.effectiveFocusKey;
+    const selected = customization.options.find((option) => option.key === selectedKey);
+    if (!selected) return Object.freeze({ available: false, options: Object.freeze([]) });
+    return Object.freeze({
+      available: true,
+      selectedKey,
+      selectedName: selected.name,
+      options: Object.freeze(customization.options.map((option) => Object.freeze({
+        key: String(option.key),
+        name: String(option.name),
+      }))),
+      effectiveTiming: customization.effectiveTiming,
+    });
+  };
+
+  return Object.freeze({ createViewModel });
+})();
+
 const KVNXProtectedContentGate = (() => {
   const create = ({ loading, content, title, message, retry } = {}) => {
     if (!loading || !content) {
@@ -771,6 +801,7 @@ if (typeof module === "object" && module.exports) {
     dailyMissionChoice: KVNXDailyMissionChoiceExperience,
     sideMission: KVNXSideMissionExperience,
     quickActions: KVNXQuickActionsExperience,
+    missionCustomization: KVNXMissionCustomizationExperience,
     protectedContent: KVNXProtectedContentGate,
   });
 }
@@ -786,6 +817,7 @@ if (typeof window !== "undefined") {
   window.KVNXDailyMissionChoiceExperience = KVNXDailyMissionChoiceExperience;
   window.KVNXSideMissionExperience = KVNXSideMissionExperience;
   window.KVNXQuickActionsExperience = KVNXQuickActionsExperience;
+  window.KVNXMissionCustomizationExperience = KVNXMissionCustomizationExperience;
   window.KVNXProtectedContentGate = KVNXProtectedContentGate;
 }
 
@@ -954,6 +986,13 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const missionCenterSideSkill = document.querySelector("[data-mission-center-side-skill]");
   const missionCenterSideDuration = document.querySelector("[data-mission-center-side-duration]");
   const missionCenterSideReward = document.querySelector("[data-mission-center-side-reward]");
+  const missionCustomizationPanel = document.querySelector("[data-mission-customization]");
+  const missionCustomizationUnavailable = document.querySelector("[data-mission-customization-unavailable]");
+  const missionCustomizationForm = document.querySelector("[data-mission-customization-form]");
+  const missionCustomizationFocus = document.querySelector("[data-mission-customization-focus]");
+  const missionCustomizationSave = document.querySelector("[data-mission-customization-save]");
+  const missionCustomizationCurrent = document.querySelector("[data-mission-customization-current]");
+  const missionCustomizationStatus = document.querySelector("[data-mission-customization-status]");
   const dailyComplete = document.querySelector("[data-daily-complete]");
   const dailyCompleteXP = document.querySelector("[data-daily-complete-xp]");
   const dailyCompleteResetLabel = document.querySelector("[data-daily-complete-reset-label]");
@@ -2150,6 +2189,32 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
   };
 
+  const renderMissionCustomization = (snapshot, { preserveStatus = false } = {}) => {
+    if (!missionCustomizationPanel || !missionCustomizationUnavailable) return;
+    const viewModel = KVNXMissionCustomizationExperience.createViewModel(snapshot);
+    missionCustomizationPanel.hidden = !viewModel.available;
+    missionCustomizationUnavailable.hidden = viewModel.available;
+    if (!viewModel.available) return;
+
+    if (missionCustomizationCurrent) {
+      missionCustomizationCurrent.textContent = viewModel.selectedName;
+    }
+    if (missionCustomizationFocus) {
+      missionCustomizationFocus.replaceChildren();
+      viewModel.options.forEach((option) => {
+        const element = document.createElement("option");
+        element.value = option.key;
+        element.textContent = option.name;
+        element.selected = option.key === viewModel.selectedKey;
+        missionCustomizationFocus.append(element);
+      });
+    }
+    if (!preserveStatus && missionCustomizationStatus) {
+      missionCustomizationStatus.textContent = "";
+      missionCustomizationStatus.removeAttribute("data-state");
+    }
+  };
+
   const renderApplicationView = () => {
     const showMissions = window.location.hash === "#missions";
     const showSkills = window.location.hash === "#skills";
@@ -2334,6 +2399,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderStreak(applicationSnapshot.streak);
   renderAchievements(applicationSnapshot);
   renderVault();
+  renderMissionCustomization(applicationSnapshot);
   renderMissionCenter(applicationSnapshot);
   renderApplicationView();
   protectedContentGate.reveal();
@@ -2387,6 +2453,46 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       if (!button || !list.contains(button)) return;
       selectDailyChoice(button.dataset.dailyChoiceSelect);
     });
+  });
+
+  let missionCustomizationInFlight = false;
+  missionCustomizationForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (missionCustomizationInFlight || !missionCustomizationFocus?.value) return;
+    missionCustomizationInFlight = true;
+    missionCustomizationFocus.disabled = true;
+    if (missionCustomizationSave) missionCustomizationSave.disabled = true;
+    missionCustomizationForm.setAttribute("aria-busy", "true");
+    if (missionCustomizationStatus) {
+      missionCustomizationStatus.textContent = "Saving your mission direction…";
+      missionCustomizationStatus.removeAttribute("data-state");
+    }
+    try {
+      const result = await vaultApplication.saveMissionCustomization(
+        missionCustomizationFocus.value,
+      );
+      if (!result?.accepted) throw new Error(result?.reason || "mission-customization-rejected");
+      applicationSnapshot = result.snapshot;
+      renderMissionCustomization(applicationSnapshot, { preserveStatus: true });
+      if (missionCustomizationStatus) {
+        missionCustomizationStatus.textContent = "Saved. Your current mission and choices remain unchanged.";
+        missionCustomizationStatus.removeAttribute("data-state");
+      }
+    } catch (error) {
+      if (["session-expired", "session-unavailable"].includes(error?.code)) {
+        window.location.replace("login.html");
+        return;
+      }
+      if (missionCustomizationStatus) {
+        missionCustomizationStatus.textContent = "The Vault could not save that preference. Your missions remain unchanged.";
+        missionCustomizationStatus.dataset.state = "error";
+      }
+    } finally {
+      missionCustomizationInFlight = false;
+      missionCustomizationFocus.disabled = false;
+      if (missionCustomizationSave) missionCustomizationSave.disabled = false;
+      missionCustomizationForm.removeAttribute("aria-busy");
+    }
   });
 
   skillCenterFilterButtons.forEach((button) => {

@@ -1,6 +1,6 @@
 # KVNX Vault Database
 
-Version: Sprint 23
+Version: Sprint 26
 
 The authoritative schema and policies live in:
 
@@ -27,6 +27,10 @@ The authoritative schema and policies live in:
 - `supabase/migrations/202608070022_sprint22_side_mission_lifecycle.sql`
 - `supabase/migrations/202608070023_sprint23_side_mission_observability.sql`
 - `supabase/migrations/202608070024_sprint24_operational_hardening.sql`
+- `supabase/migrations/202608070025_sprint24_1_legacy_xp_reconciliation.sql`
+- `supabase/migrations/202608070026_sprint24_2_baseline_remediation.sql`
+- `supabase/migrations/202608070027_sprint24_3_monitoring_helper_compatibility.sql`
+- `supabase/migrations/202608070028_sprint26_mission_customization.sql`
 
 Apply production migrations in numeric order, skipping the intentional 010 gap
 and staging-only Migration 012. Migration 021 supplies production's real-clock
@@ -1250,3 +1254,29 @@ supabase/migrations/202608070027_sprint24_3_monitoring_helper_compatibility.sql
 ```
 
 `migrations-pre-sprint24.3.sha256` records migrations 001–026 unchanged.
+## Sprint 26 Mission Customization
+
+Migration `202608070028_sprint26_mission_customization.sql` adds
+`user_mission_preferences`, keyed one-to-one by `auth.users(id)`. Its sole
+mutable product field is `preferred_focus_key`, constrained to the existing 11
+Mission Catalog focus keys. RLS is enabled with no browser policy, and all
+direct privileges are revoked from `public`, `anon`, and `authenticated`.
+
+Authenticated read/write access is limited to:
+
+- `get_mission_customization()` — zero-argument owner restoration with focus
+  keys/labels, effective timing, and currently eligible focus options.
+- `set_mission_customization(text)` — auth-derived idempotent preference upsert;
+  accepts no user, mission, reward, skill, date, timezone, or lifecycle value.
+
+Internal helpers normalize labels and select the effective preference with a
+safe onboarding fallback. The Sprint 19 choice builder and daily engine retain
+their signatures; their Migration 028 definitions consult the preference only
+for a missing future owner/day choice set. Existing `daily_mission_choice_state`
+and `daily_mission_state` rows remain unchanged.
+
+All new functions are schema-qualified `SECURITY DEFINER` functions with
+`SET search_path = ''`. Only the two narrow public contracts are executable by
+`authenticated`; internal helpers and the table remain inaccessible. Preference
+state is not a source of XP, Skill XP, capacity, lifecycle, history, streak, or
+achievement authority.

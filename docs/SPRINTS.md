@@ -970,3 +970,26 @@ does not block Daily Mission use.
 Notes: **NO DATABASE MIGRATION REQUIRED.** Migrations 001–027 remain unchanged.
 Mission Customization, custom rewards, AI, and Sprint 26 work are intentionally
 excluded. No commit, push, deployment, or live verification is claimed.
+
+## Sprint 26 — Mission Customization
+
+Status: ✅ Code complete; review, migration, deployment, natural-day validation,
+and live verification remain manual
+
+Completed: Added a secondary Mission Center preference for one server-recognized
+Daily Mission focus. The 11 options come from active catalog focus groups and
+are restored through the immutable Application Service snapshot. Saving is
+idempotent, owner-derived, accessible, responsive, and clearly communicates
+that current missions and existing choices do not change.
+
+Authority: Migration 028 stores preference state separately from onboarding,
+Skill Paths, progression, and mission state. Only a missing future Daily choice
+set consults it; existing mission/choice rows restore first and never reroll.
+The browser supplies one allowlisted focus key and cannot submit mission copy,
+skill mapping, reward, identity, date, timezone, or lifecycle. Daily +25/+15,
+Side +10/+10, replacement, capacity, streak, achievements, history, Analytics,
+and Sprint 24 operations remain unchanged.
+
+Notes: Migration 028 is required. Migrations 001–027 remain byte-for-byte
+unchanged. No commit, push, deployment, production mutation, clock change, or
+live verification is claimed.

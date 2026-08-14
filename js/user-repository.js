@@ -26,6 +26,59 @@
 
   const ANALYTICS_PERIODS = Object.freeze(["7d", "30d", "all"]);
   const SKILL_KEY_PATTERN = /^[a-z][a-z0-9_]{1,63}$/;
+  const MISSION_FOCUS_KEYS = Object.freeze([
+    "career", "business", "programming", "fitness", "health", "learning",
+    "creativity", "finance", "relationships", "mindset", "general",
+  ]);
+
+  const mapMissionCustomization = (result) => {
+    const responseKeys = new Set([
+      "accepted", "preferredFocusKey", "preferredFocusName", "effectiveFocusKey",
+      "onboardingFocusKey", "onboardingFocusName", "effectiveTiming", "options",
+    ]);
+    const optionKeys = new Set(["key", "name"]);
+    if (!result || typeof result !== "object" || result.accepted !== true
+      || Object.keys(result).some((key) => !responseKeys.has(key))) {
+      throw createRepositoryError("mission-customization-response-invalid");
+    }
+    const preferredFocusKey = result.preferredFocusKey == null
+      ? null : String(result.preferredFocusKey);
+    const preferredFocusName = result.preferredFocusName == null
+      ? null : String(result.preferredFocusName);
+    const effectiveFocusKey = String(result.effectiveFocusKey || "");
+    const onboardingFocusKey = String(result.onboardingFocusKey || "");
+    const onboardingFocusName = String(result.onboardingFocusName || "");
+    const effectiveTiming = String(result.effectiveTiming || "");
+    const rawOptions = Array.isArray(result.options) ? result.options : [];
+    const options = rawOptions.map((option) => ({
+      key: String(option?.key || ""),
+      name: String(option?.name || ""),
+    }));
+    if ((preferredFocusKey !== null && !MISSION_FOCUS_KEYS.includes(preferredFocusKey))
+      || (preferredFocusKey === null) !== (preferredFocusName === null)
+      || !MISSION_FOCUS_KEYS.includes(effectiveFocusKey)
+      || !MISSION_FOCUS_KEYS.includes(onboardingFocusKey)
+      || !onboardingFocusName
+      || effectiveTiming !== "next-uncreated-daily-choice"
+      || options.length < 1 || options.length > MISSION_FOCUS_KEYS.length
+      || rawOptions.some((option) => !option || typeof option !== "object"
+        || Object.keys(option).some((key) => !optionKeys.has(key)))
+      || options.some((option) => !MISSION_FOCUS_KEYS.includes(option.key) || !option.name)
+      || new Set(options.map((option) => option.key)).size !== options.length
+      || !options.some((option) => option.key === effectiveFocusKey)) {
+      throw createRepositoryError("mission-customization-response-invalid");
+    }
+    return deepFreeze({
+      available: true,
+      preferredFocusKey,
+      preferredFocusName,
+      effectiveFocusKey,
+      onboardingFocusKey,
+      onboardingFocusName,
+      effectiveTiming,
+      options,
+    });
+  };
 
   const isISOCalendarDate = (value) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -770,6 +823,32 @@
     const activateSkillPath = (skillKey) => requestSkillPathState(skillKey, true);
     const deactivateSkillPath = (skillKey) => requestSkillPathState(skillKey, false);
 
+    const getMissionCustomization = async () => {
+      await getAuthenticatedUser();
+      const result = await unwrap(
+        database.rpc("get_mission_customization"),
+        "mission-customization-load-failed",
+      );
+      return mapMissionCustomization(result);
+    };
+
+    const setMissionCustomization = async (focusKey) => {
+      await getAuthenticatedUser();
+      const normalizedFocusKey = String(focusKey || "").trim().toLowerCase();
+      if (!MISSION_FOCUS_KEYS.includes(normalizedFocusKey)) {
+        throw new TypeError("A canonical mission focus is required.");
+      }
+      const result = await unwrap(
+        database.rpc("set_mission_customization", { p_focus_key: normalizedFocusKey }),
+        "mission-customization-save-failed",
+      );
+      const mapped = mapMissionCustomization(result);
+      if (mapped.preferredFocusKey !== normalizedFocusKey) {
+        throw createRepositoryError("mission-customization-response-invalid");
+      }
+      return mapped;
+    };
+
     // Sprint 21 restoration accepts no browser identity, skill, date, or day.
     const getSkillPathMissionOffers = async () => {
       await getAuthenticatedUser();
@@ -1159,6 +1238,7 @@
       deactivateSkillPath,
       completeSideMission,
       getAchievementCatalog,
+      getMissionCustomization,
       getSkillCatalog,
       getSideMission,
       getSkillPathMissionOffers,
@@ -1184,6 +1264,7 @@
       promoteSideMission,
       selectDailyMissionChoice,
       selectSkillPathMissionOffer,
+      setMissionCustomization,
       startSideMission,
       saveOnboarding,
       saveProfile,

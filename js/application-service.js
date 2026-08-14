@@ -66,6 +66,16 @@
     let skillProgression = [];
     let skillCatalog = [];
     let skillPaths = [];
+    let missionCustomization = Object.freeze({
+      available: false,
+      preferredFocusKey: null,
+      preferredFocusName: null,
+      effectiveFocusKey: null,
+      onboardingFocusKey: null,
+      onboardingFocusName: null,
+      effectiveTiming: "next-uncreated-daily-choice",
+      options: Object.freeze([]),
+    });
     let skillPathMissionOffers = [];
     let sideMission = null;
     let sideMissionCapacity = Object.freeze({
@@ -114,6 +124,7 @@
       skills: Object.freeze([...skillProgression]),
       skillCatalog: Object.freeze([...skillCatalog]),
       skillPaths: Object.freeze([...skillPaths]),
+      missionCustomization,
       skillPathMissionOffers: Object.freeze([...skillPathMissionOffers]),
       sideMission,
       sideMissionCapacity,
@@ -491,6 +502,7 @@
       let loadedSkills = [];
       let loadedSkillCatalog = [];
       let loadedSkillPaths = [];
+      let loadedMissionCustomization = null;
       let loadedSkillPathMissionOffers = [];
       let loadedSideMission = null;
       let loadedAchievementCatalog = [];
@@ -520,7 +532,7 @@
           throw error;
         }
 
-        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, skillPathMissionOffersResult, sideMissionResult, achievementCatalogResult, achievementResult, streakResult] = await Promise.all([
+        const [progressionResult, historyResult, skillResult, skillCatalogResult, skillPathsResult, skillPathMissionOffersResult, sideMissionResult, achievementCatalogResult, achievementResult, streakResult, missionCustomizationResult] = await Promise.all([
           repository.loadProgression(),
           typeof repository.getVaultHistory === "function"
             ? repository.getVaultHistory()
@@ -549,6 +561,9 @@
           typeof repository.getVaultStreak === "function"
             ? repository.getVaultStreak()
             : Promise.resolve(null),
+          typeof repository.getMissionCustomization === "function"
+            ? repository.getMissionCustomization().catch(() => null)
+            : Promise.resolve(null),
         ]);
 
         dailySessionId = dailyResult.dailyKey;
@@ -563,6 +578,7 @@
         loadedAchievementCatalog = achievementCatalogResult;
         loadedAchievements = achievementResult;
         loadedStreak = streakResult;
+        loadedMissionCustomization = missionCustomizationResult;
         dailyChoices = restoredChoices
           ? Object.freeze(dailyResult.choices.map((choice) => Object.freeze({ ...choice })))
           : Object.freeze([]);
@@ -630,6 +646,14 @@
           .map((entry) => Object.freeze({ ...entry })),
       );
       restoreSkillPaths(Array.isArray(loadedSkillPaths) ? loadedSkillPaths : []);
+      if (loadedMissionCustomization?.available === true) {
+        missionCustomization = Object.freeze({
+          ...loadedMissionCustomization,
+          options: Object.freeze(
+            loadedMissionCustomization.options.map((option) => Object.freeze({ ...option })),
+          ),
+        });
+      }
       restoreSkillPathMissionOffers(
         Array.isArray(loadedSkillPathMissionOffers) ? loadedSkillPathMissionOffers : [],
       );
@@ -852,6 +876,22 @@
       return Object.freeze({ ...state, offerState: reconciled, snapshot: getPublicSnapshot() });
     };
 
+    const saveMissionCustomization = async (focusKey) => {
+      if (persistenceBlocked || typeof repository.setMissionCustomization !== "function") {
+        return Object.freeze({
+          accepted: false,
+          reason: persistenceBlocked ? "persistence-blocked" : "mission-customization-unavailable",
+          snapshot: getPublicSnapshot(),
+        });
+      }
+      const restored = await repository.setMissionCustomization(focusKey);
+      missionCustomization = Object.freeze({
+        ...restored,
+        options: Object.freeze(restored.options.map((option) => Object.freeze({ ...option }))),
+      });
+      return Object.freeze({ accepted: true, customization: missionCustomization, snapshot: getPublicSnapshot() });
+    };
+
     const selectSkillPathMissionOffer = async (offerId) => {
       if (persistenceBlocked || typeof repository.selectSkillPathMissionOffer !== "function") {
         return Object.freeze({
@@ -942,6 +982,7 @@
       promoteSideMission: (offerId) => runSideMissionAction("promoteSideMission", offerId),
       requestReplacement,
       requestSkillPathMissionOffers,
+      saveMissionCustomization,
       selectDailyMission,
       selectSkillPathMissionOffer,
       signOut: () => authService.signOut(),

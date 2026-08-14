@@ -141,9 +141,12 @@ test("Quick Actions are responsive and reduced-motion safe", () => {
   assert.doesNotMatch(css, /\.quick-actions[^}]*min-width:\s*[4-9]\d{2}px/);
 });
 
-test("no database migration 028 was created", () => {
+test("Sprint 25 remains migration-free while Migration 028 belongs only to Sprint 26", () => {
   const migrations = fs.readdirSync(path.join(root, "supabase/migrations"));
-  assert.equal(migrations.some((name) => /^202608070028_/.test(name)), false);
+  assert.equal(migrations.some((name) => /sprint25/i.test(name)), false);
+  assert.deepEqual(migrations.filter((name) => /^202608070028_/.test(name)), [
+    "202608070028_sprint26_mission_customization.sql",
+  ]);
 });
 
 test("migrations 001 through 027 remain byte-for-byte unchanged", () => {

@@ -751,3 +751,23 @@ files only after review, then sign in and verify the Dashboard hierarchy:
 Opening or navigating through Quick Actions must leave overall XP, Skill XP,
 mission state, capacity, streaks, achievements, history, and operational data
 unchanged.
+## Sprint 26 Mission Customization verification
+
+Apply Migration 028 only after 027 in a review or staging database. Verify that
+an authenticated account can restore and save an allowlisted focus, while an
+unknown focus and unauthenticated call are rejected. Confirm the saved value
+survives refresh/sign-in, but the current Daily Mission or persisted Daily
+Mission choices remain byte-for-byte unchanged.
+
+At the next natural logical-day boundary, verify that a user without an existing
+mission/choice set receives up to three active catalog choices from the saved
+focus. Do not mutate production time. Confirm selecting/completing still uses
+the opaque Sprint 19 contract and awards exactly +25 overall/+15 mapped Skill
+XP. Side Mission offers, one-per-day capacity, and +10/+10 rewards must remain
+unchanged.
+
+Run `node tests/mission-customization.test.js`, every `tests/*.test.js`, JS
+syntax checks, local HTML reference checks, the secret/authority scan, migration
+fingerprint verification, `git diff --check`, and PostgreSQL-compatible
+Migration 028 execution before review. Customization-load failure must leave
+mission restoration usable and show only the restrained unavailable state.

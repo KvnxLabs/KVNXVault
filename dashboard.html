@@ -297,6 +297,31 @@
             </header>
             <p class="missions-view__intro">One authoritative objective, restored exactly as the Vault saved it.</p>
 
+            <section class="mission-customization app-card" data-mission-customization hidden aria-labelledby="mission-customization-title">
+              <div class="mission-customization__heading">
+                <div>
+                  <p class="app-card__label">Mission direction</p>
+                  <h2 id="mission-customization-title">Customize future missions.</h2>
+                </div>
+                <span data-mission-customization-current>—</span>
+              </div>
+              <p>Choose the focus the Vault should use when it creates your next Daily Mission choices. Today’s mission and existing choices will not change.</p>
+              <form class="mission-customization__form" data-mission-customization-form>
+                <label for="mission-customization-focus">Preferred focus</label>
+                <div class="mission-customization__controls">
+                  <select id="mission-customization-focus" data-mission-customization-focus aria-describedby="mission-customization-timing"></select>
+                  <button class="app-button" type="submit" data-mission-customization-save>Save preference</button>
+                </div>
+                <small id="mission-customization-timing">Applies only to the next Daily Mission choice set the Vault has not created yet.</small>
+                <p class="mission-customization__status" data-mission-customization-status role="status" aria-live="polite"></p>
+              </form>
+            </section>
+            <section class="mission-customization mission-customization--unavailable app-card" data-mission-customization-unavailable hidden aria-labelledby="mission-customization-unavailable-title">
+              <p class="app-card__label">Mission direction</p>
+              <h2 id="mission-customization-unavailable-title">Customization is temporarily unavailable.</h2>
+              <p>Your current Daily and Side Missions remain available and unchanged.</p>
+            </section>
+
             <p class="mission-center__loading" data-mission-center-loading role="status">Restoring today’s mission…</p>
             <section class="mission-center__error app-card" data-mission-center-error hidden role="alert" aria-labelledby="mission-center-error-title">
               <p class="app-card__label">Connection interrupted</p>

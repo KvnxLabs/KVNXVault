@@ -726,3 +726,28 @@ Account A's unattested `235` versus `75 + 110` remains critical. Account B's
 `125 = 75 + 50` remains healthy and unattested. Obsolete alert fingerprints
 resolve through the complete scan; do not delete them manually. Do not attest
 any account until its provenance investigation is complete.
+
+## Sprint 25 Quick Actions Verification
+
+No Supabase migration or database deployment is required. Deploy the frontend
+files only after review, then sign in and verify the Dashboard hierarchy:
+
+1. Daily Mission remains the primary mission surface and appears before Quick
+   Actions.
+2. Quick Actions shows only Side Missions, Skill Paths, History, Analytics,
+   and Achievements.
+3. Each action opens the existing `#skills`, `#vault`, `#analytics`, or
+   `#achievements` view without a page reload or new data model.
+4. With no Side Mission, the Side action offers exploration through Skill
+   Center. With a planned, active, completed, or expired Side Mission, its copy
+   reflects the restored authoritative lifecycle.
+5. Clicking the Side action never starts, completes, promotes, or rewards the
+   mission. Legitimate actions remain inside Skill Center.
+6. Throttle the connection and hard-refresh. The protected restoration gate
+   remains visible first; no fake Quick Action product state is exposed.
+7. Verify desktop, tablet, and mobile keyboard/focus behavior and confirm no
+   horizontal overflow.
+
+Opening or navigating through Quick Actions must leave overall XP, Skill XP,
+mission state, capacity, streaks, achievements, history, and operational data
+unchanged.

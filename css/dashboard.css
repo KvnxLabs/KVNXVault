@@ -719,29 +719,87 @@
   gap: 10px;
 }
 
-.quick-actions__button {
-  min-height: 82px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 14px;
+.quick-actions__item {
+  min-width: 0;
+  min-height: 94px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  align-content: start;
+  padding: 15px;
   border: 1px solid var(--app-line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.018);
   color: var(--app-muted);
-  cursor: not-allowed;
   text-align: left;
-  transition: border-color 180ms ease, background-color 180ms ease;
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
 }
 
-.quick-actions__button span:first-child {
+.quick-actions__item--side {
+  grid-column: 1 / -1;
+  min-height: 88px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  border-color: rgba(221, 32, 56, 0.16);
+  background: rgba(221, 32, 56, 0.025);
+}
+
+.quick-actions__item:hover,
+.quick-actions__item:focus-visible {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--app-text);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.quick-actions__item:focus-visible {
+  box-shadow: 0 0 0 3px rgba(221, 32, 56, 0.12);
+}
+
+.quick-actions__icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(221, 32, 56, 0.16);
+  border-radius: 8px;
+  background: rgba(221, 32, 56, 0.04);
   color: var(--app-red-bright);
-  font-size: 1rem;
+  font-size: 0.72rem;
 }
 
-.quick-actions__button span:last-child {
-  font-size: 0.68rem;
+.quick-actions__copy {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.quick-actions__copy strong,
+.quick-actions__copy small {
+  overflow-wrap: anywhere;
+}
+
+.quick-actions__copy strong {
+  color: var(--app-text);
+  font-size: 0.72rem;
+  font-weight: 530;
+}
+
+.quick-actions__copy small {
+  color: var(--app-subtle);
+  font-size: 0.61rem;
+  line-height: 1.5;
+}
+
+.quick-actions__state {
+  padding: 5px 7px;
+  border: 1px solid var(--app-line);
+  border-radius: 99px;
+  color: var(--app-subtle);
+  font-size: 0.52rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 /* Sprint 3 mission card, extended by Sprint 5 lifecycle states. */
@@ -3517,6 +3575,16 @@
   .quick-actions {
     grid-template-columns: 1fr;
   }
+
+  .quick-actions__item--side {
+    grid-column: auto;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .quick-actions__state {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 @media (max-width: 620px) {
@@ -3585,6 +3653,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .quick-actions__item {
+    transition: none;
+  }
+
+  .quick-actions__item:hover,
+  .quick-actions__item:focus-visible {
+    transform: none;
+  }
+
   .daily-choice__option {
     transition: none;
   }

@@ -77,9 +77,10 @@ test("Sprint 20 Skill Paths remain unchanged", () => {
   assert.match(serviceSource, /deactivateSkillPath: \(skillKey\) => setSkillPathActive\(skillKey, false\)/);
 });
 
-test("no CSS or Dashboard rendering logic changed", () => {
-  assert.equal(hash("css/dashboard.css"), "dd0ed98fd8bffbdbffc1870d43feadd3c50b5f8d1d4c4ec297292040d278ab15");
-  assert.equal(hash("js/dashboard.js"), "4db6e97f3f4867912992cab1881a3763212348c6f66e8da0b28c7f85ae6af0b0");
+test("approved current Dashboard files retain the Consistency presentation", () => {
+  assert.equal(hash("css/dashboard.css"), "6828fba4054434da14e063d54f49e86c5e2c5c10d4928d9bb70ac77421d8bec6");
+  assert.equal(hash("js/dashboard.js"), "3218a70830295c17e2a27505dc166d8ff9e572172e4d3a2aad6ce776682a0c92");
+  assert.match(dashboardSource, /const renderStreak = \(snapshot\) =>/);
 });
 
 test("Sprint 20.1 remains migration-free after later migrations", () => {

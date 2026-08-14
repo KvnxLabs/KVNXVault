@@ -685,6 +685,50 @@ const KVNXSideMissionExperience = (() => {
   return Object.freeze({ STATE_LABELS, createViewModel });
 })();
 
+// Sprint 25 Quick Actions are a read-only projection of the already-restored
+// application snapshot. They select copy and existing routes only; they never
+// start, complete, promote, reward, or otherwise mutate a mission.
+const KVNXQuickActionsExperience = (() => {
+  const createViewModel = (snapshot) => {
+    const sideMission = KVNXSideMissionExperience.createViewModel(snapshot);
+    const slotAvailable = snapshot?.sideMissionCapacity?.slotAvailable;
+    let sideAction = Object.freeze({
+      title: "Explore Side Missions",
+      detail: "Practice through an active Skill Path.",
+      state: "Skill Center",
+      href: "#skills",
+      ariaLabel: "Explore Side Missions in Skill Center",
+    });
+
+    if (sideMission.available) {
+      const byState = {
+        ready: ["Start Side Mission", `Planned · ${sideMission.skillName}`, "Planned"],
+        active: ["Continue Side Mission", `In progress · ${sideMission.skillName}`, "In Progress"],
+        completed: ["Review Side Mission", `Completed · ${sideMission.skillName}`, "Completed"],
+        expired: ["Review Side Missions", "Today’s previous practice has expired.", "Expired"],
+      };
+      const [title, detail, state] = byState[sideMission.state] || [
+        "View Side Missions", "Review your authoritative Side Mission state.", "Skill Center",
+      ];
+      sideAction = Object.freeze({
+        title, detail, state, href: "#skills", ariaLabel: `${title} in Skill Center`,
+      });
+    } else if (slotAvailable === false) {
+      sideAction = Object.freeze({
+        title: "View Side Missions",
+        detail: "Today’s Side Mission capacity is already used.",
+        state: "Capacity Used",
+        href: "#skills",
+        ariaLabel: "View Side Missions in Skill Center",
+      });
+    }
+
+    return Object.freeze({ sideAction });
+  };
+
+  return Object.freeze({ createViewModel });
+})();
+
 const KVNXProtectedContentGate = (() => {
   const create = ({ loading, content, title, message, retry } = {}) => {
     if (!loading || !content) {
@@ -726,6 +770,7 @@ if (typeof module === "object" && module.exports) {
     missionCenter: KVNXMissionCenterExperience,
     dailyMissionChoice: KVNXDailyMissionChoiceExperience,
     sideMission: KVNXSideMissionExperience,
+    quickActions: KVNXQuickActionsExperience,
     protectedContent: KVNXProtectedContentGate,
   });
 }
@@ -740,6 +785,7 @@ if (typeof window !== "undefined") {
   window.KVNXMissionCenterExperience = KVNXMissionCenterExperience;
   window.KVNXDailyMissionChoiceExperience = KVNXDailyMissionChoiceExperience;
   window.KVNXSideMissionExperience = KVNXSideMissionExperience;
+  window.KVNXQuickActionsExperience = KVNXQuickActionsExperience;
   window.KVNXProtectedContentGate = KVNXProtectedContentGate;
 }
 
@@ -952,6 +998,10 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const skillSideMissionDuration = document.querySelector("[data-skill-side-mission-duration]");
   const skillSideMissionReward = document.querySelector("[data-skill-side-mission-reward]");
   const sideMissionStatus = document.querySelector("[data-side-mission-status]");
+  const sideMissionQuickAction = document.querySelector("[data-quick-action=\"side-mission\"]");
+  const sideMissionQuickActionTitle = document.querySelector("[data-quick-action-title=\"side-mission\"]");
+  const sideMissionQuickActionDetail = document.querySelector("[data-quick-action-detail=\"side-mission\"]");
+  const sideMissionQuickActionState = document.querySelector("[data-quick-action-state=\"side-mission\"]");
   const sideMissionStartButtons = document.querySelectorAll("[data-side-mission-start]");
   const sideMissionCompleteButtons = document.querySelectorAll("[data-side-mission-complete]");
   const achievementList = document.querySelector("[data-achievement-list]");
@@ -980,7 +1030,6 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const vaultCategoryFilter = document.querySelector("[data-vault-category-filter]");
   const vaultSort = document.querySelector("[data-vault-sort]");
   const vaultLoadMore = document.querySelector("[data-vault-load-more]");
-  const openVaultButton = document.querySelector("[data-open-vault]");
   const currentStreak = document.querySelector("[data-current-streak]");
   const longestStreak = document.querySelector("[data-longest-streak]");
   const streakLastDay = document.querySelector("[data-streak-last-day]");
@@ -1404,7 +1453,24 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     skillPathOffersPanel.scrollIntoView?.({ block: "nearest" });
   };
 
+  const renderQuickActions = (snapshot) => {
+    try {
+      const { sideAction } = KVNXQuickActionsExperience.createViewModel(snapshot);
+      if (sideMissionQuickAction) {
+        sideMissionQuickAction.href = sideAction.href;
+        sideMissionQuickAction.setAttribute("aria-label", sideAction.ariaLabel);
+      }
+      if (sideMissionQuickActionTitle) sideMissionQuickActionTitle.textContent = sideAction.title;
+      if (sideMissionQuickActionDetail) sideMissionQuickActionDetail.textContent = sideAction.detail;
+      if (sideMissionQuickActionState) sideMissionQuickActionState.textContent = sideAction.state;
+    } catch {
+      // Static links remain valid and secondary if contextual presentation is
+      // unavailable. Daily Mission rendering and actions are never blocked.
+    }
+  };
+
   const renderSideMission = (snapshot) => {
+    renderQuickActions(snapshot);
     const viewModel = KVNXSideMissionExperience.createViewModel(snapshot);
     [skillSideMission, missionCenterSide].forEach((panel) => {
       if (panel) panel.hidden = !viewModel.available;
@@ -2521,10 +2587,6 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
       control === vaultSearch ? "input" : "change",
       renderVault,
     ));
-
-  openVaultButton?.addEventListener("click", () => {
-    window.location.hash = "#vault";
-  });
 
   vaultLoadMore?.addEventListener("click", async () => {
     vaultLoadMore.disabled = true;

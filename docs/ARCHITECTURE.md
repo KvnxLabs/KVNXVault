@@ -1267,3 +1267,28 @@ attestation overall-XP rules. It then drops the obsolete helper. Monitoring no
 longer depends on a historical function body or the removed boundary column.
 The runner, alert lifecycle, gameplay state, and authority boundaries are
 unchanged.
+
+## Sprint 25 Quick Actions
+
+Quick Actions replace the original disabled dashboard placeholders with a
+secondary navigation surface inside the existing authenticated shell. The
+Daily Mission remains earlier in document order, wider in the desktop grid,
+and the only mission surface with primary action styling.
+
+Every Quick Action targets an existing hash route: Side Missions and Skill
+Paths open Skill Center, verified history opens Vault, insights open Analytics,
+and milestones open Achievement Center. No new route, network request, RPC, or
+duplicate feature renderer is introduced.
+
+The Side Mission label is a read-only projection of the immutable application
+snapshot already restored for the dashboard. `sideMission.lifecycle.state`
+selects Explore, Start, Continue, Review, or Expired presentation, while
+`sideMissionCapacity.slotAvailable` can communicate used capacity. These labels
+do not determine eligibility and clicking them only navigates to `#skills`;
+the existing Skill Center/Application Service/Repository/RPC chain remains the
+sole Side Mission action path.
+
+Context rendering is failure-isolated. If contextual formatting fails, the
+static, valid Skill Center link remains available and Daily Mission rendering
+continues unaffected. Quick Actions cannot submit rewards, progression,
+identity, dates, lifecycle, capacity, or operational-monitoring requests.

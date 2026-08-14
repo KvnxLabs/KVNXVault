@@ -256,14 +256,34 @@
             <section class="dashboard-card dashboard-card--actions app-card" aria-labelledby="actions-card-title">
               <div class="dashboard-card__header">
                 <h2 class="dashboard-card__title" id="actions-card-title">Quick Actions</h2>
-                <span class="dashboard-card__meta">Coming soon</span>
+                <span class="dashboard-card__meta">Navigate</span>
               </div>
-              <div class="quick-actions">
-                <button class="quick-actions__button" type="button" disabled><span aria-hidden="true">＋</span><span>New mission</span></button>
-                <button class="quick-actions__button" type="button" disabled><span aria-hidden="true">↗</span><span>Update skill</span></button>
-                <button class="quick-actions__button" type="button" disabled><span aria-hidden="true">◇</span><span>Add achievement</span></button>
-                <button class="quick-actions__button" type="button" data-open-vault><span aria-hidden="true">◎</span><span>Open vault</span></button>
-              </div>
+              <nav class="quick-actions" aria-label="Quick access to Vault features" data-quick-actions>
+                <a class="quick-actions__item quick-actions__item--side" href="#skills" aria-label="Explore Side Missions in Skill Center" data-quick-action="side-mission">
+                  <span class="quick-actions__icon" aria-hidden="true">↗</span>
+                  <span class="quick-actions__copy">
+                    <strong data-quick-action-title="side-mission">Explore Side Missions</strong>
+                    <small data-quick-action-detail="side-mission">Practice through an active Skill Path.</small>
+                  </span>
+                  <span class="quick-actions__state" data-quick-action-state="side-mission">Skill Center</span>
+                </a>
+                <a class="quick-actions__item" href="#skills" aria-label="View Skill Paths">
+                  <span class="quick-actions__icon" aria-hidden="true">◇</span>
+                  <span class="quick-actions__copy"><strong>View Skill Paths</strong><small>Choose what you want to develop.</small></span>
+                </a>
+                <a class="quick-actions__item" href="#vault" aria-label="View Vault History">
+                  <span class="quick-actions__icon" aria-hidden="true">◎</span>
+                  <span class="quick-actions__copy"><strong>View History</strong><small>Return to your verified record.</small></span>
+                </a>
+                <a class="quick-actions__item" href="#analytics" aria-label="View Analytics and Insights">
+                  <span class="quick-actions__icon" aria-hidden="true">⌁</span>
+                  <span class="quick-actions__copy"><strong>View Analytics</strong><small>Understand your recent progress.</small></span>
+                </a>
+                <a class="quick-actions__item" href="#achievements" aria-label="View Achievements">
+                  <span class="quick-actions__icon" aria-hidden="true">◆</span>
+                  <span class="quick-actions__copy"><strong>View Achievements</strong><small>Review milestones earned and ahead.</small></span>
+                </a>
+              </nav>
             </section>
           </div>
 

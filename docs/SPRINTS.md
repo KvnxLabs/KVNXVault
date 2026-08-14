@@ -951,3 +951,22 @@ Notes: Migration 027 is required. Migrations 001–026 remain byte-for-byte
 unchanged. Monitoring alert resolution remains deterministic and normal; no
 gameplay or alert state is manually changed. No commit, push, deployment, or
 production verification is claimed.
+
+## Sprint 25 — Quick Actions
+
+Status: ✅ Code complete; review, deployment, and live verification remain manual
+
+Completed: Replaced the disabled dashboard shortcut placeholders with five
+real, lightweight links to existing Side Mission/Skill Path, Vault, Analytics,
+and Achievement surfaces. Side Mission wording reconciles from the immutable
+authoritative snapshot for planned, active, completed, expired, available, and
+used-capacity states.
+
+Authority: Quick Actions navigate only. They issue no repository or RPC call,
+cannot start or complete missions, cannot award XP, and cannot access Sprint 24
+operator functions. Context failure leaves a safe static Skill Center link and
+does not block Daily Mission use.
+
+Notes: **NO DATABASE MIGRATION REQUIRED.** Migrations 001–027 remain unchanged.
+Mission Customization, custom rewards, AI, and Sprint 26 work are intentionally
+excluded. No commit, push, deployment, or live verification is claimed.

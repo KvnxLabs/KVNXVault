@@ -1017,3 +1017,26 @@ operator state. No transcript or response persistence is added.
 Notes: Migration 030 is required. Migrations 001–029 remain byte-for-byte
 unchanged. No commit, push, deployment, production mutation, provider secret,
 or live verification is claimed.
+
+## Sprint 28 — AI Coach Experience
+
+Status: Implemented locally; production verification pending.
+
+Completed: Expanded the secondary Coach preview into a richer guided experience
+with Overview, Next step, Skill focus, and Consistency modes; deterministic
+observation, explanation, momentum, skill-development, focus, and next-step
+rules; advisory schema version 2; trusted destination allowlisting; navigation-
+only CTAs; accessible loading/deduplication behavior; and responsive layouts.
+
+Authority: Sprint 28 reuses the owner-derived Sprint 27 context and read-only
+Application Service loader. Modes remain presentation intent. Coach cannot
+change missions, Mission Customization, Side capacity, +25/+15 Daily rewards,
++10/+10 Side rewards, progression, streaks, achievements, history, Analytics,
+or operational state. Failure remains isolated from protected restoration and
+the rest of Dashboard.
+
+Provider/database: Guidance remains explicitly deterministic because the static
+repository still has no secure secret-bearing runtime. No provider secret,
+browser AI call, persistence, context expansion, or Migration 031 is added.
+Migrations 001–030 remain immutable. No commit, push, deployment, production
+mutation, or live verification is claimed.

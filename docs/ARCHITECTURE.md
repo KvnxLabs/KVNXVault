@@ -1359,3 +1359,31 @@ Daily or Side Mission actions, Skill Paths, or progression. Refresh requests
 are deduplicated and reread the bounded server context. No Coach output is
 stored, and no transcript, prompt, cache, mission, progression, or analytics
 table is introduced.
+
+## Sprint 28 AI Coach Experience
+
+Sprint 28 keeps the Sprint 27 context and authority boundary intact while
+expanding its presentation into four guided views: Overview, Next step, Skill
+focus, and Consistency. The deterministic provider returns advisory schema
+version 2 with a current summary, observed pattern, recommended focus,
+explanation, next step, momentum signal, skill-development signal, and one
+allowlisted KVNX destination. Legacy Sprint 27 provider responses remain
+strictly validated for boundary compatibility.
+
+Destination values are data, not URLs. `js/ai-coach.js` accepts only dashboard,
+missions, skills, vault, analytics, or achievements with their canonical label;
+`dashboard.js` independently maps that value to an existing hash route. The
+rendered control is an anchor and cannot call mission, Side Mission,
+customization, progression, achievement, or operational RPCs.
+
+Guidance remains downstream of protected restoration and visually below the
+Daily Mission, progression/status, and Quick Actions. Mode changes and refresh
+requests reread the existing owner-derived Coach context, are deduplicated,
+disable repeated input while pending, and never manufacture random variation.
+Failure hides the advisory content only; the protected dashboard and every
+authoritative action remain available.
+
+No external AI provider, secret, transcript store, browser prompt, Migration
+031, or context expansion is introduced. Production guidance remains truthfully
+labeled deterministic Vault guidance. A real provider still requires a secure,
+rate-limited server runtime and must satisfy the same advisory-only schema.

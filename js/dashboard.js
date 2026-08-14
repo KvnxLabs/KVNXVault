@@ -729,9 +729,18 @@ const KVNXQuickActionsExperience = (() => {
   return Object.freeze({ createViewModel });
 })();
 
-// Sprint 27 Coach preview renders validated advisory copy only. It exposes no
-// action payload and never routes advice into a mission or progression method.
+// Sprint 28 expands the validated advisory projection while keeping every
+// destination navigation-only and every gameplay action outside Coach.
 const KVNXCoachExperience = (() => {
+  const DESTINATIONS = Object.freeze({
+    dashboard: Object.freeze({ href: "#dashboard", label: "Return to Dashboard" }),
+    missions: Object.freeze({ href: "#missions", label: "Open Mission Center" }),
+    skills: Object.freeze({ href: "#skills", label: "Review Skill Center" }),
+    vault: Object.freeze({ href: "#vault", label: "View recent progress" }),
+    analytics: Object.freeze({ href: "#analytics", label: "Review Analytics" }),
+    achievements: Object.freeze({ href: "#achievements", label: "Review Achievements" }),
+  });
+
   const createViewModel = (snapshot) => {
     const coach = snapshot?.coach;
     const advice = coach?.advice;
@@ -743,7 +752,13 @@ const KVNXCoachExperience = (() => {
       summary: String(advice.summary || ""),
       insight: String(advice.insight || ""),
       recommendedFocus: String(advice.recommendedFocus || ""),
+      whyItMatters: String(advice.whyItMatters || advice.insight || ""),
       nextStep: String(advice.nextStep || ""),
+      momentumInsight: String(advice.momentumInsight || advice.summary || ""),
+      skillInsight: String(advice.skillInsight || advice.insight || ""),
+      mode: ["overview", "next_step", "skill_focus", "consistency"].includes(advice.mode)
+        ? advice.mode : "overview",
+      destination: DESTINATIONS[advice.destination] || DESTINATIONS.dashboard,
       sourceLabel: advice.source === "ai" ? "AI-generated guidance" : "Vault guidance",
       disclosure: advice.source === "ai"
         ? "AI-generated advisory guidance. KVNX Vault remains authoritative for every mission and reward."
@@ -1074,10 +1089,17 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   const coachSource = document.querySelector("[data-coach-source]");
   const coachSummary = document.querySelector("[data-coach-summary]");
   const coachInsight = document.querySelector("[data-coach-insight]");
+  const coachWhy = document.querySelector("[data-coach-why]");
+  const coachMomentum = document.querySelector("[data-coach-momentum]");
+  const coachSkillInsight = document.querySelector("[data-coach-skill-insight]");
   const coachFocus = document.querySelector("[data-coach-focus]");
   const coachNextStep = document.querySelector("[data-coach-next-step]");
+  const coachDestination = document.querySelector("[data-coach-destination]");
+  const coachModeButtons = [...document.querySelectorAll("[data-coach-mode]")];
   const coachDisclosure = document.querySelector("[data-coach-disclosure]");
+  const coachStatus = document.querySelector("[data-coach-status]");
   const coachRefresh = document.querySelector("[data-coach-refresh]");
+  const coachRefreshLabel = document.querySelector("[data-coach-refresh-label]");
   const sideMissionStartButtons = document.querySelectorAll("[data-side-mission-start]");
   const sideMissionCompleteButtons = document.querySelectorAll("[data-side-mission-complete]");
   const achievementList = document.querySelector("[data-achievement-list]");
@@ -1551,14 +1573,27 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     if (coachUnavailable) coachUnavailable.hidden = viewModel.available;
     if (!viewModel.available) {
       if (coachSource) coachSource.textContent = "Advisory only";
+      if (coachStatus) coachStatus.textContent = "Coach guidance is unavailable. The rest of your Vault remains available.";
       return;
     }
     if (coachSource) coachSource.textContent = viewModel.sourceLabel;
     if (coachSummary) coachSummary.textContent = viewModel.summary;
     if (coachInsight) coachInsight.textContent = viewModel.insight;
+    if (coachWhy) coachWhy.textContent = viewModel.whyItMatters;
+    if (coachMomentum) coachMomentum.textContent = viewModel.momentumInsight;
+    if (coachSkillInsight) coachSkillInsight.textContent = viewModel.skillInsight;
     if (coachFocus) coachFocus.textContent = viewModel.recommendedFocus;
     if (coachNextStep) coachNextStep.textContent = viewModel.nextStep;
+    if (coachDestination) {
+      coachDestination.href = viewModel.destination.href;
+      coachDestination.firstChild.textContent = `${viewModel.destination.label} `;
+      coachDestination.setAttribute("aria-label", `${viewModel.destination.label}. Coach recommendation; navigation only.`);
+    }
+    coachModeButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.coachMode === viewModel.mode));
+    });
     if (coachDisclosure) coachDisclosure.textContent = viewModel.disclosure;
+    if (coachStatus) coachStatus.textContent = `Coach ${viewModel.mode.split("_").join(" ")} guidance updated.`;
   };
 
   const renderSideMission = (snapshot) => {
@@ -2459,20 +2494,40 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   protectedContentGate.reveal();
   window.addEventListener("hashchange", renderApplicationView);
 
-  let coachRefreshInFlight = false;
-  coachRefresh?.addEventListener("click", async () => {
-    if (coachRefreshInFlight) return;
-    coachRefreshInFlight = true;
+  let coachRequestInFlight = false;
+  const requestCoachGuidance = async (mode) => {
+    if (coachRequestInFlight) return;
+    coachRequestInFlight = true;
     coachRefresh.disabled = true;
     coachRefresh.setAttribute("aria-busy", "true");
+    if (coachRefreshLabel) coachRefreshLabel.textContent = "Refreshing guidance";
+    if (coachStatus) coachStatus.textContent = "Refreshing Coach guidance.";
+    coachModeButtons.forEach((button) => { button.disabled = true; });
     try {
-      applicationSnapshot = await vaultApplication.loadCoach("overview");
+      applicationSnapshot = mode === "overview"
+        ? await vaultApplication.loadCoach("overview")
+        : await vaultApplication.loadCoach(mode);
       renderCoach(applicationSnapshot);
     } finally {
-      coachRefreshInFlight = false;
+      coachRequestInFlight = false;
       coachRefresh.disabled = false;
       coachRefresh.removeAttribute("aria-busy");
+      if (coachRefreshLabel) coachRefreshLabel.textContent = "Refresh guidance";
+      coachModeButtons.forEach((button) => { button.disabled = false; });
     }
+  };
+
+  coachRefresh?.addEventListener("click", async () => {
+    const currentMode = coachModeButtons.find(
+      (button) => button.getAttribute("aria-pressed") === "true",
+    )?.dataset.coachMode || "overview";
+    await requestCoachGuidance(currentMode);
+  });
+
+  coachModeButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      await requestCoachGuidance(button.dataset.coachMode);
+    });
   });
 
   let dailyChoiceSelectionInFlight = false;

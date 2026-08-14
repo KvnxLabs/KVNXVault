@@ -792,3 +792,28 @@ There is no production AI transport in Sprint 27. Do not add an API key to
 `config.js`, the browser bundle, Supabase SQL, tests, or documentation. Provider
 failure testing uses an injected test adapter; deterministic guidance must keep
 the dashboard and all mission actions usable.
+
+## Sprint 28 Coach Experience verification
+
+Run `node tests/ai-coach-experience.test.js` and the complete test suite. Verify
+Overview, Next step, Skill focus, and Consistency each return the versioned
+advisory projection from the same bounded Sprint 27 context. Confirm the richer
+view renders observation, explanation, momentum, skill insight, recommended
+focus, next step, and a closed-route navigation link.
+
+In the browser, hard-refresh Dashboard and confirm `Restoring your Vault`
+remains the only product state before restoration. Confirm Daily Mission remains
+visually primary, switch each Coach mode by keyboard, follow the recommended
+destination, and verify it changes only the hash route. Refresh guidance with
+the Network panel open and confirm the request contains only `p_mode`; no XP,
+skill XP, user ID, mission state, preference, capacity, or reward is submitted.
+
+Record overall XP, skill XP, Daily/Side Mission lifecycle, replacement state,
+Side capacity, customization, streak, and achievements before and after mode
+changes and refresh. Every value must remain unchanged. Test the unavailable
+state by blocking the Coach context request; the rest of Dashboard must remain
+usable. Repeat at desktop, tablet, and mobile widths and verify visible focus,
+touch targets, text wrapping, and no horizontal overflow.
+
+Sprint 28 adds no database migration and no real AI provider. Do not add a
+browser provider endpoint or secret for manual testing.

@@ -78,8 +78,8 @@ test("Sprint 20 Skill Paths remain unchanged", () => {
 });
 
 test("approved current Dashboard files retain the Consistency presentation", () => {
-  assert.equal(hash("css/dashboard.css"), "105e2453f16fe9841196a9d9d51fcd0dce367104aeb7c17d450d58dd9c11e8e8");
-  assert.equal(hash("js/dashboard.js"), "124c11577987ee4f5569a4643607e2877c5d6ec1109332ef3da9568635da3210");
+  assert.equal(hash("css/dashboard.css"), "f9654c477e97e2cd64d91873d665bdc931ed8c963d183ae9e4ee91e253b54103");
+  assert.equal(hash("js/dashboard.js"), "b1c8752d54c210dcc01e15a54e01c98e01f8645ccd5f721be97f2d9da3e3cf82");
   assert.match(dashboardSource, /const renderStreak = \(snapshot\) =>/);
 });
 

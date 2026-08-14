@@ -290,24 +290,49 @@
             <section class="dashboard-card dashboard-card--coach app-card" aria-labelledby="coach-card-title" data-coach-card>
               <div class="dashboard-card__header coach-card__header">
                 <div>
-                  <p class="app-card__label">Coach preview</p>
+                  <p class="app-card__label">KVNX Coach</p>
                   <h2 class="dashboard-card__title" id="coach-card-title">Your current trajectory</h2>
                 </div>
                 <span class="dashboard-card__meta" data-coach-source>Vault guidance</span>
               </div>
+              <div class="coach-card__modes" role="group" aria-label="Coach guidance view" data-coach-modes>
+                <button type="button" data-coach-mode="overview" aria-pressed="true">Overview</button>
+                <button type="button" data-coach-mode="next_step" aria-pressed="false">Next step</button>
+                <button type="button" data-coach-mode="skill_focus" aria-pressed="false">Skill focus</button>
+                <button type="button" data-coach-mode="consistency" aria-pressed="false">Consistency</button>
+              </div>
               <div class="coach-card__content" data-coach-content hidden>
                 <p class="coach-card__summary" data-coach-summary></p>
-                <p class="coach-card__insight" data-coach-insight></p>
+                <div class="coach-card__insights">
+                  <section aria-labelledby="coach-observation-label">
+                    <h3 id="coach-observation-label">What the Coach notices</h3>
+                    <p data-coach-insight></p>
+                  </section>
+                  <section aria-labelledby="coach-why-label">
+                    <h3 id="coach-why-label">Why this matters</h3>
+                    <p data-coach-why></p>
+                  </section>
+                  <section aria-labelledby="coach-momentum-label">
+                    <h3 id="coach-momentum-label">Momentum</h3>
+                    <p data-coach-momentum></p>
+                  </section>
+                  <section aria-labelledby="coach-skill-label">
+                    <h3 id="coach-skill-label">Skill development</h3>
+                    <p data-coach-skill-insight></p>
+                  </section>
+                </div>
                 <dl class="coach-card__direction">
                   <div><dt>Recommended focus</dt><dd data-coach-focus>—</dd></div>
                   <div><dt>Next step</dt><dd data-coach-next-step>—</dd></div>
                 </dl>
+                <a class="coach-card__destination" href="#dashboard" data-coach-destination>Return to Dashboard <span aria-hidden="true">→</span></a>
                 <p class="coach-card__disclosure" data-coach-disclosure>Deterministic guidance from your authoritative Vault state—not AI-generated.</p>
               </div>
               <div class="coach-card__unavailable" data-coach-unavailable>
                 <p>Guidance is temporarily unavailable. Your missions and progression remain fully available.</p>
               </div>
-              <button class="dashboard-card__text-button" type="button" data-coach-refresh aria-label="Refresh advisory Coach guidance">Refresh guidance <span aria-hidden="true">↻</span></button>
+              <p class="visually-hidden" data-coach-status role="status" aria-live="polite" aria-atomic="true"></p>
+              <button class="dashboard-card__text-button" type="button" data-coach-refresh aria-label="Refresh advisory Coach guidance"><span data-coach-refresh-label>Refresh guidance</span> <span aria-hidden="true">↻</span></button>
             </section>
           </div>
 

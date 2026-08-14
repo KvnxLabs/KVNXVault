@@ -817,3 +817,44 @@ touch targets, text wrapping, and no horizontal overflow.
 
 Sprint 28 adds no database migration and no real AI provider. Do not add a
 browser provider endpoint or secret for manual testing.
+
+## Sprint 29 Product and UX Hardening verification
+
+Run `node tests/product-ux-hardening.test.js`, then every `tests/*.test.js`.
+Also run JavaScript syntax checks, local HTML reference validation, historical
+migration fingerprints, secret/privileged-operation/gameplay-authority scans,
+the conflict-marker scan, ZIP integrity, and `git diff --check`.
+
+Use this browser matrix without changing production time or gameplay data:
+
+1. Authentication: sign in, hard-refresh a protected hash, sign out, and use
+   browser Back. Confirm protected content never flashes before restoration.
+2. Dashboard: verify Daily Mission remains visually primary, then progression,
+   Quick Actions, and the advisory Coach. Confirm the disabled notification
+   control does not imply unread activity.
+3. Navigation: test sidebar, product mark, Quick Actions, Coach destination,
+   browser Back/Forward, direct valid hashes, and one invalid hash. Each in-shell
+   change must scroll to the top, focus the view heading, and preserve the
+   authoritative snapshot without rerolling.
+4. Daily Mission: rapidly activate Start and Skip controls from Dashboard and
+   Mission Center. Only one request may remain in flight and all mirrored
+   controls must communicate pending state. Do not repeat a completion merely
+   to test this in production.
+5. Mission Center: verify choice, current mission, customization, replacement,
+   Daily Complete, and restrained unavailable/error states from existing data.
+6. Skills: verify Skill Center, Skill Paths, zero-XP compact cards, Side Mission
+   state, and independent expanded-card heights.
+7. Achievements, Vault, and Analytics: verify empty/populated states, Daily/Side
+   distinctions, period controls, keyboard disclosures, and read-only behavior.
+8. Coach: test all four modes, navigation-only CTA, refresh, and an unavailable
+   response. Core product actions must remain usable if Coach fails.
+9. Responsive: inspect 1440+, 1024–1439, 768–1023, 320–767, including 320px.
+   Confirm no horizontal page scroll, clipped toasts, or offscreen actions.
+10. Accessibility: traverse by keyboard, use the skip link, verify visible focus,
+    route-heading focus, native disclosures, status text, and coarse-pointer
+    targets. With reduced motion enabled, complete onboarding in staging and
+    confirm the saved flow proceeds directly to Dashboard without the cinematic
+    delay.
+
+Sprint 29 is frontend-only. **No Migration 031 exists**, and no database
+deployment or production clock manipulation is part of this verification.

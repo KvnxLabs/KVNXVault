@@ -43,7 +43,7 @@
       <a class="app-skip-link" href="#dashboard-content">Skip to dashboard</a>
       <aside class="sidebar" id="application-sidebar" data-sidebar aria-label="Application navigation">
         <div class="sidebar__header">
-          <a class="app-brand" href="index.html" aria-label="KVNX Vault home">
+          <a class="app-brand" href="#dashboard" aria-label="KVNX Vault dashboard">
             <img class="app-brand__mark" src="assets/icons/kvnx-mark.svg" alt="" />
             <span class="app-brand__name">KVNX <strong>VAULT</strong></span>
           </a>
@@ -54,7 +54,7 @@
 
         <p class="sidebar__section-label">Workspace</p>
         <nav class="sidebar__nav">
-          <a class="sidebar__link sidebar__link--active" href="dashboard.html" aria-current="page" data-view-link="dashboard">
+          <a class="sidebar__link sidebar__link--active" href="#dashboard" aria-current="page" data-view-link="dashboard">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
             Dashboard
           </a>
@@ -124,7 +124,7 @@
           <header class="dashboard__heading" data-dashboard-home>
             <div>
               <p class="app-eyebrow">Command center</p>
-              <h1>Welcome back, <em data-dashboard-name>Builder.</em></h1>
+              <h1 tabindex="-1" data-view-heading="dashboard">Welcome back, <em data-dashboard-name>Builder.</em></h1>
             </div>
             <time class="dashboard__date" datetime="2026-08-06" data-current-date>Thursday · August 6</time>
           </header>
@@ -340,7 +340,7 @@
             <header class="dashboard__heading missions-view__heading">
               <div>
                 <p class="app-eyebrow">Mission center</p>
-                <h1 id="mission-center-title">Today’s <em>mission.</em></h1>
+                <h1 id="mission-center-title" tabindex="-1" data-view-heading="missions">Today’s <em>mission.</em></h1>
               </div>
               <span class="mission-center__status" data-mission-center-status data-state="ready">Ready</span>
             </header>
@@ -486,7 +486,7 @@
             <header class="dashboard__heading skills-view__heading">
               <div>
                 <p class="app-eyebrow">Skill center</p>
-                <h1 id="skill-center-title">Your mastery, <em>made visible.</em></h1>
+                <h1 id="skill-center-title" tabindex="-1" data-view-heading="skills">Your mastery, <em>made visible.</em></h1>
               </div>
             </header>
             <p class="skills-view__intro">Lifetime skill progression, restored from verified mission completions.</p>
@@ -559,7 +559,7 @@
             <header class="dashboard__heading achievements-view__heading">
               <div>
                 <p class="app-eyebrow">Achievement center</p>
-                <h1 id="achievements-title">Your milestones, <em>earned and preserved.</em></h1>
+                <h1 id="achievements-title" tabindex="-1" data-view-heading="achievements">Your milestones, <em>earned and preserved.</em></h1>
               </div>
             </header>
             <p class="achievements-view__intro">A permanent, read-only record of the milestones your verified progress has secured.</p>
@@ -601,7 +601,7 @@
             <header class="dashboard__heading vault-view__heading">
               <div>
                 <p class="app-eyebrow">Permanent record</p>
-                <h1 id="vault-title">Your <em>legacy.</em></h1>
+                <h1 id="vault-title" tabindex="-1" data-view-heading="vault">Your <em>legacy.</em></h1>
               </div>
               <span class="dashboard-card__meta" data-vault-count>0 completed</span>
             </header>
@@ -648,7 +648,7 @@
             <header class="dashboard__heading analytics-view__heading">
               <div>
                 <p class="app-eyebrow">Insights</p>
-                <h1 id="analytics-title">Your progress, <em>made visible.</em></h1>
+                <h1 id="analytics-title" tabindex="-1" data-view-heading="analytics">Your progress, <em>made visible.</em></h1>
               </div>
               <time class="analytics-view__generated" data-analytics-generated hidden></time>
             </header>

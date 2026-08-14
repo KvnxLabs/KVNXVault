@@ -108,9 +108,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       progressTrack.setAttribute("aria-valuenow", String(stepNumber));
       progressFill.style.width = `${(stepNumber / questionSteps.length) * 100}%`;
       backButton.hidden = false;
-      nextButton.innerHTML = index === questionSteps.length - 1
-        ? 'Enter the Vault <span aria-hidden="true">→</span>'
-        : 'Continue <span aria-hidden="true">→</span>';
+      const label = index === questionSteps.length - 1 ? "Enter the Vault" : "Continue";
+      const arrow = document.createElement("span");
+      arrow.setAttribute("aria-hidden", "true");
+      arrow.textContent = "→";
+      nextButton.replaceChildren(document.createTextNode(`${label} `), arrow);
     }
 
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -199,6 +201,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const state = stateStore.write(persistedAnswers);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      window.location.assign("dashboard.html");
+      return;
+    }
     const firstName = String(state.firstName || "").trim();
     const welcome = document.querySelector("[data-intro-welcome]");
     const mark = document.querySelector(".vault-intro__mark");

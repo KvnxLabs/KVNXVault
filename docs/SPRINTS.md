@@ -1040,3 +1040,27 @@ repository still has no secure secret-bearing runtime. No provider secret,
 browser AI call, persistence, context expansion, or Migration 031 is added.
 Migrations 001–030 remain immutable. No commit, push, deployment, production
 mutation, or live verification is claimed.
+
+## Sprint 29 — Product and UX Hardening
+
+Status: Implemented locally; review and manual browser verification pending.
+
+Completed: Repaired a truncated frontend Repository source file found by the
+pre-change full-suite audit; unified Dashboard/product-mark navigation under the
+existing hash router; normalized unknown hashes; added route scroll and heading
+focus; closed the mobile sidebar after navigation; activated the displayed
+Vault search keyboard shortcut; added one pending guard across mirrored Daily
+start/skip controls; bypassed the decorative onboarding cinematic for reduced-
+motion users after durable save; improved coarse-pointer targets; prevented
+horizontal shell overflow; and removed the false unread signal from the disabled
+notification control.
+
+Authority: Every change is presentation or browser orchestration. Mission
+actions still delegate to the Application Service and authoritative RPCs, the
+protected restoration gate remains first paint, and failed persistence remains
+blocked until durable restoration. Daily +25/+15 and Side +10/+10 are unchanged.
+
+Notes: **DATABASE MIGRATION REQUIRED: NO.** No Migration 031 exists. Migrations
+001–030 remain byte-for-byte unchanged. No commit, push, deployment, production
+mutation, or live verification is claimed. Deferred P4 work is limited to
+optional visual/copy refinements that were not tied to a reproducible defect.

@@ -1,6 +1,7 @@
 /* Sprint 1 dashboard shell: responsive layout and placeholder presentation. */
 .app-page {
   min-height: 100svh;
+  overflow-x: clip;
   background: var(--app-bg);
 }
 
@@ -101,6 +102,9 @@
 }
 
 .sidebar__logout {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   margin-top: 14px;
   padding: 7px 0;
   background: transparent;
@@ -211,6 +215,15 @@
   border-radius: 50%;
   background: var(--app-red);
   content: "";
+}
+
+.topbar__notification:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.topbar__notification:disabled::after {
+  display: none;
 }
 
 .topbar__profile {
@@ -3979,6 +3992,21 @@
 
   .mission-center__recent-reward {
     text-align: left;
+  }
+}
+
+@media (pointer: coarse) {
+  .coach-card__modes button,
+  .analytics-period button,
+  .achievement-center__filters button,
+  .skill-center__filters button,
+  .dashboard-card__text-button,
+  .dashboard-card__text-link,
+  .skill-center__path-action,
+  .skill-center__vault-link,
+  .mission-center__skip,
+  .mission-center__vault-link {
+    min-height: 44px;
   }
 }
 

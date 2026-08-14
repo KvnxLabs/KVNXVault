@@ -132,7 +132,7 @@ test("setter accepts no user identity, reward, mission, or time argument", () =>
 test("frontend strict contract remains unchanged", () => {
   assert.equal(hash("js/user-repository.js"), "920453f0339e5f8f196c3dca4aeba476ef32e313634ab93ebeaa3f4bcbaa96e7");
   assert.equal(hash("js/application-service.js"), "6fabdcb94545c643a6a310463a80881987f6f9c7ad9f093763774f0034d90131");
-  assert.equal(hash("js/dashboard.js"), "b1c8752d54c210dcc01e15a54e01c98e01f8645ccd5f721be97f2d9da3e3cf82");
+  assert.equal(hash("js/dashboard.js"), "8938ab5683095b9adea2135b0caf0a2dccccc97816b3a28fb0e7cb0f23af02e1");
 });
 test("Migration 028 remains byte-for-byte unchanged", () => {
   assert.equal(crypto.createHash("sha256").update(migration28).digest("hex"), "06aa906946db961669aad2aa32fa89850b11498b392f50de7a3d04f8cbf2bf3c");

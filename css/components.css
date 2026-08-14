@@ -256,8 +256,8 @@ button {
 }
 
 .app-icon-button {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;

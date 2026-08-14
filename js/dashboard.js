@@ -1179,6 +1179,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   let analyticsLoadedPeriod = applicationSnapshot.analytics?.period || null;
   let analyticsInFlight = false;
   let completionInFlight = false;
+  let dailyLifecycleActionInFlight = false;
   let skillCenterFilter = "all";
   let achievementCenterFilter = "all";
 
@@ -2309,6 +2310,9 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     const showAchievements = window.location.hash === "#achievements";
     const showVault = window.location.hash === "#vault";
     const showAnalytics = window.location.hash === "#analytics";
+    const knownRoute = !window.location.hash || window.location.hash === "#dashboard"
+      || showMissions || showSkills || showAchievements || showVault || showAnalytics;
+    if (!knownRoute) window.history.replaceState(null, "", "#dashboard");
     dashboardHomeSections.forEach((section) => { section.hidden = showMissions || showSkills || showAchievements || showVault || showAnalytics; });
     if (missionsView) missionsView.hidden = !showMissions;
     if (skillsView) skillsView.hidden = !showSkills;
@@ -2331,6 +2335,15 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     if (showAnalytics && analyticsLoadedPeriod !== analyticsPeriod && !analyticsInFlight) {
       loadAnalytics(analyticsPeriod);
     }
+  };
+
+  const handleApplicationRouteChange = () => {
+    renderApplicationView();
+    const activeView = window.location.hash.replace(/^#/, "") || "dashboard";
+    const heading = document.querySelector(`[data-view-heading="${activeView}"]`)
+      || document.querySelector('[data-view-heading="dashboard"]');
+    window.scrollTo({ top: 0, behavior: "auto" });
+    heading?.focus({ preventScroll: true });
   };
 
   const showProgressAward = (result) => {
@@ -2492,7 +2505,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   renderMissionCenter(applicationSnapshot);
   renderApplicationView();
   protectedContentGate.reveal();
-  window.addEventListener("hashchange", renderApplicationView);
+  window.addEventListener("hashchange", handleApplicationRouteChange);
 
   let coachRequestInFlight = false;
   const requestCoachGuidance = async (mode) => {
@@ -2836,36 +2849,49 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     }
   });
 
-  startMissionButton?.addEventListener("click", async () => {
+  const dailyLifecycleButtons = [
+    startMissionButton,
+    skipMissionButton,
+    missionCenterStart,
+    missionCenterSkip,
+  ].filter(Boolean);
+
+  const runDailyLifecycleAction = async (action) => {
+    if (dailyLifecycleActionInFlight) return;
+    dailyLifecycleActionInFlight = true;
+    dailyLifecycleButtons.forEach((button) => {
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+    });
+    let reconciled = false;
     try {
-      const result = await vaultApplication.start();
+      const result = action === "start"
+        ? await vaultApplication.start()
+        : await vaultApplication.skip();
       if (result.snapshot?.coordinator) {
         applicationSnapshot = result.snapshot;
         nextResetAt = result.snapshot.nextResetAt;
         renderCoordinator(result.snapshot.coordinator);
+        if (action === "skip") renderProgression(result.snapshot.progression);
         renderMissionCenter(result.snapshot);
+        reconciled = true;
       }
     } catch (error) {
       showPersistenceFailure(error);
+    } finally {
+      dailyLifecycleActionInFlight = false;
+      dailyLifecycleButtons.forEach((button) => {
+        button.removeAttribute("aria-busy");
+        if (reconciled) button.disabled = false;
+      });
     }
-  });
+  };
+
+  startMissionButton?.addEventListener("click", () => runDailyLifecycleAction("start"));
 
   missionCenterStart?.addEventListener("click", () => startMissionButton?.click());
 
-  skipMissionButton?.addEventListener("click", async () => {
-    try {
-      const result = await vaultApplication.skip();
-      if (result.snapshot?.coordinator) {
-        applicationSnapshot = result.snapshot;
-        nextResetAt = result.snapshot.nextResetAt;
-        renderCoordinator(result.snapshot.coordinator);
-        renderProgression(result.snapshot.progression);
-        renderMissionCenter(result.snapshot);
-      }
-    } catch (error) {
-      showPersistenceFailure(error);
-    }
-  });
+  skipMissionButton?.addEventListener("click", () => runDailyLifecycleAction("skip"));
 
   missionCenterSkip?.addEventListener("click", () => skipMissionButton?.click());
 
@@ -3026,6 +3052,12 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
     window.location.hash = "#vault";
     renderVault();
   });
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      vaultSearch?.focus();
+    }
+  });
 
   if (currentDate) {
     const now = new Date();
@@ -3040,7 +3072,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   if (!sidebar || !menuButton || !closeButton || !backdrop) return;
 
   // Mobile navigation behavior only; product features are intentionally absent.
-  const setSidebarOpen = (isOpen) => {
+  const setSidebarOpen = (isOpen, { restoreFocus = true } = {}) => {
     sidebar.classList.toggle("is-open", isOpen);
     backdrop.classList.toggle("is-visible", isOpen);
     backdrop.hidden = !isOpen;
@@ -3049,7 +3081,7 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
 
     if (isOpen) {
       closeButton.focus();
-    } else {
+    } else if (restoreFocus) {
       menuButton.focus();
     }
   };
@@ -3057,6 +3089,13 @@ if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded
   menuButton.addEventListener("click", () => setSidebarOpen(true));
   closeButton.addEventListener("click", () => setSidebarOpen(false));
   backdrop.addEventListener("click", () => setSidebarOpen(false));
+  viewLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      if (sidebar.classList.contains("is-open")) {
+        setSidebarOpen(false, { restoreFocus: false });
+      }
+    });
+  });
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && sidebar.classList.contains("is-open")) {

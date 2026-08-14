@@ -1387,3 +1387,30 @@ No external AI provider, secret, transcript store, browser prompt, Migration
 031, or context expansion is introduced. Production guidance remains truthfully
 labeled deterministic Vault guidance. A real provider still requires a secure,
 rate-limited server runtime and must satisfy the same advisory-only schema.
+
+## Sprint 29 Product and UX Hardening
+
+Sprint 29 keeps the existing repository → Application Service → UI boundary and
+adds no product or database authority. The authenticated shell now treats all
+six destinations as one hash-routed workspace, including Dashboard itself.
+Unknown hashes normalize to Dashboard without a reload, browser back/forward
+continues through the same renderer, and route changes restore the top scroll
+position and move keyboard focus to the active view heading. Mobile navigation
+closes after selection without stealing that destination focus.
+
+Daily start and skip share a UI-only in-flight guard. All mirrored Dashboard and
+Mission Center controls become disabled and `aria-busy` while the established
+Application Service action is pending. Controls are re-enabled only after a
+valid authoritative snapshot is reconciled; a failed persistence request keeps
+the existing durable-restoration error behavior. This guard reduces duplicate
+requests but never replaces PostgreSQL idempotency or lifecycle authority.
+
+Protected restoration remains unchanged. Onboarding now bypasses its decorative
+post-save cinematic for users requesting reduced motion, but only after the
+authoritative onboarding save succeeds. Coarse-pointer targets, mobile overflow,
+disabled-notification presentation, and navigation focus are normalized without
+changing the information hierarchy: Daily Mission, progression/status, Quick
+Actions, Coach, then supporting exploration.
+
+No migration, RPC, reward, mission, Skill Path, Coach, analytics, history,
+achievement, streak, or operational-monitoring contract changes in Sprint 29.
